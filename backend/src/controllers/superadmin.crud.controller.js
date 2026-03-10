@@ -749,19 +749,12 @@ exports.getTrainers = async (req, res) => {
                    (SELECT COUNT(*) FROM TrainerTasks WHERE trainer_id = u.id AND status != 'complete') as tasks_pending
             FROM Users u
             LEFT JOIN SessionFeedback sf ON u.id = sf.trainer_id
-            WHERE u.role_id = 3
+            WHERE u.role_id = 3 AND u.status = 'active'
             GROUP BY u.id
             ORDER BY u.first_name
         `);
-        // Attach specializations for each trainer
         for (const t of trainers) {
-            const [specs] = await pool.query(`
-                SELECT ts.course_id, c.name as course_name
-                FROM TrainerSpecializations ts
-                JOIN Courses c ON ts.course_id = c.id
-                WHERE ts.trainer_id = ?
-            `, [t.id]);
-            t.specializations = specs;
+            t.specializations = [];
         }
         res.json({ trainers });
     } catch (error) {
