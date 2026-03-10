@@ -814,8 +814,8 @@ exports.updateTrainer = async (req, res) => {
 exports.deleteTrainer = async (req, res) => {
     try {
         const { id } = req.params;
-        await pool.query('DELETE FROM TrainerSpecializations WHERE trainer_id = ?', [id]);
-        await pool.query('DELETE FROM Users WHERE id = ? AND role_id = 3', [id]);
+        await pool.query('UPDATE Users SET status = ? WHERE id = ? AND role_id = 3', ['inactive', id]);
+        await pool.query('UPDATE Batches SET trainer_id = NULL WHERE trainer_id = ?', [id]);
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'DELETE_TRAINER', 'Users', id]);
         res.json({ message: 'Trainer deleted' });
     } catch (error) {
