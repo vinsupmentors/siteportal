@@ -4,12 +4,13 @@ const path = require('path');
 
 async function initializeDB() {
     try {
-        // Initial connection WITHOUT database specified to safely create it
-        const connection = await mysql.createConnection({
+        const dbConfig = process.env.DATABASE_URL || {
             host: process.env.DB_HOST || 'localhost',
             user: process.env.DB_USER || 'root',
             password: process.env.DB_PASSWORD || '963.'
-        });
+        };
+
+        const connection = await mysql.createConnection(dbConfig);
 
         console.log("Connected to MySQL Server successfully.");
 

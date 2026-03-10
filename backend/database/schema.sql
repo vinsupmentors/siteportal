@@ -2,13 +2,13 @@ CREATE DATABASE IF NOT EXISTS edutech_lms;
 USE edutech_lms;
 
 -- Roles Mapping
-CREATE TABLE Roles (
+CREATE TABLE IF NOT EXISTS Roles (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name ENUM('Super Admin', 'Admin', 'Trainer', 'Student') NOT NULL UNIQUE
 );
 
 -- Core Users 
-CREATE TABLE Users (
+CREATE TABLE IF NOT EXISTS Users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     role_id INT NOT NULL,
     first_name VARCHAR(100) NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE Users (
 );
 
 -- Programs Matrix (JRP, IOP, IOP_EXT, PAP)
-CREATE TABLE Programs (
+CREATE TABLE IF NOT EXISTS Programs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     type ENUM('JRP', 'IOP', 'IOP_EXT', 'PAP') NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE Programs (
 );
 
 -- Courses inside Programs
-CREATE TABLE Courses (
+CREATE TABLE IF NOT EXISTS Courses (
     id INT AUTO_INCREMENT PRIMARY KEY,
     program_id INT NOT NULL,
     name VARCHAR(200) NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE Courses (
 );
 
 -- Modules inside Courses
-CREATE TABLE Modules (
+CREATE TABLE IF NOT EXISTS Modules (
     id INT AUTO_INCREMENT PRIMARY KEY,
     course_id INT NOT NULL,
     name VARCHAR(200) NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE Modules (
 );
 
 -- Days mapping to Modules
-CREATE TABLE Days (
+CREATE TABLE IF NOT EXISTS Days (
     id INT AUTO_INCREMENT PRIMARY KEY,
     module_id INT NOT NULL,
     day_number INT NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE Days (
 );
 
 -- Batches
-CREATE TABLE Batches (
+CREATE TABLE IF NOT EXISTS Batches (
     id INT AUTO_INCREMENT PRIMARY KEY,
     course_id INT NOT NULL,
     trainer_id INT,
@@ -84,7 +84,7 @@ CREATE TABLE Batches (
 );
 
 -- Batch Student Mapping
-CREATE TABLE BatchStudents (
+CREATE TABLE IF NOT EXISTS BatchStudents (
     batch_id INT NOT NULL,
     student_id INT NOT NULL,
     loyalty_marks INT DEFAULT 0,
@@ -95,7 +95,7 @@ CREATE TABLE BatchStudents (
 );
 
 -- Student Daily Attendance
-CREATE TABLE StudentAttendance (
+CREATE TABLE IF NOT EXISTS StudentAttendance (
     id INT AUTO_INCREMENT PRIMARY KEY,
     batch_id INT NOT NULL,
     student_id INT NOT NULL,
@@ -108,7 +108,7 @@ CREATE TABLE StudentAttendance (
 );
 
 -- Student Leave Requests
-CREATE TABLE StudentLeaves (
+CREATE TABLE IF NOT EXISTS StudentLeaves (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     batch_id INT NOT NULL,
@@ -124,7 +124,7 @@ CREATE TABLE StudentLeaves (
 );
 
 -- Diverse File Submissions (Worksheets, Projects)
-CREATE TABLE Submissions (
+CREATE TABLE IF NOT EXISTS Submissions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     day_id INT, 
@@ -142,7 +142,7 @@ CREATE TABLE Submissions (
 );
 
 -- Trainer Tasks from Super Admin
-CREATE TABLE TrainerTasks (
+CREATE TABLE IF NOT EXISTS TrainerTasks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     trainer_id INT NOT NULL,
     assigned_by INT NOT NULL,
@@ -155,7 +155,7 @@ CREATE TABLE TrainerTasks (
     FOREIGN KEY (assigned_by) REFERENCES Users(id)
 );
 
-CREATE TABLE TrainerOtherWorks (
+CREATE TABLE IF NOT EXISTS TrainerOtherWorks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     trainer_id INT NOT NULL,
     date DATE NOT NULL,
@@ -167,7 +167,7 @@ CREATE TABLE TrainerOtherWorks (
 );
 
 -- Trainer Attendance & Leave Mgmt
-CREATE TABLE TrainerAttendance (
+CREATE TABLE IF NOT EXISTS TrainerAttendance (
     id INT AUTO_INCREMENT PRIMARY KEY,
     trainer_id INT NOT NULL,
     date DATE NOT NULL,
@@ -178,7 +178,7 @@ CREATE TABLE TrainerAttendance (
 );
 
 -- Technical Doubt Tickets
-CREATE TABLE StudentDoubts (
+CREATE TABLE IF NOT EXISTS StudentDoubts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     trainer_id INT,
@@ -194,7 +194,7 @@ CREATE TABLE StudentDoubts (
 );
 
 -- General Administrative Escalations (Student to Super Admin)
-CREATE TABLE StudentIssues (
+CREATE TABLE IF NOT EXISTS StudentIssues (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     issue_type VARCHAR(200) NOT NULL,
@@ -207,7 +207,7 @@ CREATE TABLE StudentIssues (
 );
 
 -- Automated Portfolio Script Setup
-CREATE TABLE PortfolioRequests (
+CREATE TABLE IF NOT EXISTS PortfolioRequests (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     details JSON NOT NULL,
@@ -217,7 +217,7 @@ CREATE TABLE PortfolioRequests (
 );
 
 -- Session & Trainer Feedback Ratings
-CREATE TABLE SessionFeedback (
+CREATE TABLE IF NOT EXISTS SessionFeedback (
     id INT AUTO_INCREMENT PRIMARY KEY,
     batch_id INT NOT NULL,
     student_id INT NOT NULL,
@@ -231,7 +231,7 @@ CREATE TABLE SessionFeedback (
 );
 
 -- Job Interviews & Placement Tracker 
-CREATE TABLE JobInterviews (
+CREATE TABLE IF NOT EXISTS JobInterviews (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     company_name VARCHAR(255) NOT NULL,
@@ -245,7 +245,7 @@ CREATE TABLE JobInterviews (
 );
 
 -- End of Course Generation 
-CREATE TABLE Certificates (
+CREATE TABLE IF NOT EXISTS Certificates (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     course_id INT NOT NULL,
@@ -256,7 +256,7 @@ CREATE TABLE Certificates (
 );
 
 -- Realtime UI Notifications Queue
-CREATE TABLE Notifications (
+CREATE TABLE IF NOT EXISTS Notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
@@ -268,7 +268,7 @@ CREATE TABLE Notifications (
 );
 
 -- Targeted Announcements Broadcasts
-CREATE TABLE Announcements (
+CREATE TABLE IF NOT EXISTS Announcements (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
@@ -282,7 +282,7 @@ CREATE TABLE Announcements (
 );
 
 -- Announcement Read-Receipts
-CREATE TABLE AnnouncementAcknowledgements (
+CREATE TABLE IF NOT EXISTS AnnouncementAcknowledgements (
     id INT AUTO_INCREMENT PRIMARY KEY,
     announcement_id INT NOT NULL,
     user_id INT NOT NULL,
@@ -293,7 +293,7 @@ CREATE TABLE AnnouncementAcknowledgements (
 );
 
 -- Enterprise Master Accountability Logging
-CREATE TABLE AuditLogs (
+CREATE TABLE IF NOT EXISTS AuditLogs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
     action VARCHAR(255) NOT NULL,
