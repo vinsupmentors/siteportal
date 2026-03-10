@@ -12,36 +12,36 @@ exports.getDashboardStats = async (req, res) => {
         const todayStr = new Date().toISOString().split('T')[0];
 
         // 1. Core Entities
-        const [activeStudents] = await pool.query('SELECT COUNT(*) as count FROM Users WHERE role_id = 4 AND status = "active"');
+        const [activeStudents] = await pool.query(`SELECT COUNT(*) as count FROM Users WHERE role_id = 4 AND status = 'active'`);
         const [totalTrainers] = await pool.query('SELECT COUNT(*) as count FROM Users WHERE role_id = 3');
         const [activeCourses] = await pool.query('SELECT COUNT(*) as count FROM Courses');
-        const [activeBatches] = await pool.query('SELECT COUNT(*) as count FROM Batches WHERE status = "active"');
-        const [upcomingBatches] = await pool.query('SELECT COUNT(*) as count FROM Batches WHERE status = "upcoming"');
-        const [completedBatches] = await pool.query('SELECT COUNT(*) as count FROM Batches WHERE status = "completed"');
+        const [activeBatches] = await pool.query(`SELECT COUNT(*) as count FROM Batches WHERE status = 'active'`);
+        const [upcomingBatches] = await pool.query(`SELECT COUNT(*) as count FROM Batches WHERE status = 'upcoming'`);
+        const [completedBatches] = await pool.query(`SELECT COUNT(*) as count FROM Batches WHERE status = 'completed'`);
 
         // Enrollments
         const [totalEnrollments] = await pool.query('SELECT COUNT(*) as count FROM BatchStudents');
         const [newEnrollments] = await pool.query('SELECT COUNT(*) as count FROM BatchStudents WHERE DATE(enrolled_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)');
 
         // 2. Daily Operations
-        const [studentsPresentToday] = await pool.query('SELECT COUNT(DISTINCT student_id) as c FROM StudentAttendance WHERE attendance_date = ? AND status = "present"', [todayStr]);
-        const [studentsAbsentToday] = await pool.query('SELECT COUNT(DISTINCT student_id) as c FROM StudentAttendance WHERE attendance_date = ? AND status = "absent"', [todayStr]);
-        const [trainersPresentToday] = await pool.query('SELECT COUNT(DISTINCT trainer_id) as c FROM TrainerAttendance WHERE date = ? AND status IN ("present", "wfh")', [todayStr]);
-        const [classesToday] = await pool.query('SELECT COUNT(*) as c FROM TrainerTasks WHERE title LIKE "%class%" AND due_date = ?', [todayStr]);
-        const [studentsOnLeaveToday] = await pool.query('SELECT COUNT(*) as c FROM StudentLeaves WHERE ? BETWEEN start_date AND end_date AND status = "approved"', [todayStr]);
+        const [studentsPresentToday] = await pool.query(`SELECT COUNT(DISTINCT student_id) as c FROM StudentAttendance WHERE attendance_date = ? AND status = 'present'`, [todayStr]);
+        const [studentsAbsentToday] = await pool.query(`SELECT COUNT(DISTINCT student_id) as c FROM StudentAttendance WHERE attendance_date = ? AND status = 'absent'`, [todayStr]);
+        const [trainersPresentToday] = await pool.query(`SELECT COUNT(DISTINCT trainer_id) as c FROM TrainerAttendance WHERE date = ? AND status IN ('present', 'wfh')`, [todayStr]);
+        const [classesToday] = await pool.query(`SELECT COUNT(*) as c FROM TrainerTasks WHERE title LIKE '%class%' AND due_date = ?`, [todayStr]);
+        const [studentsOnLeaveToday] = await pool.query(`SELECT COUNT(*) as c FROM StudentLeaves WHERE ? BETWEEN start_date AND end_date AND status = 'approved'`, [todayStr]);
 
         // 3. Task & Productivity Health
-        const [globalCompletedTasks] = await pool.query('SELECT COUNT(*) as count FROM TrainerTasks WHERE status = "completed"');
-        const [globalPendingTasks] = await pool.query('SELECT COUNT(*) as count FROM TrainerTasks WHERE status IN ("pending", "review")');
-        const [globalOverdueTasks] = await pool.query('SELECT COUNT(*) as count FROM TrainerTasks WHERE status NOT IN ("completed") AND due_date < ?', [todayStr]);
-        const [totalPortfolios] = await pool.query('SELECT COUNT(*) as count FROM PortfolioRequests WHERE status = "approved"');
+        const [globalCompletedTasks] = await pool.query(`SELECT COUNT(*) as count FROM TrainerTasks WHERE status = 'completed'`);
+        const [globalPendingTasks] = await pool.query(`SELECT COUNT(*) as count FROM TrainerTasks WHERE status IN ('pending', 'review')`);
+        const [globalOverdueTasks] = await pool.query(`SELECT COUNT(*) as count FROM TrainerTasks WHERE status NOT IN ('completed') AND due_date < ?`, [todayStr]);
+        const [totalPortfolios] = await pool.query(`SELECT COUNT(*) as count FROM PortfolioRequests WHERE status = 'approved'`);
 
         // 4. Quality & Engagement
-        const [avgTestScore] = await pool.query('SELECT AVG(marks) as avg FROM Submissions WHERE submission_type = "module_test"');
+        const [avgTestScore] = await pool.query(`SELECT AVG(marks) as avg FROM Submissions WHERE submission_type = 'module_test'`);
         const [avgTrainerRating] = await pool.query('SELECT AVG(rating) as avg FROM SessionFeedback');
-        const [unresolvedDoubts] = await pool.query('SELECT COUNT(*) as count FROM StudentDoubts WHERE status != "resolved"');
-        const [unresolvedIssues] = await pool.query('SELECT COUNT(*) as count FROM StudentIssues WHERE status != "resolved"');
-        const [completedProjects] = await pool.query('SELECT COUNT(*) as count FROM Submissions WHERE submission_type = "module_project"');
+        const [unresolvedDoubts] = await pool.query(`SELECT COUNT(*) as count FROM StudentDoubts WHERE status != 'resolved'`);
+        const [unresolvedIssues] = await pool.query(`SELECT COUNT(*) as count FROM StudentIssues WHERE status != 'resolved'`);
+        const [completedProjects] = await pool.query(`SELECT COUNT(*) as count FROM Submissions WHERE submission_type = 'module_project'`);
 
         // Calculate 30-day Avg Attendance
         const [attendance30d] = await pool.query(`
@@ -52,7 +52,7 @@ exports.getDashboardStats = async (req, res) => {
         `);
 
         // Critical Alerts Compilation (e.g., Doubts open > 3 days)
-        const [criticalDoubts] = await pool.query('SELECT COUNT(*) as count FROM StudentDoubts WHERE status != "resolved" AND created_at < DATE_SUB(CURDATE(), INTERVAL 3 DAY)');
+        const [criticalDoubts] = await pool.query(`SELECT COUNT(*) as count FROM StudentDoubts WHERE status != 'resolved' AND created_at < DATE_SUB(CURDATE(), INTERVAL 3 DAY)`);
         const criticalAlerts = criticalDoubts[0].count;
 
         // 5. Pipeline Stages
@@ -61,7 +61,7 @@ exports.getDashboardStats = async (req, res) => {
         pipelineData.forEach(p => { pipeline[p.stage] = p.count; });
 
         // 6. Action Center & Health
-        const [reviewTasks] = await pool.query('SELECT COUNT(*) as count FROM TrainerTasks WHERE status = "review"');
+        const [reviewTasks] = await pool.query(`SELECT COUNT(*) as count FROM TrainerTasks WHERE status = 'review'`);
         const [totalDoubts] = await pool.query('SELECT COUNT(*) as count FROM StudentDoubts');
         const [totalIssues] = await pool.query('SELECT COUNT(*) as count FROM StudentIssues');
         const [latestAnnouncement] = await pool.query(`
@@ -80,8 +80,8 @@ exports.getDashboardStats = async (req, res) => {
         `);
 
         // 8. Attendance Expectations
-        const [studentExpected] = await pool.query('SELECT COUNT(*) as count FROM Users WHERE role_id = 4 AND status = "active"');
-        const [trainerExpected] = await pool.query('SELECT COUNT(*) as count FROM Users WHERE role_id = 3 AND status = "active"');
+        const [studentExpected] = await pool.query(`SELECT COUNT(*) as count FROM Users WHERE role_id = 4 AND status = 'active'`);
+        const [trainerExpected] = await pool.query(`SELECT COUNT(*) as count FROM Users WHERE role_id = 3 AND status = 'active'`);
 
         res.json({
             // Legacy Structure for SADashboard.jsx
@@ -239,13 +239,13 @@ exports.getFullCourseTree = async (req, res) => {
         const [modules] = await pool.query('SELECT * FROM Modules WHERE course_id = ? ORDER BY sequence_order', [id]);
         for (const mod of modules) {
             // Module Files
-            const [moduleFiles] = await pool.query('SELECT * FROM ContentFiles WHERE entity_type = "module" AND entity_id = ?', [mod.id]);
+            const [moduleFiles] = await pool.query(`SELECT * FROM ContentFiles WHERE entity_type = 'module' AND entity_id = ?`, [mod.id]);
             mod.files = moduleFiles;
 
             // Module Projects & Project Files
             const [projects] = await pool.query('SELECT * FROM ModuleProjects WHERE module_id = ?', [mod.id]);
             for (const proj of projects) {
-                const [projFiles] = await pool.query('SELECT * FROM ContentFiles WHERE entity_type = "project" AND entity_id = ?', [proj.id]);
+                const [projFiles] = await pool.query(`SELECT * FROM ContentFiles WHERE entity_type = 'project' AND entity_id = ?`, [proj.id]);
                 proj.files = projFiles;
             }
             mod.projects = projects;
@@ -253,7 +253,7 @@ exports.getFullCourseTree = async (req, res) => {
             // Module Days & Day Files
             const [days] = await pool.query('SELECT * FROM Days WHERE module_id = ? ORDER BY day_number', [mod.id]);
             for (const day of days) {
-                const [dayFiles] = await pool.query('SELECT * FROM ContentFiles WHERE entity_type = "day" AND entity_id = ?', [day.id]);
+                const [dayFiles] = await pool.query(`SELECT * FROM ContentFiles WHERE entity_type = 'day' AND entity_id = ?`, [day.id]);
                 day.files = dayFiles;
             }
             mod.days = days;
@@ -418,12 +418,12 @@ exports.deleteProject = async (req, res) => {
     try {
         const { id } = req.params;
         // First delete associated content files
-        const [files] = await pool.query('SELECT id, stored_name FROM ContentFiles WHERE entity_type = "project" AND entity_id = ?', [id]);
+        const [files] = await pool.query(`SELECT id, stored_name FROM ContentFiles WHERE entity_type = 'project' AND entity_id = ?`, [id]);
         for (const file of files) {
             const filePath = path.join(__dirname, '../../uploads/content', file.stored_name);
             if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         }
-        await pool.query('DELETE FROM ContentFiles WHERE entity_type = "project" AND entity_id = ?', [id]);
+        await pool.query(`DELETE FROM ContentFiles WHERE entity_type = 'project' AND entity_id = ?`, [id]);
         await pool.query('DELETE FROM ModuleProjects WHERE id = ?', [id]);
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'DELETE_PROJECT', 'ModuleProjects', id]);
         res.json({ message: 'Project deleted' });
@@ -597,8 +597,8 @@ exports.getStudents = async (req, res) => {
             WHERE u.role_id = 4
             ORDER BY u.created_at DESC
         `);
-        const [totalActive] = await pool.query('SELECT COUNT(*) as c FROM Users WHERE role_id = 4 AND status = "active"');
-        const [totalInactive] = await pool.query('SELECT COUNT(*) as c FROM Users WHERE role_id = 4 AND status = "inactive"');
+        const [totalActive] = await pool.query(`SELECT COUNT(*) as c FROM Users WHERE role_id = 4 AND status = 'active'`);
+        const [totalInactive] = await pool.query(`SELECT COUNT(*) as c FROM Users WHERE role_id = 4 AND status = 'inactive'`);
         res.json({ students, totalActive: totalActive[0].c, totalInactive: totalInactive[0].c });
     } catch (error) {
         res.status(500).json({ message: 'Students fetch error', error: error.message });
@@ -1955,7 +1955,7 @@ exports.downloadTrainerFullReport = async (req, res) => {
 
 exports.getAttendanceBatchGroups = async (req, res) => {
     try {
-        const [batches] = await pool.query('SELECT DISTINCT batch_name FROM Batches WHERE status = "active"');
+        const [batches] = await pool.query(`SELECT DISTINCT batch_name FROM Batches WHERE status = 'active'`);
         const groups = [...new Set(batches.map(b => {
             const parts = b.batch_name.split(' ');
             if (parts[0] === 'Batch') return parts.slice(0, 2).join(' ');
@@ -1974,7 +1974,7 @@ exports.getAttendanceSubBatches = async (req, res) => {
             SELECT b.id as batch_id, b.batch_name, c.name as course_name, b.timing
             FROM Batches b
             JOIN Courses c ON b.course_id = c.id
-            WHERE b.batch_name LIKE ? AND b.status = "active"
+            WHERE b.batch_name LIKE ? AND b.status = 'active'
         `, [`%${group}%`]);
         res.json({ batches });
     } catch (error) {
