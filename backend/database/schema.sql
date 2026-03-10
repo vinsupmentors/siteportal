@@ -185,9 +185,11 @@ CREATE TABLE IF NOT EXISTS StudentDoubts (
     response_text TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     resolved_at TIMESTAMP NULL,
+    resolved_by INT,
     FOREIGN KEY (student_id) REFERENCES Users(id),
     FOREIGN KEY (trainer_id) REFERENCES Users(id),
-    FOREIGN KEY (batch_id) REFERENCES Batches(id)
+    FOREIGN KEY (batch_id) REFERENCES Batches(id),
+    FOREIGN KEY (resolved_by) REFERENCES Users(id)
 );
 
 -- General Administrative Escalations (Student to Super Admin)
