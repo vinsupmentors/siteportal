@@ -146,7 +146,7 @@ exports.getStudentCalendar = async (req, res) => {
 
         // 2. Approved leaves
         const [leaves] = await pool.query(
-            'SELECT * FROM StudentLeaves WHERE student_id = ? AND status = "approved"',
+            "SELECT * FROM StudentLeaves WHERE student_id = ? AND status = 'approved'",
             [studentId]
         );
 

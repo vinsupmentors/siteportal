@@ -3,7 +3,7 @@ const mysql = require('mysql2');
 // Initializing Database connection pool
 let dbConfig;
 if (process.env.DATABASE_URL) {
-    dbConfig = { uri: process.env.DATABASE_URL, waitForConnections: true, connectionLimit: 15, queueLimit: 0 };
+    dbConfig = { uri: process.env.DATABASE_URL, waitForConnections: true, connectionLimit: 15, queueLimit: 0, ssl: { rejectUnauthorized: false } };
 } else {
     dbConfig = {
         host: process.env.DB_HOST || 'localhost',

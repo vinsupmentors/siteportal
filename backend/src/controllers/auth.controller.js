@@ -78,7 +78,7 @@ exports.getUnacknowledged = async (req, res) => {
         // Fetch batches the user belongs to (either as trainer or student)
         let batchIds = [];
         if (roleId === 3) { // Trainer
-            const [batches] = await pool.query('SELECT id FROM Batches WHERE trainer_id = ? AND status IN ("active", "upcoming")', [userId]);
+            const [batches] = await pool.query("SELECT id FROM Batches WHERE trainer_id = ? AND status IN ('active', 'upcoming')", [userId]);
             batchIds = batches.map(b => b.id);
         } else if (roleId === 4) { // Student
             const [batches] = await pool.query('SELECT batch_id FROM BatchStudents WHERE student_id = ?', [userId]);

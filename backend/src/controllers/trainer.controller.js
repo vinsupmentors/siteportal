@@ -116,7 +116,7 @@ exports.broadcastAnnouncement = async (req, res) => {
         const { title, message, batch_id } = req.body;
 
         // Ensure the trainer actually owns the batch they are broadcasting to
-        const [batchCheck] = await pool.query('SELECT id FROM Batches WHERE id = ? AND trainer_id = ? AND status IN ("active", "upcoming")', [batch_id, req.user.id]);
+        const [batchCheck] = await pool.query("SELECT id FROM Batches WHERE id = ? AND trainer_id = ? AND status IN ('active', 'upcoming')", [batch_id, req.user.id]);
         if (batchCheck.length === 0) {
             return res.status(403).json({ message: 'Unauthorized to broadcast to this batch' });
         }
@@ -202,7 +202,7 @@ exports.resolveDoubt = async (req, res) => {
         const { doubtId } = req.params;
         const { response_text } = req.body;
         await pool.query(
-            'UPDATE StudentDoubts SET status = "resolved", response_text = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ? AND trainer_id = ?',
+            "UPDATE StudentDoubts SET status = 'resolved', response_text = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ? AND trainer_id = ?",
             [response_text, doubtId, req.user.id]
         );
         res.status(200).json({ message: 'Technical ticket resolved successfully.' });
@@ -287,7 +287,7 @@ exports.getTrainerDashboard = async (req, res) => {
 
         // 1. Active Batches Count
         const [[{ activeBatches }]] = await pool.query(
-            'SELECT COUNT(*) as activeBatches FROM Batches WHERE trainer_id = ? AND status = "active"',
+            "SELECT COUNT(*) as activeBatches FROM Batches WHERE trainer_id = ? AND status = 'active'",
             [trainerId]
         );
 
@@ -296,12 +296,12 @@ exports.getTrainerDashboard = async (req, res) => {
             SELECT COUNT(DISTINCT bs.student_id) as totalStudents
             FROM BatchStudents bs
             JOIN Batches b ON bs.batch_id = b.id
-            WHERE b.trainer_id = ? AND b.status = "active"
+            WHERE b.trainer_id = ? AND b.status = 'active'
         `, [trainerId]);
 
         // 3. Pending Doubts
         const [[{ pendingDoubts }]] = await pool.query(
-            'SELECT COUNT(*) as pendingDoubts FROM StudentDoubts WHERE trainer_id = ? AND status = "pending"',
+            "SELECT COUNT(*) as pendingDoubts FROM StudentDoubts WHERE trainer_id = ? AND status = 'pending'",
             [trainerId]
         );
 
@@ -324,7 +324,7 @@ exports.getTrainerDashboard = async (req, res) => {
             SELECT b.*, c.name as course_name 
             FROM Batches b 
             JOIN Courses c ON b.course_id = c.id
-            WHERE b.trainer_id = ? AND b.status = "active"
+            WHERE b.trainer_id = ? AND b.status = 'active'
         `, [trainerId]);
 
         res.json({
@@ -356,7 +356,7 @@ exports.getBatchStudents = async (req, res) => {
             SELECT u.id, u.first_name, u.last_name, u.email
             FROM Users u
             JOIN BatchStudents bs ON u.id = bs.student_id
-            WHERE bs.batch_id = ? AND u.status = "active"
+            WHERE bs.batch_id = ? AND u.status = 'active'
             ORDER BY u.first_name ASC
         `, [id]);
 

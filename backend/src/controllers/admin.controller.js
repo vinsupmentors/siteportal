@@ -7,9 +7,9 @@ const pool = require('../config/db');
 // Aggregates standard system health stats
 exports.getSystemOverview = async (req, res) => {
     try {
-        const [activeBatches] = await pool.query('SELECT COUNT(*) as count FROM Batches WHERE status = "active"');
-        const [pendingLeaves] = await pool.query('SELECT COUNT(*) as count FROM StudentLeaves WHERE status = "pending"');
-        const [openDoubts] = await pool.query('SELECT COUNT(*) as count FROM StudentDoubts WHERE status = "open"');
+        const [activeBatches] = await pool.query("SELECT COUNT(*) as count FROM Batches WHERE status = 'active'");
+        const [pendingLeaves] = await pool.query("SELECT COUNT(*) as count FROM StudentLeaves WHERE status = 'pending'");
+        const [openDoubts] = await pool.query("SELECT COUNT(*) as count FROM StudentDoubts WHERE status = 'open'");
 
         res.status(200).json({
             activeBatches: activeBatches[0].count,
