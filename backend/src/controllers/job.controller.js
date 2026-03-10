@@ -90,7 +90,7 @@ exports.getStudentJobs = async (req, res) => {
             (SELECT status FROM JobApplications WHERE job_id = j.id AND student_id = ?) as student_app_status
             FROM Jobs j 
             WHERE j.course_id = ? 
-            AND j.status = "Open" 
+            AND j.status = 'Open' 
             AND (j.deadline_date IS NULL OR j.deadline_date >= CURDATE())
             ORDER BY j.created_at DESC
         `, [studentId, courseId]);

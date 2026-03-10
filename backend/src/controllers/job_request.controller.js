@@ -16,7 +16,7 @@ exports.getEligibility = async (req, res) => {
             SELECT bs.batch_id, b.course_id
             FROM BatchStudents bs
             JOIN Batches b ON bs.batch_id = b.id
-            WHERE bs.student_id = ? AND b.status = "active"
+            WHERE bs.student_id = ? AND b.status = 'active'
             LIMIT 1
         `, [studentId]);
 
@@ -27,7 +27,7 @@ exports.getEligibility = async (req, res) => {
 
         // 3. Attendance >= 80%
         const [att] = await pool.query(`
-            SELECT COUNT(*) as total, SUM(CASE WHEN status = "present" THEN 1 ELSE 0 END) as present
+            SELECT COUNT(*) as total, SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present
             FROM StudentAttendance WHERE student_id = ? AND batch_id = ?
         `, [studentId, batch_id]);
         const attendancePct = att[0].total > 0 ? (att[0].present / att[0].total) * 100 : 0;
@@ -38,7 +38,7 @@ exports.getEligibility = async (req, res) => {
         if (modules.length > 0) {
             const [projSub] = await pool.query(`
                 SELECT COUNT(DISTINCT module_id) as count FROM Submissions
-                WHERE student_id = ? AND submission_type = "module_project" AND marks IS NOT NULL
+                WHERE student_id = ? AND submission_type = 'module_project' AND marks IS NOT NULL
             `, [studentId]);
             projectPct = (projSub[0].count / modules.length) * 100;
         }
@@ -46,12 +46,12 @@ exports.getEligibility = async (req, res) => {
         // 5. Capstone Project (min 1)
         const [capstone] = await pool.query(`
             SELECT COUNT(*) as count FROM Submissions
-            WHERE student_id = ? AND submission_type = "capstone" AND marks IS NOT NULL
+            WHERE student_id = ? AND submission_type = 'capstone' AND marks IS NOT NULL
         `, [studentId]);
 
         // 6. Portfolio Approved
         const [portfolio] = await pool.query(`
-            SELECT status FROM PortfolioRequests WHERE student_id = ? AND status = "approved"
+            SELECT status FROM PortfolioRequests WHERE student_id = ? AND status = 'approved'
         `, [studentId]);
 
         // 7. Check for existing request
