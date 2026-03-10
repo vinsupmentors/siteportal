@@ -11,15 +11,21 @@ async function initializeDB() {
         };
 
         const connection = await mysql.createConnection(dbConfig);
-
         console.log("Connected to MySQL Server successfully.");
+
+        // Ensure context maps to the correct DB globally
+        if (dbConfig.uri) {
+            const dbName = new URL(dbConfig.uri).pathname.split('/')[1] || 'defaultdb';
+            await connection.query(`USE \`${dbName}\``);
+        } else {
+            await connection.query(`USE \`${dbConfig.database || 'edutech_lms'}\``);
+        }
 
         // Read the entire SQL file into memory
         const sqlPath = path.join(__dirname, 'database', 'schema.sql');
         const schemaQueries = fs.readFileSync(sqlPath, 'utf8');
 
         // Split queries by semicolon to execute sequentially
-        // Note: this simple split assumes no semicolons inside strings
         const statements = schemaQueries.split(';').filter(stmt => stmt.trim() !== '');
 
         console.log("Executing schema statements...");
@@ -92,9 +98,6 @@ async function initializeDB() {
 
         // Re-importing seed logic safely after DB exists
         console.log("Seeding test users...");
-
-        // Ensure context maps to the new DB for seeds
-        await connection.query('USE edutech_lms');
 
         await connection.query("INSERT IGNORE INTO Roles (id, name) VALUES (1, 'Super Admin'), (2, 'Admin'), (3, 'Trainer'), (4, 'Student')");
 

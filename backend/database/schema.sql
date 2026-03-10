@@ -1,6 +1,3 @@
-CREATE DATABASE IF NOT EXISTS edutech_lms;
-USE edutech_lms;
-
 -- Roles Mapping
 CREATE TABLE IF NOT EXISTS Roles (
     id INT AUTO_INCREMENT PRIMARY KEY,
