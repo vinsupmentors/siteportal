@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)",
+      "Bash(node:*)",
+      "Bash(npm run:*)",
+      "Bash(start:*)",
+      "Bash(netstat:*)",
+      "Bash(mysql:*)",
+      "Bash(python3:*)",
+      "Bash(grep:*)",
+      "Bash(sort:*)",
+      "Bash(npm install:*)",
+      "Bash(for f in C:/Users/ASUS/Downloads/Anti-portal/backend/database/migrate_*.js)",
+      "Bash(do echo \"=== $f ===\")",
+      "Read(//c/Users/ASUS/Downloads/Anti-portal/**)",
+      "Bash(done)",
+      "Bash(ls C:/Users/ASUS/Downloads/Anti-portal/backend/.env* 2>/dev/null; ls C:/Users/ASUS/Downloads/Anti-portal/frontend/.env* 2>/dev/null)"
+    ]
+  }
+}
