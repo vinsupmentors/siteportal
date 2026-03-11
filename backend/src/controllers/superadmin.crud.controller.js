@@ -542,7 +542,7 @@ exports.createBatch = async (req, res) => {
         const { course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link } = req.body;
         const [result] = await pool.query(
             `INSERT INTO Batches (course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
-            [course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link]
+            [course_id, trainer_id || null, batch_name, schedule_type, timing, start_date, end_date || null, meeting_link || null]
         );
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'CREATE_BATCH', 'Batches', result.insertId]);
         res.status(201).json({ message: 'Batch created successfully', batchId: result.insertId });
@@ -557,7 +557,7 @@ exports.updateBatch = async (req, res) => {
         const { batch_name, course_id, trainer_id, schedule_type, timing, start_date, end_date, status, meeting_link } = req.body;
         await pool.query(
             'UPDATE Batches SET batch_name=?, course_id=?, trainer_id=?, schedule_type=?, timing=?, start_date=?, end_date=?, status=?, meeting_link=? WHERE id=?',
-            [batch_name, course_id, trainer_id, schedule_type, timing, start_date, end_date, status, meeting_link, id]
+            [batch_name, course_id, trainer_id || null, schedule_type, timing, start_date, end_date || null, status, meeting_link || null, id]
         );
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'UPDATE_BATCH', 'Batches', id]);
         res.json({ message: 'Batch updated successfully' });
@@ -610,7 +610,7 @@ exports.createStudent = async (req, res) => {
         const { first_name, last_name, email, password, phone, batch_id } = req.body;
         const [result] = await pool.query(
             'INSERT INTO Users (role_id, first_name, last_name, email, password, phone) VALUES (4, ?, ?, ?, ?, ?)',
-            [first_name, last_name, email, password || 'abcd@1234', phone]
+            [first_name, last_name, email, password || 'abcd@1234', phone || null]
         );
         if (batch_id) {
             await pool.query('INSERT INTO BatchStudents (batch_id, student_id) VALUES (?, ?)', [batch_id, result.insertId]);
@@ -683,7 +683,7 @@ exports.updateStudent = async (req, res) => {
         const { first_name, last_name, email, phone, status, student_status } = req.body;
 
         let query = 'UPDATE Users SET first_name=?, last_name=?, email=?, phone=?, status=?';
-        let params = [first_name, last_name, email, phone, status];
+        let params = [first_name, last_name, email, phone || null, status];
 
         if (student_status) {
             query += ', student_status=?';
@@ -773,7 +773,7 @@ exports.createTrainer = async (req, res) => {
         const { first_name, last_name, email, phone, joining_date, is_probation, specialization_ids } = req.body;
         const [result] = await pool.query(
             'INSERT INTO Users (role_id, first_name, last_name, email, password, phone, joining_date, is_probation) VALUES (3, ?, ?, ?, ?, ?, ?, ?)',
-            [first_name, last_name, email, 'abcd@1234', phone, joining_date || null, is_probation ? 1 : 0]
+            [first_name, last_name, email, 'abcd@1234', phone || null, joining_date || null, is_probation ? 1 : 0]
         );
         // Insert specializations
         if (specialization_ids && specialization_ids.length > 0) {
@@ -796,7 +796,7 @@ exports.updateTrainer = async (req, res) => {
         const { first_name, last_name, email, phone, status, joining_date, is_probation, specialization_ids } = req.body;
         await pool.query(
             'UPDATE Users SET first_name=?, last_name=?, email=?, phone=?, status=?, joining_date=?, is_probation=? WHERE id=? AND role_id=3',
-            [first_name, last_name, email, phone, status, joining_date || null, is_probation ? 1 : 0, id]
+            [first_name, last_name, email, phone || null, status, joining_date || null, is_probation ? 1 : 0, id]
         );
         // Sync specializations: delete old, insert new
         if (specialization_ids) {
