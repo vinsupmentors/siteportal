@@ -181,8 +181,8 @@ export const TrainerContentManager = () => {
                                                         Day-Level Access Control
                                                     </span>
                                                     {mod.is_unlocked && mod.total_days > 0 && (
-                                                        <div style={{ display: 'flex', gap: '6px' }}>
-                                                            {[1, 3, 5, mod.total_days].filter((v, i, a) => v <= mod.total_days && a.indexOf(v) === i).map(n => (
+                                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                            {Array.from({ length: mod.total_days }, (_, i) => i + 1).map(n => (
                                                                 <button key={n} onClick={() => handleUnlockModule(mod.id, n)} disabled={isLoading}
                                                                     style={{
                                                                         padding: '5px 10px', borderRadius: theme.radius.sm, border: `1px solid ${theme.border.subtle}`,

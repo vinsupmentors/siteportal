@@ -562,6 +562,7 @@ exports.updateBatch = async (req, res) => {
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'UPDATE_BATCH', 'Batches', id]);
         res.json({ message: 'Batch updated successfully' });
     } catch (error) {
+        console.error('BATCH UPDATE ERROR:', error);
         res.status(500).json({ message: 'Batch update error', error: error.message });
     }
 };

@@ -674,32 +674,44 @@ exports.getStudentCurriculum = async (req, res) => {
         const unlockMap = {};
         unlocks.forEach(u => { unlockMap[u.module_id] = u.unlocked_up_to_day; });
 
-        // Filter to only unlocked modules
+        // Filter to only unlocked modules to query days
         const unlockedModules = allModules.filter(m => unlockMap[m.id] !== undefined);
-
-        if (!unlockedModules.length) return res.json({ modules: [] });
-
         const unlockedModuleIds = unlockedModules.map(m => m.id);
-        const unlockPh = unlockedModuleIds.map(() => '?').join(',');
+        
+        let days = [];
+        if (unlockedModuleIds.length > 0) {
+            const unlockPh = unlockedModuleIds.map(() => '?').join(',');
+            const [queryDays] = await pool.query(`
+                SELECT d.id, d.module_id, d.day_number, d.topic_name, d.material_url, d.worksheet_url,
+                       s.id as submission_id
+                FROM Days d
+                LEFT JOIN Submissions s ON s.day_id = d.id AND s.student_id = ? AND s.submission_type = 'worksheet'
+                WHERE d.module_id IN (${unlockPh})
+                ORDER BY d.module_id, d.day_number
+            `, [studentId, ...unlockedModuleIds]);
+            days = queryDays;
+        }
 
-        // Get days for unlocked modules, with submission status
-        const [days] = await pool.query(`
-            SELECT d.id, d.module_id, d.day_number, d.topic_name, d.material_url, d.worksheet_url,
-                   s.id as submission_id
-            FROM Days d
-            LEFT JOIN Submissions s ON s.day_id = d.id AND s.student_id = ? AND s.submission_type = 'worksheet'
-            WHERE d.module_id IN (${unlockPh})
-            ORDER BY d.module_id, d.day_number
-        `, [studentId, ...unlockedModuleIds]);
-
-        const modulesWithDays = unlockedModules.map(mod => {
+        // Return all modules, mapping their unlocked status
+        const modulesWithDays = allModules.map(mod => {
             const upToDayLimit = unlockMap[mod.id];
+            const isUnlocked = upToDayLimit !== undefined;
+
+            if (!isUnlocked) {
+                return { ...mod, is_unlocked: false, days: [] };
+            }
+
             const modDays = days
                 .filter(d => d.module_id === mod.id)
                 .filter(d => upToDayLimit === -1 || d.day_number <= upToDayLimit)
-                .map(d => ({ ...d, submitted: !!d.submission_id }));
+                .map(d => {
+                    const content_files = [];
+                    if (d.material_url) content_files.push({ name: 'Study Material', url: d.material_url });
+                    if (d.worksheet_url) content_files.push({ name: 'Worksheet', url: d.worksheet_url });
+                    return { ...d, submitted: !!d.submission_id, content_files };
+                });
 
-            return { ...mod, days: modDays };
+            return { ...mod, is_unlocked: true, days: modDays };
         });
 
         // Also return total module count so the frontend knows what's locked

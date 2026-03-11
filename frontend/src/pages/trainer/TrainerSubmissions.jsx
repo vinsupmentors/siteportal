@@ -170,7 +170,14 @@ export const TrainerSubmissions = () => {
 
                             <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: theme.radius.sm, marginBottom: '20px' }}>
                                 <p style={{ fontSize: '11px', fontWeight: 700, color: theme.text.label, textTransform: 'uppercase', marginBottom: '4px' }}>Submission File</p>
-                                <a href={`${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000'}/${gradingSubmission.file_path}`} target="_blank" rel="noreferrer" style={{
+                                <a href={`${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000'}${
+                                    (() => {
+                                        try {
+                                            const paths = Array.isArray(gradingSubmission.file_paths) ? gradingSubmission.file_paths : JSON.parse(gradingSubmission.file_paths || '[]');
+                                            return paths[0] || '';
+                                        } catch { return ''; }
+                                    })()
+                                }`} target="_blank" rel="noreferrer" style={{
                                     display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: theme.accent.blue, fontSize: '13px', fontWeight: 600
                                 }}>
                                     <FileText size={16} />
