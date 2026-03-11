@@ -54,32 +54,39 @@ exports.getEligibility = async (req, res) => {
             SELECT status FROM PortfolioRequests WHERE student_id = ? AND status = 'approved'
         `, [studentId]);
 
-        // 7. Tests Attendance — table may not exist, default to 100%
-        let testPct = 100;
-        try {
-            const [tests] = await pool.query(`SELECT COUNT(*) as total_tests FROM Tests WHERE batch_id = ?`, [batch_id]);
-            if (tests[0].total_tests > 0) {
-                const [testSub] = await pool.query(`SELECT COUNT(DISTINCT test_id) as attended_tests FROM TestSubmissions WHERE student_id = ?`, [studentId]);
-                testPct = (testSub[0].attended_tests / tests[0].total_tests) * 100;
-            }
-        } catch (e) { testPct = 100; }
-
-        // 8. Feedback Form — table may not exist, default to 100%
-        let feedbackPct = 100;
-        try {
-            const [completedModules] = await pool.query(`
-                SELECT DISTINCT module_id FROM Submissions
-                WHERE student_id = ? AND submission_type = 'module_project' AND marks IS NOT NULL
+        // 7. Tests Attendance >= 100%
+        // Tests are mapped to Modules with a test_url. Denominator = modules with test_url. Numerator = module_test submissions.
+        const [testModules] = await pool.query(`
+            SELECT COUNT(*) as total_tests FROM Modules WHERE course_id = ? AND test_url IS NOT NULL AND test_url != ''
+        `, [course_id]);
+        
+        let testPct = 0;
+        if (testModules[0].total_tests > 0) {
+            const [testSub] = await pool.query(`
+                SELECT COUNT(DISTINCT module_id) as attended_tests FROM Submissions WHERE student_id = ? AND submission_type = 'module_test'
             `, [studentId]);
-            if (completedModules.length > 0) {
-                const moduleIds = completedModules.map(m => m.module_id);
-                const [feedbacks] = await pool.query(`
-                    SELECT COUNT(DISTINCT module_id) as count FROM ModuleFeedbacks WHERE student_id = ? AND module_id IN (?)
-                `, [studentId, moduleIds]);
-                feedbackPct = (feedbacks[0].count / completedModules.length) * 100;
-            }
-        } catch (e) { feedbackPct = 100; }
+            testPct = (testSub[0].attended_tests / testModules[0].total_tests) * 100;
+        } else {
+            // Default to 100% if no tests are assigned
+            testPct = 100;
+        }
 
+        // 8. Feedback Form Filled for Completed Modules
+        const [completedModules] = await pool.query(`
+            SELECT DISTINCT module_id FROM Submissions 
+            WHERE student_id = ? AND submission_type = 'module_project' AND marks IS NOT NULL
+        `, [studentId]);
+        
+        let feedbackPct = 0;
+        if (completedModules.length > 0) {
+            const moduleIds = completedModules.map(m => m.module_id);
+            const [feedbacks] = await pool.query(`
+                SELECT COUNT(DISTINCT module_id) as count FROM StudentFeedbackResponses WHERE student_id = ? AND module_id IN (?)
+            `, [studentId, moduleIds]);
+            feedbackPct = (feedbacks[0].count / completedModules.length) * 100;
+        } else {
+            feedbackPct = 100; // If no modules completed to give feedback on, trivially 100%
+        }
         // 9. Check for existing request
         const [request] = await pool.query(`
             SELECT status, admin_notes, bypass_reason FROM JobPortalRequests WHERE student_id = ? ORDER BY created_at DESC LIMIT 1

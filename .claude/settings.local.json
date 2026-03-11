@@ -16,7 +16,15 @@
       "Bash(do echo \"=== $f ===\")",
       "Read(//c/Users/ASUS/Downloads/Anti-portal/**)",
       "Bash(done)",
-      "Bash(ls C:/Users/ASUS/Downloads/Anti-portal/backend/.env* 2>/dev/null; ls C:/Users/ASUS/Downloads/Anti-portal/frontend/.env* 2>/dev/null)"
+      "Bash(ls C:/Users/ASUS/Downloads/Anti-portal/backend/.env* 2>/dev/null; ls C:/Users/ASUS/Downloads/Anti-portal/frontend/.env* 2>/dev/null)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(for f:*)",
+      "Read(//c/Users/ASUS/Downloads/Anti-portal/backend/**)",
+      "Bash(find \"C:\\\\Users\\\\ASUS\\\\Downloads\\\\Anti-portal\\\\backend\\\\database\" -type f -name \"*.sql\" 2>/dev/null | head -20)",
+      "Bash(cd \"C:\\\\Users\\\\ASUS\\\\Downloads\\\\Anti-portal\\\\backend\" && timeout 90 bash -c 'until node test_render.js 2>&1 | grep -q \"Login OK\"; do echo \"Waiting for Render redeploy...\"; sleep 10; done' && node test_render.js 2>&1)"
     ]
   }
 }
