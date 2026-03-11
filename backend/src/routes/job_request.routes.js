@@ -19,9 +19,11 @@ const upload = multer({ storage });
 // Student endpoints
 router.get('/eligibility', verifyToken, requireRole([4]), jobRequestController.getEligibility);
 router.post('/submit', verifyToken, requireRole([4]), upload.single('google_review_img'), jobRequestController.submitRequest);
+router.get('/certificate', verifyToken, requireRole([4]), jobRequestController.downloadInternshipCertificate);
 
 // SuperAdmin endpoints
 router.get('/all', verifyToken, requireRole([1]), jobRequestController.getRequests);
+router.put('/bulk', verifyToken, requireRole([1]), jobRequestController.bulkUpdateRequestStatus);
 router.put('/:id/status', verifyToken, requireRole([1]), jobRequestController.updateRequestStatus);
 
 module.exports = router;

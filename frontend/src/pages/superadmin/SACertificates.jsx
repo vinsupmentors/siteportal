@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { superAdminAPI } from '../../services/api';
 import {
     Award, Search, Plus, Trash2, ExternalLink,
-    FileText, User, Calendar, CheckCircle2, ShieldCheck
+    FileText, User, Calendar, CheckCircle2, ShieldCheck, PlusCircle
 } from 'lucide-react';
 
 export const SACertificates = () => {

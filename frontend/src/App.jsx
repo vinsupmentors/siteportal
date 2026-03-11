@@ -101,6 +101,7 @@ const AppRoutes = () => {
         <Route path="feedback-builder" element={<SAFeedbackBuilder />} />
         <Route path="trainer-leaves" element={<SATrainerLeaves />} />
         <Route path="job-requests" element={<SAJobRequests />} />
+        <Route path="jobs" element={<RecruiterJobs />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 

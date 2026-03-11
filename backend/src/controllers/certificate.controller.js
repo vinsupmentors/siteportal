@@ -20,9 +20,9 @@ exports.issueCertificate = async (req, res) => {
 
         // Map to student phase if it's the final certificate
         if (type === 'course_completion') {
-            await pool.query('UPDATE Users SET student_phase = "Completed" WHERE id = ?', [student_id]);
+            await pool.query(`UPDATE Users SET student_phase = 'Completed' WHERE id = ?`, [student_id]);
         } else if (type === 'internship') {
-            await pool.query('UPDATE Users SET student_phase = "Certificate" WHERE id = ?', [student_id]);
+            await pool.query(`UPDATE Users SET student_phase = 'Certificate' WHERE id = ?`, [student_id]);
         }
 
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
@@ -48,7 +48,7 @@ exports.getStudentCertificates = async (req, res) => {
                    CONCAT(u.first_name, ' ', u.last_name) as issuer_name
             FROM Certificates c
             JOIN Courses cr ON c.course_id = cr.id
-            JOIN Users u ON c.issued_by = u.id
+            LEFT JOIN Users u ON c.issued_by = u.id
             WHERE c.student_id = ?
             ORDER BY c.issued_date DESC
         `, [student_id]);
@@ -70,7 +70,7 @@ exports.getAllCertificates = async (req, res) => {
             FROM Certificates c
             JOIN Courses cr ON c.course_id = cr.id
             JOIN Users s ON c.student_id = s.id
-            JOIN Users u ON c.issued_by = u.id
+            LEFT JOIN Users u ON c.issued_by = u.id
             ORDER BY c.issued_date DESC
         `);
 

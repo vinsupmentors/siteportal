@@ -7,6 +7,7 @@ const SAJobRequests = () => {
     const [loading, setLoading] = useState(true);
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
+    const [selectedIds, setSelectedIds] = useState([]);
 
     useEffect(() => {
         fetchRequests();
@@ -39,21 +40,71 @@ const SAJobRequests = () => {
         }
     };
 
+    const handleBulkAction = async (status) => {
+        if (selectedIds.length === 0) return;
+        const msg = status === 'Approved' ? `Approve ${selectedIds.length} requests?` : `Reject ${selectedIds.length} requests?`;
+        if (!window.confirm(msg)) return;
+
+        const admin_notes = status === 'Rejected' ? prompt('Reason for bulk rejection:') : 'Bulk Approved by SuperAdmin';
+        if (status === 'Rejected' && !admin_notes) return;
+
+        setActionLoading(true);
+        try {
+            await jobAPI.bulkUpdateRequests({ requestIds: selectedIds, status, admin_notes });
+            fetchRequests();
+            setSelectedIds([]);
+        } catch (err) {
+            alert('Bulk action failed');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const toggleSelectAll = (e) => {
+        if (e.target.checked) setSelectedIds(requests.map(r => r.id));
+        else setSelectedIds([]);
+    };
+
+    const toggleSelect = (id) => {
+        if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter(i => i !== id));
+        else setSelectedIds([...selectedIds, id]);
+    };
+
     return (
         <div className="p-6">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-main">Job Portal Approvals</h1>
-                <p className="text-secondary">Review student submissions and grant placement access</p>
+            <div className="flex justify-between items-end mb-8">
+                <div>
+                    <h1 className="text-3xl font-bold text-main">Job Portal Approvals</h1>
+                    <p className="text-secondary">Review student submissions and grant placement access</p>
+                </div>
+                {selectedIds.length > 0 && (
+                    <div className="flex gap-2 animate-fadeIn">
+                        <button disabled={actionLoading} onClick={() => handleBulkAction('Approved')} className="btn btn-primary flex gap-2 items-center">
+                            <Check size={16} /> Bulk Approve ({selectedIds.length})
+                        </button>
+                        <button disabled={actionLoading} onClick={() => handleBulkAction('Rejected')} className="btn btn-danger flex gap-2 items-center">
+                            <X size={16} /> Bulk Reject ({selectedIds.length})
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="card overflow-hidden">
                 <table className="table">
                     <thead className="bg-secondary/5">
                         <tr>
+                            <th className="w-10">
+                                <input 
+                                    type="checkbox" 
+                                    checked={requests.length > 0 && selectedIds.length === requests.length}
+                                    onChange={toggleSelectAll}
+                                />
+                            </th>
                             <th>Student</th>
                             <th>Course</th>
                             <th>Submission Date</th>
                             <th>Status</th>
+                            <th>Type</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -62,7 +113,14 @@ const SAJobRequests = () => {
                             <tr><td colSpan="5" className="text-center py-10 text-muted">No pending requests</td></tr>
                         ) : (
                             requests.map(req => (
-                                <tr key={req.id}>
+                                <tr key={req.id} className={selectedIds.includes(req.id) ? 'bg-main/5' : ''}>
+                                    <td>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedIds.includes(req.id)}
+                                            onChange={() => toggleSelect(req.id)}
+                                        />
+                                    </td>
                                     <td>
                                         <div className="font-bold">{req.first_name} {req.last_name}</div>
                                         <div className="text-xs text-muted">{req.email}</div>
@@ -73,6 +131,13 @@ const SAJobRequests = () => {
                                         <span className={`badge ${req.status === 'Approved' ? 'badge-success' : req.status === 'Pending' ? 'badge-warning' : 'badge-danger'}`}>
                                             {req.status}
                                         </span>
+                                    </td>
+                                    <td>
+                                        {req.bypass_reason ? (
+                                            <span className="badge badge-warning text-[10px] bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">Bypass Request</span>
+                                        ) : (
+                                            <span className="badge badge-success text-[10px] bg-green-500/10 text-green-500 border border-green-500/20">Standard</span>
+                                        )}
                                     </td>
                                     <td>
                                         <button onClick={() => setSelectedRequest(req)} className="btn btn-secondary btn-sm p-1">
@@ -123,12 +188,22 @@ const SAJobRequests = () => {
                                     <h4 className="font-bold flex items-center gap-2 mb-2 italic">
                                         <ShieldCheck className="text-main" size={18} /> Verification Checklist
                                     </h4>
-                                    <ul className="text-sm space-y-1 text-secondary">
-                                        <li>✓ Attendance verified by system</li>
-                                        <li>✓ Module Projects verified by system</li>
-                                        <li>✓ Capstone Project verified by system</li>
-                                        <li>? Manual Google Review Check (Current View)</li>
-                                    </ul>
+                                    {selectedRequest.bypass_reason ? (
+                                        <div className="text-sm p-3 bg-red-400/10 border border-red-400/20 rounded text-red-400">
+                                            <p className="font-bold mb-1">Bypass Request Reason:</p>
+                                            <p className="italic">"{selectedRequest.bypass_reason}"</p>
+                                            <p className="text-xs mt-2 text-muted">This student did not meet all core criteria automatically. Review carefully.</p>
+                                        </div>
+                                    ) : (
+                                        <ul className="text-sm space-y-1 text-secondary">
+                                            <li>✓ Attendance verified by system</li>
+                                            <li>✓ Module Projects verified by system</li>
+                                            <li>✓ Capstone Project verified by system</li>
+                                            <li>✓ Test completion verified by system</li>
+                                            <li>✓ Feedback completion verified by system</li>
+                                            <li>? Manual Google Review Check (Current View)</li>
+                                        </ul>
+                                    )}
                                 </div>
 
                                 <div className="flex gap-4 pt-4">

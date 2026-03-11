@@ -109,8 +109,8 @@ exports.applyToJob = async (req, res) => {
 
         await pool.query(`
             INSERT INTO JobApplications (job_id, student_id, status)
-            VALUES (?, ?, 'Applied')
-            ON DUPLICATE KEY UPDATE status = 'Applied', applied_at = CURRENT_TIMESTAMP
+            VALUES (?, ?, 'applied')
+            ON DUPLICATE KEY UPDATE status = 'applied', applied_at = CURRENT_TIMESTAMP
         `, [jobId, studentId]);
 
         res.json({ success: true, message: 'Application recorded' });
@@ -165,7 +165,7 @@ exports.getJobApplicants = async (req, res) => {
         const { id } = req.params;
         const [applicants] = await pool.query(`
             SELECT u.id, u.first_name, u.last_name, u.email, u.phone, ja.status, ja.applied_at,
-                   (SELECT name FROM Batches b JOIN BatchStudents bs ON b.id = bs.batch_id WHERE bs.student_id = u.id LIMIT 1) as batch_name
+                   (SELECT b.batch_name FROM Batches b JOIN BatchStudents bs ON b.id = bs.batch_id WHERE bs.student_id = u.id LIMIT 1) as batch_name
             FROM JobApplications ja
             JOIN Users u ON ja.student_id = u.id
             WHERE ja.job_id = ?

@@ -54,19 +54,48 @@ exports.getEligibility = async (req, res) => {
             SELECT status FROM PortfolioRequests WHERE student_id = ? AND status = 'approved'
         `, [studentId]);
 
-        // 7. Check for existing request
+        // 7. Tests Attendance — table may not exist, default to 100%
+        let testPct = 100;
+        try {
+            const [tests] = await pool.query(`SELECT COUNT(*) as total_tests FROM Tests WHERE batch_id = ?`, [batch_id]);
+            if (tests[0].total_tests > 0) {
+                const [testSub] = await pool.query(`SELECT COUNT(DISTINCT test_id) as attended_tests FROM TestSubmissions WHERE student_id = ?`, [studentId]);
+                testPct = (testSub[0].attended_tests / tests[0].total_tests) * 100;
+            }
+        } catch (e) { testPct = 100; }
+
+        // 8. Feedback Form — table may not exist, default to 100%
+        let feedbackPct = 100;
+        try {
+            const [completedModules] = await pool.query(`
+                SELECT DISTINCT module_id FROM Submissions
+                WHERE student_id = ? AND submission_type = 'module_project' AND marks IS NOT NULL
+            `, [studentId]);
+            if (completedModules.length > 0) {
+                const moduleIds = completedModules.map(m => m.module_id);
+                const [feedbacks] = await pool.query(`
+                    SELECT COUNT(DISTINCT module_id) as count FROM ModuleFeedbacks WHERE student_id = ? AND module_id IN (?)
+                `, [studentId, moduleIds]);
+                feedbackPct = (feedbacks[0].count / completedModules.length) * 100;
+            }
+        } catch (e) { feedbackPct = 100; }
+
+        // 9. Check for existing request
         const [request] = await pool.query(`
-            SELECT status, admin_notes FROM JobPortalRequests WHERE student_id = ? ORDER BY created_at DESC LIMIT 1
+            SELECT status, admin_notes, bypass_reason FROM JobPortalRequests WHERE student_id = ? ORDER BY created_at DESC LIMIT 1
         `, [studentId]);
 
         const criteria = {
             attendance: { value: Math.round(attendancePct), target: 80, met: attendancePct >= 80 },
             projects: { value: Math.round(projectPct), target: 75, met: projectPct >= 75 },
             capstone: { value: capstone[0].count, target: 1, met: capstone[0].count >= 1 },
+            tests: { value: Math.round(testPct), target: 100, met: testPct >= 100 },
+            feedback: { value: Math.round(feedbackPct), target: 100, met: feedbackPct >= 100 },
             portfolio: { met: portfolio.length > 0 && portfolio[0].status === 'approved' }
         };
 
-        const canRequest = criteria.attendance.met && criteria.projects.met && criteria.capstone.met && criteria.portfolio.met;
+        const canRequest = criteria.attendance.met && criteria.projects.met && criteria.capstone.met && 
+                           criteria.tests.met && criteria.feedback.met && criteria.portfolio.met;
 
         res.json({
             status: request.length > 0 ? request[0].status : 'locked',
@@ -80,11 +109,11 @@ exports.getEligibility = async (req, res) => {
     }
 };
 
-// Submit Access Request
+// Submit Access Request (Standard or Bypass)
 exports.submitRequest = async (req, res) => {
     try {
         const studentId = req.user.id;
-        const { portfolio_link } = req.body;
+        const { portfolio_link, bypass_reason } = req.body;
         const google_review_img = req.file ? req.file.filename : null;
 
         if (!google_review_img) {
@@ -92,8 +121,8 @@ exports.submitRequest = async (req, res) => {
         }
 
         await pool.query(
-            'INSERT INTO JobPortalRequests (student_id, google_review_img, portfolio_link) VALUES (?, ?, ?)',
-            [studentId, google_review_img, portfolio_link]
+            'INSERT INTO JobPortalRequests (student_id, google_review_img, portfolio_link, bypass_reason) VALUES (?, ?, ?, ?)',
+            [studentId, google_review_img, portfolio_link, bypass_reason || null]
         );
 
         res.status(201).json({ message: 'Request submitted for SuperAdmin approval.' });
@@ -132,14 +161,88 @@ exports.updateRequestStatus = async (req, res) => {
 
         await pool.query('UPDATE JobPortalRequests SET status = ?, admin_notes = ? WHERE id = ?', [status, admin_notes, id]);
 
-        if (status === 'Approved') {
+        if (status === 'approved') {
             await pool.query('UPDATE Users SET job_portal_unlocked = TRUE WHERE id = ?', [request[0].student_id]);
         } else {
+            // Only lock if we explicitly reject, some places might want them to stay unlocked until reviewed resubmission
             await pool.query('UPDATE Users SET job_portal_unlocked = FALSE WHERE id = ?', [request[0].student_id]);
         }
 
         res.json({ message: `Request ${status} successfully` });
     } catch (error) {
         res.status(500).json({ message: 'Error updating request', error: error.message });
+    }
+};
+
+// Bulk Approve/Reject Requests (SuperAdmin only)
+exports.bulkUpdateRequestStatus = async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+        const { requestIds, status, admin_notes } = req.body;
+        
+        if (!requestIds || !Array.isArray(requestIds) || requestIds.length === 0) {
+            return res.status(400).json({ message: 'No requests provided for bulk update.' });
+        }
+
+        await connection.beginTransaction();
+
+        for (const id of requestIds) {
+            const [request] = await connection.query('SELECT student_id FROM JobPortalRequests WHERE id = ?', [id]);
+            if (request[0]) {
+                await connection.query('UPDATE JobPortalRequests SET status = ?, admin_notes = ? WHERE id = ?', [status, admin_notes, id]);
+                
+                if (status === 'approved') {
+                    await connection.query('UPDATE Users SET job_portal_unlocked = TRUE WHERE id = ?', [request[0].student_id]);
+                } else if (status === 'rejected') {
+                    await connection.query('UPDATE Users SET job_portal_unlocked = FALSE WHERE id = ?', [request[0].student_id]);
+                }
+            }
+        }
+
+        await connection.commit();
+        res.json({ message: `Successfully bulk updated ${requestIds.length} requests.` });
+    } catch (error) {
+        await connection.rollback();
+        res.status(500).json({ message: 'Error updating requests', error: error.message });
+    } finally {
+        connection.release();
+    }
+};
+
+// Download Internship Certificate (Student only)
+const pdfGenerator = require('../utils/pdfGenerator');
+
+exports.downloadInternshipCertificate = async (req, res) => {
+    try {
+        const studentId = req.user.id;
+
+        // Verify if student is approved
+        const [user] = await pool.query('SELECT job_portal_unlocked, first_name, last_name FROM Users WHERE id = ?', [studentId]);
+        
+        if (!user[0] || !user[0].job_portal_unlocked) {
+            return res.status(403).json({ message: 'You are not approved for the Job Portal yet.' });
+        }
+
+        // Get Course Name
+        const [courseInfo] = await pool.query(`
+            SELECT c.name as course_name 
+            FROM BatchStudents bs
+            JOIN Batches b ON bs.batch_id = b.id
+            JOIN Courses c ON b.course_id = c.id
+            WHERE bs.student_id = ?
+            LIMIT 1
+        `, [studentId]);
+
+        const studentName = `${user[0].first_name} ${user[0].last_name}`;
+        const courseName = courseInfo[0] ? courseInfo[0].course_name : 'Advanced Software Engineering';
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=Internship_Certificate_${user[0].first_name}.pdf`);
+
+        await pdfGenerator.generateInternshipCertificate(studentName, courseName, res);
+
+    } catch (error) {
+        console.error("Certificate Generation Error:", error);
+        res.status(500).json({ message: 'Error generating certificate', error: error.message });
     }
 };

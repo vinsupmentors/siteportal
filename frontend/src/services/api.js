@@ -187,7 +187,7 @@ export const trainerAPI = {
     resolveDoubt: (doubtId, data) => api.patch(`/trainer/doubts/${doubtId}/resolve`, data),
 
     // Dynamic Feedback System
-    getFeedbackForms: () => api.get('/superadmin/feedback-forms'),
+    getFeedbackForms: () => api.get('/super-admin/feedback-forms'),
     releaseFeedback: (data) => api.post('/trainer/release-feedback', data),
 
     // Content Unlock Management
@@ -204,7 +204,7 @@ export const trainerAPI = {
     getStudentRemarks: (batchId, studentId) => api.get(`/trainer/batches/${batchId}/students/${studentId}/remarks`),
     addStudentRemark: (batchId, studentId, data) => api.post(`/trainer/batches/${batchId}/students/${studentId}/remarks`, data),
     updateStudentStatus: (studentId, data) => api.put(`/trainer/students/${studentId}/status`, data),
-    deleteStudentRemark: (remarkId) => api.delete(`/remarks/${remarkId}`),
+    deleteStudentRemark: (remarkId) => api.delete(`/trainer/remarks/${remarkId}`),
 
     // Leaves
     requestLeave: (data) => api.post('/trainer/leaves', data),
@@ -273,7 +273,7 @@ export const adminAPI = {
 
     // Downloads
     downloadTrainerKRA: (id, month, year) => api.get(`/super-admin/reports/trainer/${id}/download-kra?month=${month}&year=${year}`, { responseType: 'blob' }),
-    downloadTrainerFullReport: (id) => api.get(`/super-admin/reports/trainer/${id}/download-full`, { responseType: 'blob' }),
+    downloadTrainerFullReport: (id) => api.get(`/super-admin/reports/trainer/${id}/download-full-report`, { responseType: 'blob' }),
 };
 
 // Job Portal API
@@ -297,6 +297,8 @@ export const jobAPI = {
     }),
     getAllRequests: () => api.get('/job-requests/all'),
     updateRequestStatus: (id, data) => api.put(`/job-requests/${id}/status`, data),
+    bulkUpdateRequests: (data) => api.put('/job-requests/bulk', data),
+    downloadCertificate: () => api.get('/job-requests/certificate', { responseType: 'blob' }),
 };
 
 export const userAPI = {

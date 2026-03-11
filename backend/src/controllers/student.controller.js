@@ -122,7 +122,7 @@ exports.getStudentCalendar = async (req, res) => {
         const studentId = req.user.id;
 
         const [batchRows] = await pool.query(`
-            SELECT b.id, b.name, b.start_date, b.end_date, b.course_id, b.meeting_link, b.schedule_type
+            SELECT b.id, b.batch_name as name, b.start_date, b.end_date, b.course_id, b.meeting_link, b.schedule_type
             FROM Batches b
             JOIN BatchStudents bs ON b.id = bs.batch_id
             WHERE bs.student_id = ? AND b.status = 'active'
@@ -152,7 +152,7 @@ exports.getStudentCalendar = async (req, res) => {
 
         // 3. Attendance records
         const [attendance] = await pool.query(
-            'SELECT date, status FROM StudentAttendance WHERE student_id = ? AND batch_id = ? ORDER BY date',
+            'SELECT attendance_date as date, status FROM StudentAttendance WHERE student_id = ? AND batch_id = ? ORDER BY attendance_date',
             [studentId, batchId]
         );
 
@@ -412,7 +412,7 @@ exports.getStudentProgress = async (req, res) => {
         const [attRows] = await pool.query(`
             SELECT status FROM StudentAttendance
             WHERE student_id = ? AND batch_id = ?
-            ORDER BY date DESC
+            ORDER BY attendance_date DESC
         `, [studentId, batch_id]);
 
         let streak = 0;

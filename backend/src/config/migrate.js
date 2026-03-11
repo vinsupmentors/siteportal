@@ -23,6 +23,12 @@ async function runMigrations() {
         await pool.query(`ALTER TABLE TrainerTasks ADD COLUMN IF NOT EXISTS review_notes TEXT`);
         await pool.query(`ALTER TABLE TrainerTasks ADD COLUMN IF NOT EXISTS review_date TIMESTAMP NULL`);
 
+        // ── StudentAttendance: missing columns + unique key ─────────────
+        await pool.query(`ALTER TABLE StudentAttendance ADD COLUMN IF NOT EXISTS notes TEXT`);
+        try {
+            await pool.query(`ALTER TABLE StudentAttendance ADD UNIQUE KEY uq_student_batch_date (student_id, batch_id, attendance_date)`);
+        } catch (e) { /* Ignore if key already exists */ }
+
         // ── TrainerAttendance: missing columns ──────────────────────────
         await pool.query(`ALTER TABLE TrainerAttendance ADD COLUMN IF NOT EXISTS session ENUM('morning','afternoon','full_day') DEFAULT 'full_day'`);
 

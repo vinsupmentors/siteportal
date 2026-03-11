@@ -379,7 +379,7 @@ exports.markStudentAttendance = async (req, res) => {
         const values = attendance.map(a => [a.student_id, batch_id, date, a.status, a.notes || null]);
 
         await pool.query(`
-            INSERT INTO StudentAttendance (student_id, batch_id, date, status, notes)
+            INSERT INTO StudentAttendance (student_id, batch_id, attendance_date, status, notes)
             VALUES ?
             ON DUPLICATE KEY UPDATE status = VALUES(status), notes = VALUES(notes)
         `, [values]);
@@ -426,7 +426,7 @@ exports.getBatchAttendance = async (req, res) => {
             SELECT sa.*, u.first_name, u.last_name, u.email
             FROM StudentAttendance sa
             JOIN Users u ON sa.student_id = u.id
-            WHERE sa.batch_id = ? AND sa.date = ?
+            WHERE sa.batch_id = ? AND sa.attendance_date = ?
         `, [batchId, date]);
 
         res.json(records);
@@ -638,7 +638,7 @@ exports.addStudentRemark = async (req, res) => {
 
         await pool.query(
             'INSERT INTO StudentRemarks (student_id, batch_id, trainer_id, remark_text, remark_type) VALUES (?, ?, ?, ?, ?)',
-            [studentId, batchId, trainerId, remark_text, remark_type || 'general']
+            [studentId, batchId, trainerId, remark_text, remark_type || 'neutral']
         );
 
         res.json({ message: 'Remark added successfully' });

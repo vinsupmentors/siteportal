@@ -1,24 +1,35 @@
 import { useState, useEffect } from 'react';
-import { studentAPI } from '../../services/api';
+import { studentAPI, jobAPI } from '../../services/api';
 import theme from './theme';
 import {
     PageHeader, StatCard, Card, LoadingSpinner,
 } from './StudentComponents';
 import {
     TrendingUp, Award, Target, BarChart3, CheckCircle,
-    Flame, Star, Calendar, BookOpen,
+    Flame, Star, Calendar, BookOpen, Briefcase, AlertCircle
 } from 'lucide-react';
 
 export const StudentProgress = () => {
     const [progress, setProgress] = useState(null);
+    const [eligibility, setEligibility] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchProgress = async () => {
-            try { const res = await studentAPI.getProgress(); setProgress(res.data || {}); }
-            catch { } finally { setLoading(false); }
+        const fetchData = async () => {
+            try { 
+                const [progRes, eligRes] = await Promise.all([
+                    studentAPI.getProgress(),
+                    jobAPI.getEligibility()
+                ]);
+                setProgress(progRes.data || {}); 
+                setEligibility(eligRes.data || null);
+            } catch (error) {
+                console.error("Error fetching progress data", error);
+            } finally { 
+                setLoading(false); 
+            }
         };
-        fetchProgress();
+        fetchData();
     }, []);
 
     if (loading) return <LoadingSpinner label="Loading progress..." />;
@@ -161,6 +172,72 @@ export const StudentProgress = () => {
                     </div>
                 </Card>
             </div>
+
+            {/* Placement Eligibility Tracking */}
+            {eligibility && eligibility.criteria && (
+                <Card style={{ marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Briefcase size={20} color={theme.accent.purple} />
+                            <div style={{ fontSize: '14px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label }}>
+                                Placement Eligibility Criteria
+                            </div>
+                        </div>
+                        {eligibility.canRequest ? (
+                            <span style={{ padding: '6px 12px', background: `${theme.accent.green}20`, color: theme.accent.green, borderRadius: theme.radius.full, fontSize: '12px', fontWeight: 700 }}>
+                                Eligible to Apply
+                            </span>
+                        ) : (
+                            <span style={{ padding: '6px 12px', background: `${theme.accent.red}20`, color: theme.accent.red, borderRadius: theme.radius.full, fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <AlertCircle size={14} /> Action Required
+                            </span>
+                        )}
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                        {Object.entries(eligibility.criteria).filter(([key]) => key !== 'portfolio' || eligibility.criteria.portfolio.met !== undefined).map(([key, data]) => {
+                            const isMet = data.met;
+                            const title = key.charAt(0).toUpperCase() + key.slice(1);
+                            
+                            let valueDisplay = '';
+                            let progressPct = 0;
+                            
+                            if (key === 'portfolio') {
+                                valueDisplay = isMet ? 'Approved' : 'Pending';
+                                progressPct = isMet ? 100 : 0;
+                            } else {
+                                valueDisplay = `${data.value} / ${data.target}${key !== 'capstone' ? '%' : ''}`;
+                                progressPct = Math.min(100, Math.max(0, (data.value / data.target) * 100));
+                            }
+
+                            return (
+                                <div key={key} style={{
+                                    padding: '16px', borderRadius: theme.radius.md,
+                                    background: isMet ? `${theme.accent.green}05` : `${theme.accent.red}05`,
+                                    border: `1px solid ${isMet ? theme.accent.green + '20' : theme.accent.red + '20'}`
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: 600, color: theme.text.secondary }}>{title} Status</span>
+                                        <span style={{ fontSize: '13px', fontWeight: 800, color: isMet ? theme.accent.green : theme.text.primary }}>
+                                            {valueDisplay}
+                                        </span>
+                                    </div>
+                                    <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)' }}>
+                                        <div style={{
+                                            height: '100%', borderRadius: '3px', transition: 'width 0.6s',
+                                            width: `${progressPct}%`,
+                                            background: isMet ? theme.accent.green : theme.accent.yellow,
+                                        }} />
+                                    </div>
+                                    <div style={{ fontSize: '11px', marginTop: '10px', color: theme.text.muted }}>
+                                        {isMet ? `Requirement met.` : `Goal: ${data.target}${key !== 'capstone' ? '%' : ''} required`}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </Card>
+            )}
 
             {/* Module Roadmap */}
             {moduleData.length > 0 && (

@@ -9,7 +9,8 @@ const StudentJobPortal = () => {
     const [uploading, setUploading] = useState(false);
     const [formData, setFormData] = useState({
         portfolio_link: '',
-        google_review_img: null
+        google_review_img: null,
+        bypass_reason: ''
     });
 
     useEffect(() => {
@@ -55,6 +56,9 @@ const StudentJobPortal = () => {
             const fd = new FormData();
             fd.append('portfolio_link', formData.portfolio_link);
             fd.append('google_review_img', formData.google_review_img);
+            if (formData.bypass_reason) {
+                fd.append('bypass_reason', formData.bypass_reason);
+            }
             await jobAPI.submitRequest(fd);
             fetchStatus();
         } catch (err) {
@@ -65,6 +69,10 @@ const StudentJobPortal = () => {
     };
 
     if (loading) return <div className="p-6">Verifying Job Eligibility...</div>;
+
+    if (!eligibility) {
+        return <div className="p-6">Unable to verify eligibility at this time. Please contact support.</div>;
+    }
 
     const isUnlocked = eligibility.status === 'unlocked' || eligibility.status === 'Approved';
     const isPending = eligibility.status === 'Pending';
@@ -104,11 +112,30 @@ const StudentJobPortal = () => {
                                 met={eligibility.criteria.capstone.met}
                             />
                             <Criterion
+                                label="Test Attendance"
+                                current={`${eligibility.criteria.tests?.value || 0}%`}
+                                target="100%"
+                                met={eligibility.criteria.tests?.met}
+                            />
+                            <Criterion
+                                label="Module Feedback Forms"
+                                current={`${eligibility.criteria.feedback?.value || 0}%`}
+                                target="100%"
+                                met={eligibility.criteria.feedback?.met}
+                            />
+                            <Criterion
                                 label="Portfolio Generation"
                                 current={eligibility.criteria.portfolio.met ? 'Completed' : 'Pending'}
                                 target="Approved"
                                 met={eligibility.criteria.portfolio.met}
                             />
+                            
+                            {!canRequest && (
+                                <div className="mt-4 p-4 bg-red-400/10 border border-red-400/20 rounded-lg text-sm text-red-400">
+                                    <p className="font-bold flex items-center gap-2 mb-2"><XCircle size={16}/> Criteria Not Met</p>
+                                    <p className="text-xs">You have not met all the criteria required for automatic Job Portal unlocking. However, you may submit a <strong>Bypass Request</strong> below and explain your reason to the SuperAdmin.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -121,7 +148,7 @@ const StudentJobPortal = () => {
                                 <p className="text-sm text-secondary mt-2">Your request is being verified. Check back soon!</p>
                             </div>
                         ) : (
-                            <form onSubmit={handleSubmitRequest} className={`space-y-4 ${!canRequest ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <form onSubmit={handleSubmitRequest} className="space-y-4">
                                 <div>
                                     <label className="label">Public Portfolio Link / QR URL</label>
                                     <input
@@ -147,12 +174,25 @@ const StudentJobPortal = () => {
                                         <p className="text-xs text-secondary">{formData.google_review_img ? formData.google_review_img.name : 'Upload Screenshot of your Google Review'}</p>
                                     </div>
                                 </div>
-                                <button disabled={uploading} className="btn btn-primary w-full py-3">
-                                    {uploading ? 'Submitting...' : 'Request Job Portal Access'}
+                                {!canRequest && (
+                                    <div>
+                                        <label className="label text-red-400">Reason for Bypass Request *</label>
+                                        <textarea
+                                            className="input text-sm border-red-400/50 focus:border-red-400 bg-red-400/5"
+                                            rows="3"
+                                            required
+                                            placeholder="Explain why you have not met the criteria and why you should be granted access."
+                                            value={formData.bypass_reason}
+                                            onChange={e => setFormData({ ...formData, bypass_reason: e.target.value })}
+                                        />
+                                    </div>
+                                )}
+                                <button disabled={uploading} className={`btn w-full py-3 ${!canRequest ? 'bg-red-500 hover:bg-red-600 border-none' : 'btn-primary'}`}>
+                                    {uploading ? 'Submitting...' : !canRequest ? 'Submit Bypass Request' : 'Request Job Portal Access'}
                                 </button>
                                 {!canRequest && (
                                     <p className="text-xs text-center text-red-400 mt-2 italic">
-                                        Please complete all performance metrics to enable the request form.
+                                        This request will be marked as a special bypass request and will require additional review.
                                     </p>
                                 )}
                             </form>
@@ -163,6 +203,21 @@ const StudentJobPortal = () => {
         );
     }
 
+    const handleDownloadCertificate = async () => {
+        try {
+            const res = await jobAPI.downloadCertificate();
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'Internship_Certificate.pdf');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            alert('Failed to download internship certificate. You must be approved for the job portal.');
+        }
+    };
+
     return (
         <div className="p-6">
             <div className="flex justify-between items-center mb-8">
@@ -170,8 +225,13 @@ const StudentJobPortal = () => {
                     <h1 className="text-3xl font-bold text-main">Recommended Jobs</h1>
                     <p className="text-secondary">Exclusive career opportunities curated for your course</p>
                 </div>
-                <div className="badge badge-success px-4 py-2 flex items-center gap-2">
-                    <CheckCircle size={14} /> Verified Student Profile
+                <div className="flex gap-4">
+                    <button onClick={handleDownloadCertificate} className="btn btn-secondary flex items-center gap-2">
+                        <Briefcase size={14} /> Download Internship Certificate
+                    </button>
+                    <div className="badge badge-success px-4 py-2 flex items-center gap-2 h-full">
+                        <CheckCircle size={14} /> Verified Student Profile
+                    </div>
                 </div>
             </div>
 
