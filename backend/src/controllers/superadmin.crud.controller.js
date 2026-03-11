@@ -618,6 +618,9 @@ exports.createStudent = async (req, res) => {
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'CREATE_STUDENT', 'Users', result.insertId]);
         res.status(201).json({ message: 'Student created', studentId: result.insertId });
     } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ message: 'A user with this email already exists.' });
+        }
         res.status(500).json({ message: 'Student creation error', error: error.message });
     }
 };
@@ -694,6 +697,9 @@ exports.updateStudent = async (req, res) => {
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'UPDATE_STUDENT', 'Users', id]);
         res.json({ message: 'Student updated' });
     } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ message: 'A user with this email already exists.' });
+        }
         res.status(500).json({ message: 'Student update error', error: error.message });
     }
 };
@@ -777,6 +783,9 @@ exports.createTrainer = async (req, res) => {
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'CREATE_TRAINER', 'Users', result.insertId]);
         res.status(201).json({ message: 'Trainer created', trainerId: result.insertId });
     } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ message: 'A user with this email already exists.' });
+        }
         res.status(500).json({ message: 'Trainer creation error', error: error.message });
     }
 };
@@ -800,6 +809,9 @@ exports.updateTrainer = async (req, res) => {
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'UPDATE_TRAINER', 'Users', id]);
         res.json({ message: 'Trainer updated' });
     } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ message: 'A user with this email already exists.' });
+        }
         res.status(500).json({ message: 'Trainer update error', error: error.message });
     }
 };
