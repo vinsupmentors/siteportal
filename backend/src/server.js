@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const cron = require('node-cron');
+const runMigrations = require('./config/migrate');
 
 const app = express();
 app.use(cors({
@@ -68,6 +69,7 @@ cron.schedule('0 0 1 * *', async () => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`Enterprise LMS server operating safely on port ${PORT}`);
+    await runMigrations();
 });
