@@ -541,7 +541,7 @@ exports.createBatch = async (req, res) => {
     try {
         const { course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link } = req.body;
         const [result] = await pool.query(
-            'INSERT INTO Batches (course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, "active")',
+            `INSERT INTO Batches (course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
             [course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link]
         );
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'CREATE_BATCH', 'Batches', result.insertId]);
@@ -594,7 +594,7 @@ exports.getStudents = async (req, res) => {
             LEFT JOIN BatchStudents bs ON u.id = bs.student_id
             LEFT JOIN Batches b ON bs.batch_id = b.id
             LEFT JOIN Courses c ON b.course_id = c.id
-            WHERE u.role_id = 4
+            WHERE u.role_id = 4 AND u.status = 'active'
             ORDER BY u.created_at DESC
         `);
         const [totalActive] = await pool.query(`SELECT COUNT(*) as c FROM Users WHERE role_id = 4 AND status = 'active'`);
@@ -725,8 +725,8 @@ exports.transferStudentBatch = async (req, res) => {
 exports.deleteStudent = async (req, res) => {
     try {
         const { id } = req.params;
+        await pool.query(`UPDATE Users SET status = 'inactive' WHERE id = ? AND role_id = 4`, [id]);
         await pool.query('DELETE FROM BatchStudents WHERE student_id = ?', [id]);
-        await pool.query('DELETE FROM Users WHERE id = ? AND role_id = 4', [id]);
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'DELETE_STUDENT', 'Users', id]);
         res.json({ message: 'Student deleted' });
     } catch (error) {
@@ -1880,7 +1880,7 @@ exports.downloadTrainerKRA = async (req, res) => {
         `, [id, month, year]);
 
         const [otherWorks] = await pool.query(`
-            SELECT date, title, description, time_spent
+            SELECT date, title
             FROM TrainerOtherWorks
             WHERE trainer_id = ? AND MONTH(date) = ? AND YEAR(date) = ?
             ORDER BY date DESC
@@ -1890,12 +1890,12 @@ exports.downloadTrainerKRA = async (req, res) => {
 
         kras.forEach(k => {
             const date = new Date(k.date).toLocaleDateString();
-            csv += `"${date}","Class KRA","${k.batch_name}","${k.topics_covered.replace(/"/g, '""')}","${k.notes ? k.notes.replace(/"/g, '""') : ''}"\n`;
+            csv += `"${date}","Class KRA","${k.batch_name}","${(k.topics_covered || '').replace(/"/g, '""')}","${(k.notes || '').replace(/"/g, '""')}"\n`;
         });
 
         otherWorks.forEach(o => {
             const date = new Date(o.date).toLocaleDateString();
-            csv += `"${date}","Other Work","${o.title}","${o.description.replace(/"/g, '""')}","${o.time_spent}"\n`;
+            csv += `"${date}","Other Work","${o.title}","",""\n`;
         });
 
         res.setHeader('Content-Type', 'text/csv');
