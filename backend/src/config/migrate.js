@@ -1,45 +1,55 @@
 const pool = require('./db');
 
+async function addColumnIfNotExists(tableName, columnDef) {
+    try {
+        await pool.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDef}`);
+    } catch (err) {
+        // MySQL Error 1060 is "Duplicate column name", which we want to ignore
+        if (err.errno !== 1060 && err.code !== 'ER_DUP_FIELDNAME') {
+            console.error(`[Migration] Error adding column to ${tableName}:`, err.message);
+        }
+    }
+}
+
 async function runMigrations() {
     console.log('[Migration] Starting schema migration...');
     try {
-
         // ── Users: missing columns ──────────────────────────────────────
-        await pool.query(`ALTER TABLE Users ADD COLUMN IF NOT EXISTS joining_date DATE`);
-        await pool.query(`ALTER TABLE Users ADD COLUMN IF NOT EXISTS is_probation TINYINT(1) DEFAULT 0`);
-        await pool.query(`ALTER TABLE Users ADD COLUMN IF NOT EXISTS casual_leave_count INT DEFAULT 0`);
-        await pool.query(`ALTER TABLE Users ADD COLUMN IF NOT EXISTS job_portal_unlocked TINYINT(1) DEFAULT 0`);
-        await pool.query(`ALTER TABLE Users ADD COLUMN IF NOT EXISTS student_status ENUM('Regular','Irregular','Dropout','Batch Transfer','Course Completed') DEFAULT 'Regular'`);
+        await addColumnIfNotExists('Users', 'joining_date DATE');
+        await addColumnIfNotExists('Users', 'is_probation TINYINT(1) DEFAULT 0');
+        await addColumnIfNotExists('Users', 'casual_leave_count INT DEFAULT 0');
+        await addColumnIfNotExists('Users', 'job_portal_unlocked TINYINT(1) DEFAULT 0');
+        await addColumnIfNotExists('Users', "student_status ENUM('Regular','Irregular','Dropout','Batch Transfer','Course Completed') DEFAULT 'Regular'");
 
         // ── Modules: missing columns ────────────────────────────────────
-        await pool.query(`ALTER TABLE Modules ADD COLUMN IF NOT EXISTS study_material_url VARCHAR(500)`);
-        await pool.query(`ALTER TABLE Modules ADD COLUMN IF NOT EXISTS test_url VARCHAR(500)`);
-        await pool.query(`ALTER TABLE Modules ADD COLUMN IF NOT EXISTS interview_questions_url VARCHAR(500)`);
+        await addColumnIfNotExists('Modules', 'study_material_url VARCHAR(500)');
+        await addColumnIfNotExists('Modules', 'test_url VARCHAR(500)');
+        await addColumnIfNotExists('Modules', 'interview_questions_url VARCHAR(500)');
 
         // ── Days: missing columns ───────────────────────────────────────
-        await pool.query(`ALTER TABLE Days ADD COLUMN IF NOT EXISTS notes_url VARCHAR(500)`);
+        await addColumnIfNotExists('Days', 'notes_url VARCHAR(500)');
 
         // ── TrainerTasks: missing columns ───────────────────────────────
-        await pool.query(`ALTER TABLE TrainerTasks ADD COLUMN IF NOT EXISTS review_notes TEXT`);
-        await pool.query(`ALTER TABLE TrainerTasks ADD COLUMN IF NOT EXISTS review_date TIMESTAMP NULL`);
+        await addColumnIfNotExists('TrainerTasks', 'review_notes TEXT');
+        await addColumnIfNotExists('TrainerTasks', 'review_date TIMESTAMP NULL');
 
         // ── StudentAttendance: missing columns + unique key ─────────────
-        await pool.query(`ALTER TABLE StudentAttendance ADD COLUMN IF NOT EXISTS notes TEXT`);
+        await addColumnIfNotExists('StudentAttendance', 'notes TEXT');
         try {
             await pool.query(`ALTER TABLE StudentAttendance ADD UNIQUE KEY uq_student_batch_date (student_id, batch_id, attendance_date)`);
         } catch (e) { /* Ignore if key already exists */ }
 
         // ── TrainerAttendance: missing columns ──────────────────────────
-        await pool.query(`ALTER TABLE TrainerAttendance ADD COLUMN IF NOT EXISTS session ENUM('morning','afternoon','full_day') DEFAULT 'full_day'`);
+        await addColumnIfNotExists('TrainerAttendance', "session ENUM('morning','afternoon','full_day') DEFAULT 'full_day'");
 
         // ── Certificates: missing columns ───────────────────────────────
-        await pool.query(`ALTER TABLE Certificates ADD COLUMN IF NOT EXISTS type ENUM('course_completion','internship') DEFAULT 'course_completion'`);
-        await pool.query(`ALTER TABLE Certificates ADD COLUMN IF NOT EXISTS issued_by INT`);
+        await addColumnIfNotExists('Certificates', "type ENUM('course_completion','internship') DEFAULT 'course_completion'");
+        await addColumnIfNotExists('Certificates', 'issued_by INT');
 
         // ── Batches: missing columns ────────────────────────────────────
-        await pool.query(`ALTER TABLE Batches ADD COLUMN IF NOT EXISTS schedule_type VARCHAR(50)`);
-        await pool.query(`ALTER TABLE Batches ADD COLUMN IF NOT EXISTS timing VARCHAR(100)`);
-        await pool.query(`ALTER TABLE Batches ADD COLUMN IF NOT EXISTS meeting_link VARCHAR(500)`);
+        await addColumnIfNotExists('Batches', 'schedule_type VARCHAR(50)');
+        await addColumnIfNotExists('Batches', 'timing VARCHAR(100)');
+        await addColumnIfNotExists('Batches', 'meeting_link VARCHAR(500)');
 
         // ── Jobs ────────────────────────────────────────────────────────
         await pool.query(`
