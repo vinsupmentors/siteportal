@@ -7,7 +7,7 @@ import {
 import {
     ChevronRight, ChevronDown, CheckCircle, Lock, Unlock, Clock, Calendar,
     BookOpen, BookOpenCheck, FileSignature, Briefcase, MessageSquare,
-    HelpCircle, Download, ExternalLink, FileText, Info
+    HelpCircle, Download, ExternalLink, FileText, Info, GraduationCap
 } from 'lucide-react';
 
 export const TrainerContentManager = () => {
