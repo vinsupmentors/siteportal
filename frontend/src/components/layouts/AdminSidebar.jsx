@@ -3,7 +3,7 @@ import { BrandLogo } from '../icons/BrandLogo';
 import {
     LayoutDashboard, Users,
     ClipboardList, Megaphone, Link as LinkIcon,
-    BarChart3, HelpCircle, MessageSquare, Hexagon, Calendar, Briefcase
+    BarChart3, HelpCircle, MessageSquare, Hexagon, Calendar, Briefcase, Settings
 } from 'lucide-react';
 
 export const AdminSidebar = ({ isOpen, setIsOpen }) => {
