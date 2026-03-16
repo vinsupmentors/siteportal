@@ -655,7 +655,7 @@ exports.getStudentCurriculum = async (req, res) => {
 
         // Get all modules for this course
         const [allModules] = await pool.query(`
-            SELECT id, name, sequence_order
+            SELECT id, name, sequence_order, module_project_details, study_material_url, test_url, interview_questions_url
             FROM Modules WHERE course_id = ?
             ORDER BY sequence_order
         `, [course_id]);
@@ -692,6 +692,28 @@ exports.getStudentCurriculum = async (req, res) => {
             days = queryDays;
         }
 
+        // Get Module Projects and Content Files for released content
+        const [projects] = await pool.query(
+            `SELECT * FROM ModuleProjects WHERE module_id IN (${placeholders})`,
+            moduleIds
+        );
+        const projectIds = projects.map(p => p.id);
+
+        const [moduleFiles] = await pool.query(
+            `SELECT * FROM ContentFiles WHERE entity_type = 'module' AND entity_id IN (${placeholders})`,
+            moduleIds
+        );
+
+        let projectFiles = [];
+        if (projectIds.length > 0) {
+            const projPh = projectIds.map(() => '?').join(',');
+            const [pFiles] = await pool.query(
+                `SELECT * FROM ContentFiles WHERE entity_type = 'project' AND entity_id IN (${projPh})`,
+                projectIds
+            );
+            projectFiles = pFiles;
+        }
+
         // Return all modules, mapping their unlocked status
         const modulesWithDays = allModules.map(mod => {
             const unlockData = unlockMap[mod.id];
@@ -713,16 +735,43 @@ exports.getStudentCurriculum = async (req, res) => {
                     return { ...d, submitted: !!d.submission_id, content_files };
                 });
 
+            const isProjectsReleased = !!unlockData.is_projects_released;
+            const isTestReleased = !!unlockData.is_test_released;
+            const isFeedbackReleased = !!unlockData.is_feedback_released;
+            const isMaterialsReleased = !!unlockData.is_study_materials_released;
+            const isInterviewReleased = !!unlockData.is_interview_questions_released;
+
+            // Map projects and files only if released
+            const modProjects = isProjectsReleased 
+                ? projects.filter(p => p.module_id === mod.id).map(p => ({
+                    ...p,
+                    files: projectFiles.filter(f => f.entity_id === p.id)
+                })) 
+                : [];
+            
+            const modFiles = isMaterialsReleased 
+                ? moduleFiles.filter(f => f.entity_type === 'module' && f.entity_id === mod.id)
+                : [];
+
             // Add released components at module level
             return { 
-                ...mod, 
+                id: mod.id,
+                name: mod.name,
+                sequence_order: mod.sequence_order,
                 is_unlocked: true, 
                 days: modDays,
-                is_projects_released: !!unlockData.is_projects_released,
-                is_test_released: !!unlockData.is_test_released,
-                is_feedback_released: !!unlockData.is_feedback_released,
-                is_study_materials_released: !!unlockData.is_study_materials_released,
-                is_interview_questions_released: !!unlockData.is_interview_questions_released
+                // Only return details/URLs if released
+                module_project_details: isProjectsReleased ? mod.module_project_details : null,
+                study_material_url: isMaterialsReleased ? mod.study_material_url : null,
+                test_url: isTestReleased ? mod.test_url : null,
+                interview_questions_url: isInterviewReleased ? mod.interview_questions_url : null,
+                projects: modProjects,
+                files: modFiles,
+                is_projects_released: isProjectsReleased,
+                is_test_released: isTestReleased,
+                is_feedback_released: isFeedbackReleased,
+                is_study_materials_released: isMaterialsReleased,
+                is_interview_questions_released: isInterviewReleased
             };
         });
 

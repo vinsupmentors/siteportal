@@ -454,9 +454,9 @@ exports.getBatchCurriculum = async (req, res) => {
 
         const courseId = batch[0].course_id;
 
-        // Get all modules for the course
+        // Get all modules for the course (including resource URLs)
         const [modules] = await pool.query(
-            'SELECT id, name, sequence_order FROM Modules WHERE course_id = ? ORDER BY sequence_order',
+            'SELECT id, name, sequence_order, module_project_details, study_material_url, test_url, interview_questions_url FROM Modules WHERE course_id = ? ORDER BY sequence_order',
             [courseId]
         );
 
@@ -476,20 +476,53 @@ exports.getBatchCurriculum = async (req, res) => {
             `SELECT module_id, unlocked_up_to_day, is_projects_released, is_test_released, is_feedback_released, is_study_materials_released, is_interview_questions_released FROM BatchUnlocks WHERE batch_id = ? AND module_id IN (${placeholders})`,
             [batchId, ...moduleIds]
         );
-
         const unlockMap = {};
         unlocks.forEach(u => { unlockMap[u.module_id] = u; });
 
+        // Get Module Projects
+        const [projects] = await pool.query(
+            `SELECT * FROM ModuleProjects WHERE module_id IN (${placeholders})`,
+            moduleIds
+        );
+        const projectIds = projects.map(p => p.id);
+
+        // Get Content Files for Modules and Projects
+        const [moduleFiles] = await pool.query(
+            `SELECT * FROM ContentFiles WHERE entity_type = 'module' AND entity_id IN (${placeholders})`,
+            moduleIds
+        );
+        
+        let projectFiles = [];
+        if (projectIds.length > 0) {
+            const projPh = projectIds.map(() => '?').join(',');
+            const [pFiles] = await pool.query(
+                `SELECT * FROM ContentFiles WHERE entity_type = 'project' AND entity_id IN (${projPh})`,
+                projectIds
+            );
+            projectFiles = pFiles;
+        }
+
         const modulesWithState = modules.map(mod => {
+            const modDays = days.filter(d => d.module_id === mod.id);
+            const totalDays = modDays.length;
             const unlockData = unlockMap[mod.id];
             const isUnlocked = unlockData !== undefined;
             const unlockedUpToDay = isUnlocked ? unlockData.unlocked_up_to_day : 0;
+
+            // Map projects and files to this module
+            const modProjects = projects.filter(p => p.module_id === mod.id).map(p => ({
+                ...p,
+                files: projectFiles.filter(f => f.entity_id === p.id)
+            }));
+            const modFiles = moduleFiles.filter(f => f.entity_type === 'module' && f.entity_id === mod.id);
 
             return {
                 ...mod,
                 total_days: totalDays,
                 is_unlocked: isUnlocked,
                 unlocked_up_to_day: isUnlocked ? unlockedUpToDay : 0,
+                projects: modProjects,
+                files: modFiles,
                 // Granular flags
                 is_projects_released: !!(unlockData?.is_projects_released),
                 is_test_released: !!(unlockData?.is_test_released),

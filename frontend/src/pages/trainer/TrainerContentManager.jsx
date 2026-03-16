@@ -5,8 +5,9 @@ import {
     PageHeader, Card, ActionButton, EmptyState, LoadingSpinner, StatusBadge, SectionTitle, FormField, inputStyle, theme,
 } from './TrainerComponents';
 import {
-    BookOpenCheck, Lock, Unlock, ChevronDown, ChevronRight, Layers, FileText, GraduationCap,
-    CheckCircle, MessageSquare, Briefcase, FileSignature, HelpCircle
+    ChevronRight, ChevronDown, CheckCircle, Lock, Unlock, Clock, Calendar,
+    BookOpen, BookOpenCheck, FileSignature, Briefcase, MessageSquare,
+    HelpCircle, Download, ExternalLink, FileText, Info
 } from 'lucide-react';
 
 export const TrainerContentManager = () => {
@@ -231,6 +232,68 @@ export const TrainerContentManager = () => {
                                                                 </button>
                                                             ))}
                                                         </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Content Links and Projects Display */}
+                                                {mod.is_unlocked && (
+                                                    <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                        {/* Resource Links */}
+                                                        {(mod.study_material_url || mod.test_url || mod.interview_questions_url || (mod.files && mod.files.length > 0)) && (
+                                                            <div style={{ padding: '12px', background: 'rgba(255,255,255,0.01)', borderRadius: theme.radius.md, border: `1px solid ${theme.border.subtle}` }}>
+                                                                <p style={{ fontSize: '10px', fontWeight: 700, color: theme.text.label, textTransform: 'uppercase', marginBottom: '8px' }}>Module Resources</p>
+                                                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                                                    {mod.study_material_url && (
+                                                                        <a href={mod.study_material_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: theme.accent.blue, textDecoration: 'none' }}>
+                                                                            <BookOpen size={14} /> Material <ExternalLink size={10} />
+                                                                        </a>
+                                                                    )}
+                                                                    {mod.test_url && (
+                                                                        <a href={mod.test_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: theme.accent.blue, textDecoration: 'none' }}>
+                                                                            <FileSignature size={14} /> Test Link <ExternalLink size={10} />
+                                                                        </a>
+                                                                    )}
+                                                                    {mod.interview_questions_url && (
+                                                                        <a href={mod.interview_questions_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: theme.accent.blue, textDecoration: 'none' }}>
+                                                                            <HelpCircle size={14} /> Interview Qs <ExternalLink size={10} />
+                                                                        </a>
+                                                                    )}
+                                                                    {mod.files?.map(file => (
+                                                                        <a key={file.id} href={`/uploads/content/${file.stored_name}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: theme.text.secondary, textDecoration: 'none' }}>
+                                                                            <FileText size={14} /> {file.original_name} <Download size={10} />
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Projects Display */}
+                                                        {(mod.module_project_details || (mod.projects && mod.projects.length > 0)) && (
+                                                            <div style={{ padding: '12px', background: 'rgba(255,255,255,0.01)', borderRadius: theme.radius.md, border: `1px solid ${theme.border.subtle}` }}>
+                                                                <p style={{ fontSize: '10px', fontWeight: 700, color: theme.text.label, textTransform: 'uppercase', marginBottom: '8px' }}>Project Details</p>
+                                                                {mod.module_project_details && (
+                                                                    <div style={{ fontSize: '12px', color: theme.text.muted, marginBottom: '10px', padding: '8px', background: 'rgba(0,0,0,0.1)', borderRadius: '4px' }}>
+                                                                        <Info size={12} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                                                                        {mod.module_project_details}
+                                                                    </div>
+                                                                )}
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                    {mod.projects?.map(proj => (
+                                                                        <div key={proj.id} style={{ padding: '8px', borderLeft: `2px solid ${theme.accent.blue}`, background: 'rgba(255,255,255,0.02)' }}>
+                                                                            <p style={{ fontSize: '13px', fontWeight: 600, color: theme.text.primary, marginBottom: '4px' }}>{proj.name}</p>
+                                                                            <p style={{ fontSize: '12px', color: theme.text.muted, marginBottom: '6px' }}>{proj.description}</p>
+                                                                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                                                                {proj.files?.map(f => (
+                                                                                    <a key={f.id} href={`/uploads/content/${f.stored_name}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: theme.accent.blue, textDecoration: 'none' }}>
+                                                                                        <Download size={12} /> {f.original_name}
+                                                                                    </a>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                                 {mod.days.length === 0 ? (
