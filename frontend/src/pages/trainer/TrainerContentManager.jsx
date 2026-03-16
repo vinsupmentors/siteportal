@@ -6,6 +6,7 @@ import {
 } from './TrainerComponents';
 import {
     BookOpenCheck, Lock, Unlock, ChevronDown, ChevronRight, Layers, FileText, GraduationCap,
+    CheckCircle, MessageSquare, Briefcase, FileSignature, HelpCircle
 } from 'lucide-react';
 
 export const TrainerContentManager = () => {
@@ -51,10 +52,15 @@ export const TrainerContentManager = () => {
         loadCurriculum(batchId);
     };
 
-    const handleUnlockModule = async (moduleId, upToDay) => {
+    const handleUnlockModule = async (moduleId, config) => {
         setActionLoading(moduleId);
         try {
-            await trainerAPI.unlockModule(selectedBatchId, { module_id: moduleId, unlocked_up_to_day: upToDay });
+            // config can be a number (upToDay) or an object with granular flags
+            const payload = typeof config === 'number' 
+                ? { module_id: moduleId, unlocked_up_to_day: config }
+                : { module_id: moduleId, ...config };
+                
+            await trainerAPI.unlockModule(selectedBatchId, payload);
             await loadCurriculum(selectedBatchId);
         } catch (err) { alert('Error: ' + (err.response?.data?.message || err.message)); }
         finally { setActionLoading(null); }
@@ -196,6 +202,37 @@ export const TrainerContentManager = () => {
                                                         </div>
                                                     )}
                                                 </div>
+
+                                                {/* Granular Component Release */}
+                                                {mod.is_unlocked && (
+                                                    <div style={{ marginBottom: '20px', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: theme.radius.md, border: `1px solid ${theme.border.subtle}` }}>
+                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: theme.text.label, textTransform: 'uppercase', marginBottom: '10px' }}>Component Release Control</p>
+                                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                            {[
+                                                                { id: 'is_projects_released', label: 'Projects', icon: <Briefcase size={12} /> },
+                                                                { id: 'is_test_released', label: 'Tests', icon: <FileSignature size={12} /> },
+                                                                { id: 'is_feedback_released', label: 'Feedback', icon: <MessageSquare size={12} /> },
+                                                                { id: 'is_study_materials_released', label: 'Materials', icon: <BookOpenCheck size={12} /> },
+                                                                { id: 'is_interview_questions_released', label: 'Interview Qs', icon: <HelpCircle size={12} /> },
+                                                            ].map(comp => (
+                                                                <button
+                                                                    key={comp.id}
+                                                                    onClick={() => handleUnlockModule(mod.id, { [comp.id]: !mod[comp.id] })}
+                                                                    disabled={isLoading}
+                                                                    style={{
+                                                                        display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: theme.radius.sm,
+                                                                        border: `1px solid ${mod[comp.id] ? theme.accent.blue : theme.border.subtle}`,
+                                                                        background: mod[comp.id] ? `${theme.accent.blue}15` : 'transparent',
+                                                                        color: mod[comp.id] ? theme.accent.blue : theme.text.muted,
+                                                                        cursor: 'pointer', fontSize: '10px', fontWeight: 700, transition: 'all 0.2s'
+                                                                    }}
+                                                                >
+                                                                    {comp.icon} {comp.label} {mod[comp.id] ? <CheckCircle size={10} style={{ marginLeft: '4px' }} /> : ''}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 {mod.days.length === 0 ? (
                                                     <p style={{ fontSize: '12px', color: theme.text.muted, textAlign: 'center', padding: '16px 0' }}>No days configured for this module.</p>
                                                 ) : (

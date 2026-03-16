@@ -564,12 +564,12 @@ exports.getStudentTests = async (req, res) => {
         const moduleIds = modules.map(m => m.id);
         const placeholders = moduleIds.map(() => '?').join(',');
 
-        // Get unlock state for this batch
+        // Get unlock state for this batch (now including release flags)
         const [unlocks] = await pool.query(
-            `SELECT module_id FROM BatchUnlocks WHERE batch_id = ? AND module_id IN (${placeholders})`,
+            `SELECT module_id, is_test_released FROM BatchUnlocks WHERE batch_id = ? AND module_id IN (${placeholders})`,
             [batch_id, ...moduleIds]
         );
-        const unlockedSet = new Set(unlocks.map(u => u.module_id));
+        const unlockedSet = new Set(unlocks.filter(u => u.is_test_released).map(u => u.module_id));
 
         // Get all module_test submissions for this student
         const [submissions] = await pool.query(`
@@ -667,12 +667,12 @@ exports.getStudentCurriculum = async (req, res) => {
 
         // Get unlock state for this batch
         const [unlocks] = await pool.query(
-            `SELECT module_id, unlocked_up_to_day FROM BatchUnlocks WHERE batch_id = ? AND module_id IN (${placeholders})`,
+            `SELECT module_id, unlocked_up_to_day, is_projects_released, is_test_released, is_feedback_released, is_study_materials_released, is_interview_questions_released FROM BatchUnlocks WHERE batch_id = ? AND module_id IN (${placeholders})`,
             [batch_id, ...moduleIds]
         );
 
         const unlockMap = {};
-        unlocks.forEach(u => { unlockMap[u.module_id] = u.unlocked_up_to_day; });
+        unlocks.forEach(u => { unlockMap[u.module_id] = u; });
 
         // Filter to only unlocked modules to query days
         const unlockedModules = allModules.filter(m => unlockMap[m.id] !== undefined);
@@ -694,8 +694,9 @@ exports.getStudentCurriculum = async (req, res) => {
 
         // Return all modules, mapping their unlocked status
         const modulesWithDays = allModules.map(mod => {
-            const upToDayLimit = unlockMap[mod.id];
-            const isUnlocked = upToDayLimit !== undefined;
+            const unlockData = unlockMap[mod.id];
+            const isUnlocked = unlockData !== undefined;
+            const upToDayLimit = unlockData?.unlocked_up_to_day;
 
             if (!isUnlocked) {
                 return { ...mod, is_unlocked: false, days: [] };
@@ -706,12 +707,23 @@ exports.getStudentCurriculum = async (req, res) => {
                 .filter(d => upToDayLimit === -1 || d.day_number <= upToDayLimit)
                 .map(d => {
                     const content_files = [];
+                    // Day materials are usually worksheets or day sessions
                     if (d.material_url) content_files.push({ name: 'Study Material', url: d.material_url });
                     if (d.worksheet_url) content_files.push({ name: 'Worksheet', url: d.worksheet_url });
                     return { ...d, submitted: !!d.submission_id, content_files };
                 });
 
-            return { ...mod, is_unlocked: true, days: modDays };
+            // Add released components at module level
+            return { 
+                ...mod, 
+                is_unlocked: true, 
+                days: modDays,
+                is_projects_released: !!unlockData.is_projects_released,
+                is_test_released: !!unlockData.is_test_released,
+                is_feedback_released: !!unlockData.is_feedback_released,
+                is_study_materials_released: !!unlockData.is_study_materials_released,
+                is_interview_questions_released: !!unlockData.is_interview_questions_released
+            };
         });
 
         // Also return total module count so the frontend knows what's locked
@@ -733,7 +745,8 @@ exports.getReleasedFeedback = async (req, res) => {
             FROM BatchFeedbackStatus bfs
             JOIN FeedbackForms ff ON bfs.form_id = ff.id
             JOIN BatchStudents bs ON bfs.batch_id = bs.batch_id
-            WHERE bs.student_id = ? AND bfs.is_released = TRUE
+            JOIN BatchUnlocks bu ON bfs.batch_id = bu.batch_id AND bfs.module_id = bu.module_id
+            WHERE bs.student_id = ? AND bfs.is_released = TRUE AND bu.is_feedback_released = TRUE
             AND NOT EXISTS (
                 SELECT 1 FROM StudentFeedbackResponses sfr 
                 WHERE sfr.student_id = ? AND sfr.form_id = ff.id AND sfr.batch_id = bfs.batch_id

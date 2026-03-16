@@ -109,6 +109,11 @@ async function runMigrations() {
                 batch_id INT NOT NULL,
                 module_id INT NOT NULL,
                 unlocked_up_to_day INT DEFAULT 0,
+                is_projects_released TINYINT(1) DEFAULT 0,
+                is_test_released TINYINT(1) DEFAULT 0,
+                is_feedback_released TINYINT(1) DEFAULT 0,
+                is_study_materials_released TINYINT(1) DEFAULT 0,
+                is_interview_questions_released TINYINT(1) DEFAULT 0,
                 unlocked_by INT NOT NULL,
                 unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY uq_batch_module (batch_id, module_id),
@@ -117,6 +122,13 @@ async function runMigrations() {
                 FOREIGN KEY (unlocked_by) REFERENCES Users(id)
             )
         `);
+
+        // Migration for existing tables
+        await addColumnIfNotExists('BatchUnlocks', 'is_projects_released TINYINT(1) DEFAULT 0');
+        await addColumnIfNotExists('BatchUnlocks', 'is_test_released TINYINT(1) DEFAULT 0');
+        await addColumnIfNotExists('BatchUnlocks', 'is_feedback_released TINYINT(1) DEFAULT 0');
+        await addColumnIfNotExists('BatchUnlocks', 'is_study_materials_released TINYINT(1) DEFAULT 0');
+        await addColumnIfNotExists('BatchUnlocks', 'is_interview_questions_released TINYINT(1) DEFAULT 0');
 
         // ── ModuleProjects ──────────────────────────────────────────────
         await pool.query(`

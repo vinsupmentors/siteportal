@@ -473,24 +473,29 @@ exports.getBatchCurriculum = async (req, res) => {
 
         // Get current unlock state
         const [unlocks] = await pool.query(
-            `SELECT module_id, unlocked_up_to_day FROM BatchUnlocks WHERE batch_id = ? AND module_id IN (${placeholders})`,
+            `SELECT module_id, unlocked_up_to_day, is_projects_released, is_test_released, is_feedback_released, is_study_materials_released, is_interview_questions_released FROM BatchUnlocks WHERE batch_id = ? AND module_id IN (${placeholders})`,
             [batchId, ...moduleIds]
         );
 
         const unlockMap = {};
-        unlocks.forEach(u => { unlockMap[u.module_id] = u.unlocked_up_to_day; });
+        unlocks.forEach(u => { unlockMap[u.module_id] = u; });
 
         const modulesWithState = modules.map(mod => {
-            const modDays = days.filter(d => d.module_id === mod.id);
-            const totalDays = modDays.length;
-            const isUnlocked = unlockMap[mod.id] !== undefined;
-            const unlockedUpToDay = unlockMap[mod.id] || 0;
+            const unlockData = unlockMap[mod.id];
+            const isUnlocked = unlockData !== undefined;
+            const unlockedUpToDay = isUnlocked ? unlockData.unlocked_up_to_day : 0;
 
             return {
                 ...mod,
                 total_days: totalDays,
                 is_unlocked: isUnlocked,
                 unlocked_up_to_day: isUnlocked ? unlockedUpToDay : 0,
+                // Granular flags
+                is_projects_released: !!(unlockData?.is_projects_released),
+                is_test_released: !!(unlockData?.is_test_released),
+                is_feedback_released: !!(unlockData?.is_feedback_released),
+                is_study_materials_released: !!(unlockData?.is_study_materials_released),
+                is_interview_questions_released: !!(unlockData?.is_interview_questions_released),
                 days: modDays.map(d => ({
                     ...d,
                     is_unlocked: isUnlocked && (unlockedUpToDay === -1 || d.day_number <= unlockedUpToDay),
@@ -504,30 +509,65 @@ exports.getBatchCurriculum = async (req, res) => {
     }
 };
 
-// Unlock a module (or update unlocked_up_to_day) for a batch
+// Unlock a module (or update unlocked_up_to_day / granular flags) for a batch
 exports.unlockModule = async (req, res) => {
     try {
         const { batchId } = req.params;
-        const { module_id, unlocked_up_to_day } = req.body;
+        const {
+            module_id,
+            unlocked_up_to_day,
+            is_projects_released,
+            is_test_released,
+            is_feedback_released,
+            is_study_materials_released,
+            is_interview_questions_released
+        } = req.body;
         const trainerId = req.user.id;
 
         // Verify batch ownership
         const [batch] = await pool.query('SELECT id FROM Batches WHERE id = ? AND trainer_id = ?', [batchId, trainerId]);
         if (!batch.length) return res.status(403).json({ message: 'Unauthorized' });
 
-        // Upsert unlock record
+        // Build dynamically if some fields are missing in body (to support fine-grained updates)
+        const updateFields = [];
+        const values = [];
+
+        if (unlocked_up_to_day !== undefined) { updateFields.push('unlocked_up_to_day = VALUES(unlocked_up_to_day)'); }
+        if (is_projects_released !== undefined) { updateFields.push('is_projects_released = VALUES(is_projects_released)'); }
+        if (is_test_released !== undefined) { updateFields.push('is_test_released = VALUES(is_test_released)'); }
+        if (is_feedback_released !== undefined) { updateFields.push('is_feedback_released = VALUES(is_feedback_released)'); }
+        if (is_study_materials_released !== undefined) { updateFields.push('is_study_materials_released = VALUES(is_study_materials_released)'); }
+        if (is_interview_questions_released !== undefined) { updateFields.push('is_interview_questions_released = VALUES(is_interview_questions_released)'); }
+
+        // Always update metadata
+        updateFields.push('unlocked_by = VALUES(unlocked_by)', 'unlocked_at = CURRENT_TIMESTAMP');
+
         await pool.query(`
-            INSERT INTO BatchUnlocks (batch_id, module_id, unlocked_up_to_day, unlocked_by)
-            VALUES (?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE unlocked_up_to_day = VALUES(unlocked_up_to_day), unlocked_by = VALUES(unlocked_by), unlocked_at = CURRENT_TIMESTAMP
-        `, [batchId, module_id, unlocked_up_to_day ?? -1, trainerId]);
+            INSERT INTO BatchUnlocks (
+                batch_id, module_id, unlocked_up_to_day, 
+                is_projects_released, is_test_released, is_feedback_released, 
+                is_study_materials_released, is_interview_questions_released, 
+                unlocked_by
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE ${updateFields.join(', ')}
+        `, [
+            batchId, module_id,
+            unlocked_up_to_day ?? 0,
+            is_projects_released ?? 0,
+            is_test_released ?? 0,
+            is_feedback_released ?? 0,
+            is_study_materials_released ?? 0,
+            is_interview_questions_released ?? 0,
+            trainerId
+        ]);
 
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
-            [trainerId, 'UNLOCK_MODULE', 'BatchUnlocks', module_id]);
+            [trainerId, 'UNLOCK_MODULE_CONFIG', 'BatchUnlocks', module_id]);
 
-        res.json({ message: 'Module unlocked successfully' });
+        res.json({ message: 'Content access configuration updated successfully' });
     } catch (error) {
-        res.status(500).json({ message: 'Error unlocking module', error: error.message });
+        res.status(500).json({ message: 'Error updating content access', error: error.message });
     }
 };
 
