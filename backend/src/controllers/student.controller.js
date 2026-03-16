@@ -554,7 +554,7 @@ exports.getStudentTests = async (req, res) => {
 
         // Get all modules
         const [modules] = await pool.query(`
-            SELECT id, name, sequence_order
+            SELECT id, name, sequence_order, test_url
             FROM Modules WHERE course_id = ?
             ORDER BY sequence_order
         `, [course_id]);
@@ -625,7 +625,8 @@ exports.getStudentTests = async (req, res) => {
                 attempts,
                 max_attempts: 2,
                 submitted_at,
-                passed: score !== null ? score >= 75 : null
+                passed: score !== null ? score >= 75 : null,
+                test_url: isUnlocked ? mod.test_url : null,
             };
         });
 

@@ -8,6 +8,7 @@ import {
 import {
     BookOpen, Search, Download, Upload, CheckCircle,
     ChevronRight, FileText, FolderOpen, Clock,
+    ExternalLink, Briefcase, HelpCircle, FileSignature,
 } from 'lucide-react';
 
 export const StudentMaterials = () => {
@@ -147,7 +148,100 @@ export const StudentMaterials = () => {
                             title="Select a Module"
                             message="Choose a module from the left to view sessions, materials, and submit your worksheets."
                         />
-                    ) : days.length === 0 ? (
+                    ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                    {/* Module-Level Resources */}
+                    {(active.study_material_url || (active.files && active.files.length > 0) ||
+                      (active.projects && active.projects.length > 0) ||
+                      active.interview_questions_url || active.test_url) && (
+                        <Card style={{ borderTop: `3px solid ${theme.accent.cyan}` }}>
+                            <p style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label, marginBottom: '14px' }}>
+                                Module Resources
+                            </p>
+
+                            {/* Study Materials */}
+                            {(active.study_material_url || (active.files && active.files.length > 0)) && (
+                                <div style={{ marginBottom: '14px' }}>
+                                    <p style={{ fontSize: '11px', fontWeight: 700, color: theme.text.muted, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <BookOpen size={13} /> Study Materials
+                                    </p>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        {active.study_material_url && (
+                                            <a href={active.study_material_url} target="_blank" rel="noopener noreferrer"
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: theme.radius.sm, background: `${theme.accent.cyan}10`, border: `1px solid ${theme.accent.cyan}30`, color: theme.accent.cyan, fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}>
+                                                <ExternalLink size={13} /> Open Material
+                                            </a>
+                                        )}
+                                        {(active.files || []).map(f => (
+                                            <a key={f.id} href={`/uploads/content/${f.stored_name}`} target="_blank" rel="noopener noreferrer"
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: theme.radius.sm, background: `${theme.accent.cyan}10`, border: `1px solid ${theme.accent.cyan}30`, color: theme.accent.cyan, fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}>
+                                                <Download size={13} /> {f.original_name}
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Test Link */}
+                            {active.test_url && (
+                                <div style={{ marginBottom: '14px' }}>
+                                    <p style={{ fontSize: '11px', fontWeight: 700, color: theme.text.muted, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <FileSignature size={13} /> Module Test
+                                    </p>
+                                    <a href={active.test_url} target="_blank" rel="noopener noreferrer"
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: theme.radius.sm, background: `${theme.accent.yellow}10`, border: `1px solid ${theme.accent.yellow}30`, color: theme.accent.yellow, fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}>
+                                        <ExternalLink size={13} /> Take Test
+                                    </a>
+                                </div>
+                            )}
+
+                            {/* Interview Questions */}
+                            {active.interview_questions_url && (
+                                <div style={{ marginBottom: '14px' }}>
+                                    <p style={{ fontSize: '11px', fontWeight: 700, color: theme.text.muted, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <HelpCircle size={13} /> Interview Questions
+                                    </p>
+                                    <a href={active.interview_questions_url} target="_blank" rel="noopener noreferrer"
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: theme.radius.sm, background: `${theme.accent.purple}10`, border: `1px solid ${theme.accent.purple}30`, color: theme.accent.purple, fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}>
+                                        <ExternalLink size={13} /> View Interview Qs
+                                    </a>
+                                </div>
+                            )}
+
+                            {/* Projects */}
+                            {active.projects && active.projects.length > 0 && (
+                                <div>
+                                    <p style={{ fontSize: '11px', fontWeight: 700, color: theme.text.muted, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Briefcase size={13} /> Projects
+                                    </p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {active.module_project_details && (
+                                            <p style={{ fontSize: '12px', color: theme.text.muted, padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: theme.radius.sm, border: `1px solid ${theme.border.subtle}` }}>
+                                                {active.module_project_details}
+                                            </p>
+                                        )}
+                                        {active.projects.map(proj => (
+                                            <div key={proj.id} style={{ padding: '10px 14px', borderLeft: `2px solid ${theme.accent.blue}`, background: 'rgba(255,255,255,0.02)', borderRadius: `0 ${theme.radius.sm} ${theme.radius.sm} 0` }}>
+                                                <p style={{ fontSize: '13px', fontWeight: 700, color: theme.text.primary, marginBottom: '4px' }}>{proj.name}</p>
+                                                {proj.description && <p style={{ fontSize: '12px', color: theme.text.muted, marginBottom: '6px' }}>{proj.description}</p>}
+                                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                    {(proj.files || []).map(f => (
+                                                        <a key={f.id} href={`/uploads/content/${f.stored_name}`} target="_blank" rel="noopener noreferrer"
+                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: theme.accent.blue, textDecoration: 'none' }}>
+                                                            <Download size={12} /> {f.original_name}
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </Card>
+                    )}
+
+                    {days.length === 0 ? (
                         <EmptyState
                             icon={<FileText size={32} />}
                             title="No sessions yet"
@@ -261,6 +355,8 @@ export const StudentMaterials = () => {
                                 );
                             })}
                         </div>
+                    )}
+                    </div>
                     )}
                 </div>
             </div>

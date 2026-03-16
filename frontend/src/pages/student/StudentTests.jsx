@@ -7,7 +7,7 @@ import {
 } from './StudentComponents';
 import {
     FileText, CheckCircle, Clock, Lock, AlertTriangle,
-    Award, TrendingUp, Target, BarChart3,
+    Award, TrendingUp, Target, BarChart3, ExternalLink,
 } from 'lucide-react';
 
 export const StudentTests = () => {
@@ -147,6 +147,22 @@ export const StudentTests = () => {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Take Test Button */}
+                                    {test.status === 'active' && test.test_url && (
+                                        <a href={test.test_url} target="_blank" rel="noopener noreferrer"
+                                            style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                                marginTop: '14px', padding: '10px 16px', borderRadius: theme.radius.md,
+                                                background: theme.accent.blue, color: '#fff', textDecoration: 'none',
+                                                fontSize: '13px', fontWeight: 700, transition: 'opacity 0.2s',
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                                        >
+                                            <ExternalLink size={14} /> Take Test
+                                        </a>
+                                    )}
 
                                     {/* Date / Footer */}
                                     {test.date && (
