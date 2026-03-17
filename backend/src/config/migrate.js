@@ -262,7 +262,68 @@ async function runMigrations() {
                 FOREIGN KEY (course_id) REFERENCES Courses(id) ON DELETE CASCADE
             )
         `);
+     // ── CapstoneProjecs ─────────────────────────────────────────────────────
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS CapstoneProjecs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                course_id INT NOT NULL,
+                name VARCHAR(200) NOT NULL,
+                description TEXT,
+                sequence_order INT DEFAULT 1,
+                created_by INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (course_id) REFERENCES Courses(id) ON DELETE CASCADE,
+                FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE SET NULL
+            )
+        `);
 
+        // ── BatchReleases ───────────────────────────────────────────────────────
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS BatchReleases (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                batch_id INT NOT NULL,
+                release_type ENUM(
+                    'module_project',
+                    'module_test',
+                    'module_feedback',
+                    'module_study_material',
+                    'module_interview_questions',
+                    'capstone_project'
+                ) NOT NULL,
+                entity_id INT NOT NULL,
+                module_id INT NULL,
+                due_date DATE NULL,
+                released_by INT NOT NULL,
+                released_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_batch_release_item (batch_id, release_type, entity_id),
+                FOREIGN KEY (batch_id) REFERENCES Batches(id) ON DELETE CASCADE,
+                FOREIGN KEY (released_by) REFERENCES Users(id) ON DELETE CASCADE
+            )
+        `);
+
+        // ── StudentReleaseSubmissions ───────────────────────────────────────────
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS StudentReleaseSubmissions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                release_id INT NOT NULL,
+                student_id INT NOT NULL,
+                batch_id INT NOT NULL,
+                file_url VARCHAR(500),
+                github_link VARCHAR(500),
+                notes TEXT,
+                marks DECIMAL(5,2),
+                feedback TEXT,
+                graded_by INT,
+                status ENUM('submitted','graded','returned') DEFAULT 'submitted',
+                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                graded_at TIMESTAMP NULL,
+                UNIQUE KEY uq_release_student (release_id, student_id),
+                FOREIGN KEY (release_id) REFERENCES BatchReleases(id) ON DELETE CASCADE,
+                FOREIGN KEY (student_id) REFERENCES Users(id) ON DELETE CASCADE,
+                FOREIGN KEY (batch_id) REFERENCES Batches(id) ON DELETE CASCADE,
+                FOREIGN KEY (graded_by) REFERENCES Users(id) ON DELETE SET NULL
+            )
+        `);
         console.log('[Migration] All migrations applied successfully.');
     } catch (err) {
         console.error('[Migration] Error:', err.message);

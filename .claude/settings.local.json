@@ -24,7 +24,9 @@
       "Bash(for f:*)",
       "Read(//c/Users/ASUS/Downloads/Anti-portal/backend/**)",
       "Bash(find \"C:\\\\Users\\\\ASUS\\\\Downloads\\\\Anti-portal\\\\backend\\\\database\" -type f -name \"*.sql\" 2>/dev/null | head -20)",
-      "Bash(cd \"C:\\\\Users\\\\ASUS\\\\Downloads\\\\Anti-portal\\\\backend\" && timeout 90 bash -c 'until node test_render.js 2>&1 | grep -q \"Login OK\"; do echo \"Waiting for Render redeploy...\"; sleep 10; done' && node test_render.js 2>&1)"
+      "Bash(cd \"C:\\\\Users\\\\ASUS\\\\Downloads\\\\Anti-portal\\\\backend\" && timeout 90 bash -c 'until node test_render.js 2>&1 | grep -q \"Login OK\"; do echo \"Waiting for Render redeploy...\"; sleep 10; done' && node test_render.js 2>&1)",
+      "Read(//c/Users/ASUS/**)",
+      "Read(//c/Users/ASUS/OneDrive/Desktop/**)"
     ]
   }
 }

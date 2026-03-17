@@ -3,6 +3,7 @@ const router = express.Router();
 const courseController = require('../controllers/superadmin.course.controller');
 const crudController = require('../controllers/superadmin.crud.controller');
 const { verifyToken, requireRole } = require('../middlewares/auth.middleware');
+const releaseCtrl = require('../controllers/release.controller');
 const uploadHandling = require('../middlewares/upload.middleware');
 
 // ==========================================
@@ -165,4 +166,14 @@ router.get('/reports/feedback', requireRole([1, 2]), crudController.getFeedbackR
 router.get('/trainer-leaves', requireRole([1, 2]), crudController.getAllTrainerLeaves);
 router.patch('/trainer-leaves/:id', requireRole([1]), crudController.updateTrainerLeaveStatus);
 
+// ── Capstone Management ──────────────────────────────────────────────────────
+router.get('/courses/:courseId/capstones', releaseCtrl.getCourseCapstones);
+router.post('/courses/:courseId/capstones', releaseCtrl.createCapstone);
+router.put('/capstones/:id', releaseCtrl.updateCapstone);
+router.delete('/capstones/:id', releaseCtrl.deleteCapstone);
+router.post('/capstones/:id/files',
+    releaseCtrl.uploadCapstoneFiles,
+    releaseCtrl.uploadCapstoneFilesHandler
+);
+router.delete('/capstone-files/:fileId', releaseCtrl.deleteCapstoneFile);
 module.exports = router;

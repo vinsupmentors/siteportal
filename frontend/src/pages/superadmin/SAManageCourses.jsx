@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { superAdminAPI } from '../../services/api';
+import { SACapstoneManager } from './SACapstoneManager';
 import { Plus, Pencil, Trash2, ChevronRight, ArrowLeft, BookOpen, FileText, ClipboardCheck, HelpCircle, ExternalLink, Save, UploadCloud, Folder, File, Film, Music, Image as ImageIcon, Download } from 'lucide-react';
 
 const COLORS = ['#4c6ef5', '#15aabf', '#7950f2', '#51cf66', '#ffd43b', '#ff6b6b', '#e64980', '#fab005'];
@@ -491,6 +492,10 @@ export const SAManageCourses = () => {
                             </div>
                         );
                     })}
+                </div>
+
+                <div className="glass-card" style={{ marginTop: '1.5rem' }}>
+                    <SACapstoneManager courseId={selectedCourse.id} courseName={selectedCourse.name} />
                 </div>
             </div>
         );

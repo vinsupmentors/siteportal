@@ -33,7 +33,14 @@ api.interceptors.response.use(
 export const superAdminAPI = {
     // Dashboard
     getDashboardStats: () => api.get('/super-admin/dashboard-stats'),
-
+getCourseCapstones: (courseId) => api.get(`/super-admin/courses/${courseId}/capstones`),
+createCapstone: (courseId, data) => api.post(`/super-admin/courses/${courseId}/capstones`, data),
+updateCapstone: (id, data) => api.put(`/super-admin/capstones/${id}`, data),
+deleteCapstone: (id) => api.delete(`/super-admin/capstones/${id}`),
+uploadCapstoneFiles: (id, formData) => api.post(`/super-admin/capstones/${id}/files`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+}),
+deleteCapstoneFile: (fileId) => api.delete(`/super-admin/capstone-files/${fileId}`),
     // Courses
     getCourses: () => api.get('/super-admin/courses'),
     createCourse: (data) => api.post('/super-admin/courses', data),
@@ -181,7 +188,12 @@ export const trainerAPI = {
     getBatchStudents: (id) => api.get(`/trainer/batches/${id}/students`),
     markAttendance: (data) => api.post('/trainer/attendance', data),
     getBatchAttendance: (batchId, date) => api.get(`/trainer/attendance/${batchId}?date=${date}`),
-
+getReleaseStatus: (batchId) => api.get(`/trainer/batches/${batchId}/release-status`),
+releaseDay: (batchId, data) => api.post(`/trainer/batches/${batchId}/release/day`, data),
+releaseItem: (batchId, data) => api.post(`/trainer/batches/${batchId}/release/item`, data),
+unreleaseItem: (batchId, releaseId) => api.delete(`/trainer/batches/${batchId}/release/${releaseId}`),
+getBatchReleaseSubmissions: (batchId) => api.get(`/trainer/batches/${batchId}/release-submissions`),
+gradeReleaseSubmission: (submissionId, data) => api.put(`/trainer/release-submissions/${submissionId}/grade`, data),
     // Student Doubts
     getStudentDoubts: (params) => api.get('/trainer/doubts', { params }),
     resolveDoubt: (doubtId, data) => api.patch(`/trainer/doubts/${doubtId}/resolve`, data),
@@ -222,7 +234,10 @@ export const studentAPI = {
     // Leaves
     getLeaves: () => api.get('/student/leaves'),
     applyForLeave: (data) => api.post('/student/leaves', data),
-
+getReleases: () => api.get('/student/releases'),
+submitReleaseWork: (releaseId, formData) => api.post(`/student/releases/${releaseId}/submit`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+}),
     // Doubts & Issues
     getDoubts: () => api.get('/student/doubts'),
     raiseDoubt: (data) => api.post('/student/doubts', data),

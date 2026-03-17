@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const studentController = require('../controllers/student.controller');
 const uploadController = require('../controllers/student.upload.controller');
+const releaseCtrl = require('../controllers/release.controller');
 const { verifyToken, requireRole } = require('../middlewares/auth.middleware');
 const uploadHandling = require('../middlewares/upload.middleware');
 
@@ -31,5 +32,11 @@ router.post('/submit', uploadHandling.single('file'), uploadController.uploadSub
 // Dynamic Feedback System (Student)
 router.get('/released-feedback', studentController.getReleasedFeedback);
 router.post('/submit-feedback', studentController.submitFeedback);
+// ── Student Released Content & Submissions ───────────────────────────────────
+router.get('/releases', releaseCtrl.getStudentReleases);
+router.post('/releases/:releaseId/submit',
+    releaseCtrl.uploadSubmission,
+    releaseCtrl.submitReleaseWork
+);
 
 module.exports = router;

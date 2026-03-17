@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const releaseCtrl = require('../controllers/release.controller');
 const trainerController = require('../controllers/trainer.controller');
 const { verifyToken, requireRole } = require('../middlewares/auth.middleware');
 
@@ -57,5 +58,12 @@ router.delete('/remarks/:remarkId', trainerController.deleteStudentRemark);
 // Trainer Leaves
 router.post('/leaves', trainerController.requestLeave);
 router.get('/leaves', trainerController.getMyLeaves);
+// ── Release Manager ──────────────────────────────────────────────────────────
+router.get('/batches/:batchId/release-status', releaseCtrl.getReleaseStatus);
+router.post('/batches/:batchId/release/day', releaseCtrl.releaseDay);
+router.post('/batches/:batchId/release/item', releaseCtrl.releaseItem);
+router.delete('/batches/:batchId/release/:releaseId', releaseCtrl.unreleaseItem);
+router.get('/batches/:batchId/release-submissions', releaseCtrl.getBatchReleaseSubmissions);
+router.put('/release-submissions/:submissionId/grade', releaseCtrl.gradeReleaseSubmission);
 
 module.exports = router;
