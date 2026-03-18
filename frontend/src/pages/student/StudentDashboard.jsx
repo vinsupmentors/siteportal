@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { studentAPI } from '../../services/api';
 import theme from './theme';
 
 // Reusable Card wrapper
@@ -62,11 +63,7 @@ const StudentDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/student/dashboard', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
+      const { data } = await studentAPI.getDashboardStats();
       if (data.success) setStudentData(data);
     } catch (err) {
       console.error('Dashboard fetch error:', err);
