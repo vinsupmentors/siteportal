@@ -9,10 +9,10 @@ import {
     ChevronRight, ChevronDown, CheckCircle, Lock, Unlock,
     BookOpen, BookOpenCheck, FileSignature, Briefcase, MessageSquare,
     HelpCircle, Download, ExternalLink, FileText, Info, GraduationCap,
-    Send, X, Calendar, AlertCircle, Edit2
+    Send, X, Calendar, AlertCircle, Edit2, Star
 } from 'lucide-react';
 
-// ─── Helper ────────────────────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 const fmtDate = (d) =>
     d ? new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {
         day: 'numeric', month: 'short', year: 'numeric',
@@ -20,39 +20,53 @@ const fmtDate = (d) =>
 
 const isOverdue = (d) => d && new Date(d) < new Date();
 
-// ─── Assign Modal ──────────────────────────────────────────────────────────────
-const AssignModal = ({ project, batchId, existingRelease, onClose, onDone }) => {
+// ─── Resource type config ──────────────────────────────────────────────────────
+const RESOURCE_CONFIG = {
+    module_project:             { label: 'Project',             needsDueDate: true,  color: theme.accent.blue,   icon: Briefcase     },
+    module_test:                { label: 'Test',                needsDueDate: true,  color: theme.accent.yellow, icon: FileSignature },
+    module_feedback:            { label: 'Feedback Form',       needsDueDate: true,  color: theme.accent.green,  icon: Star          },
+    module_study_material:      { label: 'Study Materials',     needsDueDate: false, color: theme.accent.purple, icon: BookOpen      },
+    module_interview_questions: { label: 'Interview Questions', needsDueDate: false, color: '#06b6d4',           icon: HelpCircle    },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UNIFIED ASSIGN MODAL
+// ══════════════════════════════════════════════════════════════════════════════
+const AssignModal = ({ item, batchId, existingRelease, onClose, onDone }) => {
+    const config = RESOURCE_CONFIG[item.release_type] || {};
+    const needsDueDate = config.needsDueDate;
     const [dueDate, setDueDate] = useState(existingRelease?.due_date?.split('T')[0] || '');
     const [saving, setSaving] = useState(false);
+    const Icon = config.icon || Briefcase;
 
     const handleConfirm = async () => {
-        if (!dueDate) return alert('Please select a due date');
+        if (needsDueDate && !dueDate) return alert('Please select a due date');
         setSaving(true);
         try {
             await trainerAPI.releaseItem(batchId, {
-                release_type: 'module_project',
-                entity_id: project.id,
-                module_id: project.module_id,
-                due_date: dueDate,
+                release_type: item.release_type,
+                entity_id: item.entity_id,
+                module_id: item.module_id,
+                due_date: needsDueDate ? dueDate : null,
             });
             onDone();
             onClose();
         } catch (err) {
-            alert(err.response?.data?.message || 'Error assigning project');
+            alert(err.response?.data?.message || 'Error assigning');
         } finally {
             setSaving(false);
         }
     };
 
     const handleUnassign = async () => {
-        if (!window.confirm('Remove this project assignment? Students will lose access.')) return;
+        if (!window.confirm('Remove this assignment? Students will lose access.')) return;
         setSaving(true);
         try {
             await trainerAPI.unreleaseItem(batchId, existingRelease.id);
             onDone();
             onClose();
         } catch (err) {
-            alert(err.response?.data?.message || 'Error removing assignment');
+            alert(err.response?.data?.message || 'Error removing');
         } finally {
             setSaving(false);
         }
@@ -66,7 +80,7 @@ const AssignModal = ({ project, batchId, existingRelease, onClose, onDone }) => 
         }} onClick={onClose}>
             <div style={{
                 background: theme.bg.card, borderRadius: theme.radius.lg,
-                border: `1px solid ${theme.accent.blue}30`,
+                border: `1px solid ${config.color || theme.accent.blue}30`,
                 padding: '28px', width: '100%', maxWidth: '420px',
                 boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
                 animation: 'modalIn 0.2s ease-out',
@@ -77,18 +91,18 @@ const AssignModal = ({ project, batchId, existingRelease, onClose, onDone }) => 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{
                             width: '40px', height: '40px', borderRadius: theme.radius.md,
-                            background: `${theme.accent.blue}20`, display: 'flex',
-                            alignItems: 'center', justifyContent: 'center', color: theme.accent.blue,
-                            flexShrink: 0,
+                            background: `${config.color || theme.accent.blue}20`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: config.color || theme.accent.blue, flexShrink: 0,
                         }}>
-                            <Briefcase size={18} />
+                            <Icon size={18} />
                         </div>
                         <div>
                             <div style={{ fontSize: '15px', fontWeight: 800, color: theme.text.primary }}>
-                                {existingRelease ? 'Update Assignment' : 'Assign Project'}
+                                {existingRelease ? `Update ${config.label}` : `Assign ${config.label}`}
                             </div>
                             <div style={{ fontSize: '11px', color: theme.text.muted, marginTop: '2px' }}>
-                                {project.name}
+                                {item.name}
                             </div>
                         </div>
                     </div>
@@ -109,30 +123,43 @@ const AssignModal = ({ project, batchId, existingRelease, onClose, onDone }) => 
                         fontSize: '11px', color: theme.accent.green,
                     }}>
                         <CheckCircle size={14} />
-                        Currently assigned — due {fmtDate(existingRelease.due_date)}. You can update the due date or remove it.
+                        Currently assigned
+                        {existingRelease.due_date && ` — due ${fmtDate(existingRelease.due_date)}`}.
                     </div>
                 )}
 
-                {/* Due date */}
-                <FormField label="Due Date (appears on student calendar)">
-                    <input
-                        type="date"
-                        value={dueDate}
-                        onChange={e => setDueDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                        style={{ ...inputStyle, colorScheme: 'dark' }}
-                    />
-                </FormField>
+                {/* Due date or immediate release notice */}
+                {needsDueDate ? (
+                    <FormField label="Due Date (appears on student calendar)">
+                        <input
+                            type="date"
+                            value={dueDate}
+                            onChange={e => setDueDate(e.target.value)}
+                            min={new Date().toISOString().split('T')[0]}
+                            style={{ ...inputStyle, colorScheme: 'dark' }}
+                        />
+                    </FormField>
+                ) : (
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        background: `${config.color}10`, border: `1px solid ${config.color}20`,
+                        borderRadius: theme.radius.md, padding: '10px 14px', marginBottom: '16px',
+                        fontSize: '11px', color: config.color,
+                    }}>
+                        <CheckCircle size={14} />
+                        This will be released immediately with no due date.
+                    </div>
+                )}
 
-                {/* Info */}
+                {/* Info box */}
                 <div style={{
                     background: `${theme.accent.blue}08`, border: `1px solid ${theme.accent.blue}15`,
                     borderRadius: theme.radius.md, padding: '10px 14px', marginBottom: '20px',
                     fontSize: '11px', color: theme.text.muted, lineHeight: 1.6,
                 }}>
                     <strong style={{ color: theme.text.secondary }}>After assigning:</strong> Students
-                    will see this project in their portal and the due date will appear on their calendar.
-                    Students can upload their submission file or share a GitHub link.
+                    in this batch will see this in their portal.
+                    {needsDueDate && ' The due date will appear on their calendar.'}
                 </div>
 
                 {/* Actions */}
@@ -151,7 +178,7 @@ const AssignModal = ({ project, batchId, existingRelease, onClose, onDone }) => 
                     <ActionButton variant="secondary" onClick={onClose}>Cancel</ActionButton>
                     <ActionButton
                         onClick={handleConfirm}
-                        disabled={saving || !dueDate}
+                        disabled={saving || (needsDueDate && !dueDate)}
                         icon={<Send size={13} />}
                     >
                         {saving ? 'Saving...' : (existingRelease ? 'Update' : 'Assign to Students')}
@@ -159,6 +186,46 @@ const AssignModal = ({ project, batchId, existingRelease, onClose, onDone }) => 
                 </div>
             </div>
             <style>{`@keyframes modalIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}`}</style>
+        </div>
+    );
+};
+
+// ─── Reusable assign button ────────────────────────────────────────────────────
+const AssignBtn = ({ releaseType, entityId, moduleId, name, releaseMap, onOpen }) => {
+    const key = `${releaseType}_${entityId}`;
+    const existing = releaseMap[key] || null;
+    const config = RESOURCE_CONFIG[releaseType] || {};
+    const isAssigned = !!existing;
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            {isAssigned && (
+                <span style={{
+                    fontSize: '10px', fontWeight: 700,
+                    padding: '2px 8px', borderRadius: theme.radius.full,
+                    background: `${theme.accent.green}15`, color: theme.accent.green,
+                    border: `1px solid ${theme.accent.green}30`,
+                    display: 'inline-flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap',
+                }}>
+                    <CheckCircle size={9} />
+                    {existing.due_date ? `Due ${fmtDate(existing.due_date)}` : 'Released'}
+                    {existing.due_date && isOverdue(existing.due_date) && ' ⚠'}
+                </span>
+            )}
+            <button
+                onClick={() => onOpen({ release_type: releaseType, entity_id: entityId, module_id: moduleId, name }, existing)}
+                style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                    padding: '6px 12px', borderRadius: theme.radius.md,
+                    cursor: 'pointer', fontSize: '11px', fontWeight: 700,
+                    border: `1px solid ${isAssigned ? `${theme.accent.green}40` : `${config.color || theme.accent.blue}40`}`,
+                    background: isAssigned ? `${theme.accent.green}15` : `${config.color || theme.accent.blue}15`,
+                    color: isAssigned ? theme.accent.green : config.color || theme.accent.blue,
+                    transition: 'all 0.15s', whiteSpace: 'nowrap',
+                }}
+            >
+                {isAssigned ? <><Edit2 size={10} /> Update</> : <><Send size={10} /> Assign</>}
+            </button>
         </div>
     );
 };
@@ -177,14 +244,9 @@ export const TrainerContentManager = () => {
     const [currLoading, setCurrLoading] = useState(false);
     const [expandedModule, setExpandedModule] = useState(null);
     const [actionLoading, setActionLoading] = useState(null);
-
-    // Release map: key = `module_project_${projectId}` → release object
     const [releaseMap, setReleaseMap] = useState({});
+    const [assignModal, setAssignModal] = useState(null);
 
-    // Assign modal state
-    const [assignModal, setAssignModal] = useState(null); // { project, existingRelease }
-
-    // ── Fetch batches ──────────────────────────────────────────────────────────
     useEffect(() => {
         (async () => {
             try {
@@ -202,7 +264,6 @@ export const TrainerContentManager = () => {
         })();
     }, []);
 
-    // ── Load curriculum ────────────────────────────────────────────────────────
     const loadCurriculum = async (batchId) => {
         if (!batchId) { setCurriculum(null); return; }
         setCurrLoading(true);
@@ -213,23 +274,22 @@ export const TrainerContentManager = () => {
         finally { setCurrLoading(false); }
     };
 
-    // ── Load release status (which projects are already assigned) ──────────────
     const loadReleases = async (batchId) => {
         if (!batchId) return;
         try {
             const res = await trainerAPI.getReleaseStatus(batchId);
             const map = {};
-            // Build map from all module project releases
             res.data.modules?.forEach(mod => {
                 mod.projects?.forEach(p => {
-                    if (p.release) {
-                        map[`module_project_${p.id}`] = p.release;
-                    }
+                    if (p.release) map[`module_project_${p.id}`] = p.release;
                 });
+                if (mod.test?.release)                  map[`module_test_${mod.id}`]                = mod.test.release;
+                if (mod.study_material?.release)         map[`module_study_material_${mod.id}`]      = mod.study_material.release;
+                if (mod.interview_questions?.release)    map[`module_interview_questions_${mod.id}`] = mod.interview_questions.release;
+                if (mod.feedback?.release)               map[`module_feedback_${mod.feedback.id}`]   = mod.feedback.release;
             });
             setReleaseMap(map);
         } catch (err) {
-            // Non-critical — silently fail, assign buttons still work
             console.error('Could not load release status', err);
         }
     };
@@ -263,9 +323,8 @@ export const TrainerContentManager = () => {
         finally { setActionLoading(null); }
     };
 
-    // Called after assign modal saves — refresh releases
-    const handleAssignDone = () => {
-        loadReleases(selectedBatchId);
+    const openAssignModal = (item, existingRelease) => {
+        setAssignModal({ item, existingRelease });
     };
 
     if (loading) return <LoadingSpinner label="Loading batches..." />;
@@ -314,11 +373,7 @@ export const TrainerContentManager = () => {
                     </SectionTitle>
 
                     {curriculum.modules?.length === 0 ? (
-                        <EmptyState
-                            icon={<BookOpen size={24} />}
-                            title="No modules found"
-                            subtitle="This course has no modules configured yet."
-                        />
+                        <EmptyState icon={<BookOpen size={24} />} title="No modules found" subtitle="This course has no modules configured yet." />
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {curriculum.modules.map(mod => {
@@ -328,10 +383,22 @@ export const TrainerContentManager = () => {
                                     ? (mod.unlocked_up_to_day === -1 ? mod.total_days : mod.unlocked_up_to_day)
                                     : 0;
 
+                                // Feedback from curriculum data
+                                const feedbackForm = mod.feedback_form || mod.feedback || null;
+
+                                // Collect test files
+                                const testFiles = mod.files?.filter(f => f.category === 'test') || [];
+                                const studyFiles = mod.files?.filter(f => f.category === 'study_material' || !f.category) || [];
+                                const iqFiles = mod.files?.filter(f => f.category === 'interview_questions') || [];
+
+                                const hasTest = mod.test_url || testFiles.length > 0;
+                                const hasStudy = mod.study_material_url || studyFiles.length > 0;
+                                const hasIQ = mod.interview_questions_url || iqFiles.length > 0;
+
                                 return (
                                     <Card key={mod.id} noPadding style={{ overflow: 'hidden' }}>
 
-                                        {/* ── Module Header ── */}
+                                        {/* Module Header */}
                                         <div style={{
                                             padding: '18px 24px',
                                             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -365,7 +432,6 @@ export const TrainerContentManager = () => {
                                                     </h4>
                                                 </div>
                                             </div>
-
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                                                 {mod.total_days > 0 && (
                                                     <span style={{ fontSize: '11px', color: theme.text.muted, fontWeight: 600 }}>
@@ -373,9 +439,7 @@ export const TrainerContentManager = () => {
                                                     </span>
                                                 )}
                                                 {mod.is_unlocked ? (
-                                                    <button
-                                                        onClick={e => { e.stopPropagation(); handleLockModule(mod.id); }}
-                                                        disabled={isLoading}
+                                                    <button onClick={e => { e.stopPropagation(); handleLockModule(mod.id); }} disabled={isLoading}
                                                         style={{
                                                             padding: '7px 14px', borderRadius: theme.radius.md,
                                                             border: `1px solid ${theme.accent.red}30`,
@@ -383,14 +447,11 @@ export const TrainerContentManager = () => {
                                                             cursor: 'pointer', fontSize: '10px', fontWeight: 700,
                                                             display: 'flex', alignItems: 'center', gap: '6px',
                                                             opacity: isLoading ? 0.5 : 1,
-                                                        }}
-                                                    >
+                                                        }}>
                                                         <Lock size={12} /> {isLoading ? '...' : 'Lock'}
                                                     </button>
                                                 ) : (
-                                                    <button
-                                                        onClick={e => { e.stopPropagation(); handleUnlockModule(mod.id, -1); }}
-                                                        disabled={isLoading}
+                                                    <button onClick={e => { e.stopPropagation(); handleUnlockModule(mod.id, -1); }} disabled={isLoading}
                                                         style={{
                                                             padding: '7px 14px', borderRadius: theme.radius.md,
                                                             border: 'none', background: theme.accent.green,
@@ -398,22 +459,19 @@ export const TrainerContentManager = () => {
                                                             fontSize: '10px', fontWeight: 700,
                                                             display: 'flex', alignItems: 'center', gap: '6px',
                                                             opacity: isLoading ? 0.5 : 1,
-                                                        }}
-                                                    >
+                                                        }}>
                                                         <Unlock size={12} /> {isLoading ? '...' : 'Unlock All'}
                                                     </button>
                                                 )}
-                                                {isExpanded
-                                                    ? <ChevronDown size={16} color={theme.text.muted} />
-                                                    : <ChevronRight size={16} color={theme.text.muted} />}
+                                                {isExpanded ? <ChevronDown size={16} color={theme.text.muted} /> : <ChevronRight size={16} color={theme.text.muted} />}
                                             </div>
                                         </div>
 
-                                        {/* ── Expanded Content ── */}
+                                        {/* Expanded */}
                                         {isExpanded && mod.days && (
                                             <div style={{ borderTop: `1px solid ${theme.border.subtle}`, padding: '16px 24px' }}>
 
-                                                {/* Day-level buttons */}
+                                                {/* Day controls */}
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                                                     <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label }}>
                                                         Day-Level Access Control
@@ -421,9 +479,7 @@ export const TrainerContentManager = () => {
                                                     {mod.is_unlocked && mod.total_days > 0 && (
                                                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                                             {Array.from({ length: mod.total_days }, (_, i) => i + 1).map(n => (
-                                                                <button key={n}
-                                                                    onClick={() => handleUnlockModule(mod.id, n)}
-                                                                    disabled={isLoading}
+                                                                <button key={n} onClick={() => handleUnlockModule(mod.id, n)} disabled={isLoading}
                                                                     style={{
                                                                         padding: '5px 10px', borderRadius: theme.radius.sm,
                                                                         border: `1px solid ${mod.unlocked_up_to_day === n ? theme.accent.blue : theme.border.subtle}`,
@@ -438,7 +494,7 @@ export const TrainerContentManager = () => {
                                                     )}
                                                 </div>
 
-                                                {/* Component Release toggles */}
+                                                {/* Component toggles */}
                                                 {mod.is_unlocked && (
                                                     <div style={{ marginBottom: '20px', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: theme.radius.md, border: `1px solid ${theme.border.subtle}` }}>
                                                         <p style={{ fontSize: '10px', fontWeight: 700, color: theme.text.label, textTransform: 'uppercase', marginBottom: '10px' }}>
@@ -446,11 +502,11 @@ export const TrainerContentManager = () => {
                                                         </p>
                                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                                             {[
-                                                                { id: 'is_projects_released', label: 'Projects', icon: <Briefcase size={12} /> },
-                                                                { id: 'is_test_released', label: 'Tests', icon: <FileSignature size={12} /> },
-                                                                { id: 'is_feedback_released', label: 'Feedback', icon: <MessageSquare size={12} /> },
-                                                                { id: 'is_study_materials_released', label: 'Materials', icon: <BookOpenCheck size={12} /> },
-                                                                { id: 'is_interview_questions_released', label: 'Interview Qs', icon: <HelpCircle size={12} /> },
+                                                                { id: 'is_projects_released',            label: 'Projects',     icon: <Briefcase size={12} />     },
+                                                                { id: 'is_test_released',                label: 'Tests',        icon: <FileSignature size={12} /> },
+                                                                { id: 'is_feedback_released',            label: 'Feedback',     icon: <MessageSquare size={12} /> },
+                                                                { id: 'is_study_materials_released',     label: 'Materials',    icon: <BookOpenCheck size={12} /> },
+                                                                { id: 'is_interview_questions_released', label: 'Interview Qs', icon: <HelpCircle size={12} />    },
                                                             ].map(comp => (
                                                                 <button key={comp.id}
                                                                     onClick={() => handleUnlockModule(mod.id, { [comp.id]: !mod[comp.id] })}
@@ -462,8 +518,7 @@ export const TrainerContentManager = () => {
                                                                         background: mod[comp.id] ? `${theme.accent.blue}15` : 'transparent',
                                                                         color: mod[comp.id] ? theme.accent.blue : theme.text.muted,
                                                                         cursor: 'pointer', fontSize: '10px', fontWeight: 700, transition: 'all 0.2s',
-                                                                    }}
-                                                                >
+                                                                    }}>
                                                                     {comp.icon} {comp.label}
                                                                     {mod[comp.id] && <CheckCircle size={10} style={{ marginLeft: '4px' }} />}
                                                                 </button>
@@ -472,68 +527,128 @@ export const TrainerContentManager = () => {
                                                     </div>
                                                 )}
 
-                                                {/* Module Resources */}
-                                                {mod.is_unlocked && (
-                                                    <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                {/* ── Resources section with Assign buttons ── */}
+                                                {mod.is_unlocked && (hasStudy || hasTest || hasIQ || feedbackForm || mod.projects?.length > 0) && (
+                                                    <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
-                                                        {/* Resource links */}
-                                                        {(mod.study_material_url || mod.test_url || mod.interview_questions_url || mod.files?.length > 0) && (
-                                                            <div style={{ padding: '12px', background: 'rgba(255,255,255,0.01)', borderRadius: theme.radius.md, border: `1px solid ${theme.border.subtle}` }}>
-                                                                <p style={{ fontSize: '10px', fontWeight: 700, color: theme.text.label, textTransform: 'uppercase', marginBottom: '8px' }}>
-                                                                    Module Resources
-                                                                </p>
-                                                                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                                        <p style={{ fontSize: '10px', fontWeight: 700, color: theme.text.label, textTransform: 'uppercase', marginBottom: '4px' }}>
+                                                            Module Resources — Assign to Students
+                                                        </p>
+
+                                                        {/* Study Materials */}
+                                                        {hasStudy && (
+                                                            <div style={{
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+                                                                padding: '10px 14px', borderRadius: theme.radius.sm,
+                                                                background: releaseMap[`module_study_material_${mod.id}`] ? `${theme.accent.purple}08` : 'rgba(255,255,255,0.02)',
+                                                                border: `1px solid ${releaseMap[`module_study_material_${mod.id}`] ? `${theme.accent.purple}25` : theme.border.subtle}`,
+                                                            }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
+                                                                    <BookOpen size={14} color={theme.accent.purple} style={{ flexShrink: 0 }} />
+                                                                    <span style={{ fontSize: '13px', fontWeight: 600, color: theme.text.primary }}>Study Materials</span>
                                                                     {mod.study_material_url && (
                                                                         <a href={mod.study_material_url} target="_blank" rel="noopener noreferrer"
-                                                                            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: theme.accent.blue, textDecoration: 'none' }}>
-                                                                            <BookOpen size={14} /> Material <ExternalLink size={10} />
+                                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: theme.accent.purple, textDecoration: 'none' }}>
+                                                                            <ExternalLink size={10} /> Link
                                                                         </a>
                                                                     )}
-                                                                    {mod.test_url && (
-                                                                        <a href={mod.test_url} target="_blank" rel="noopener noreferrer"
-                                                                            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: theme.accent.blue, textDecoration: 'none' }}>
-                                                                            <FileSignature size={14} /> Test Link <ExternalLink size={10} />
-                                                                        </a>
-                                                                    )}
-                                                                    {mod.interview_questions_url && (
-                                                                        <a href={mod.interview_questions_url} target="_blank" rel="noopener noreferrer"
-                                                                            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: theme.accent.blue, textDecoration: 'none' }}>
-                                                                            <HelpCircle size={14} /> Interview Qs <ExternalLink size={10} />
-                                                                        </a>
-                                                                    )}
-                                                                    {mod.files?.map(file => (
-                                                                        <a key={file.id}
-                                                                            href={`/uploads/content/${file.stored_name}`}
-                                                                            target="_blank" rel="noopener noreferrer"
-                                                                            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: theme.text.secondary, textDecoration: 'none' }}>
-                                                                            <FileText size={14} /> {file.original_name} <Download size={10} />
+                                                                    {studyFiles.map(f => (
+                                                                        <a key={f.id} href={`/uploads/content/${f.stored_name}`} target="_blank" rel="noopener noreferrer"
+                                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: theme.text.secondary, textDecoration: 'none' }}>
+                                                                            <Download size={10} /> {f.original_name}
                                                                         </a>
                                                                     ))}
                                                                 </div>
+                                                                <AssignBtn releaseType="module_study_material" entityId={mod.id} moduleId={mod.id}
+                                                                    name={`${mod.name} — Study Materials`} releaseMap={releaseMap} onOpen={openAssignModal} />
                                                             </div>
                                                         )}
 
-                                                        {/* ── Projects with Assign buttons ── */}
-                                                        {(mod.module_project_details || mod.projects?.length > 0) && (
-                                                            <div style={{ padding: '12px', background: 'rgba(255,255,255,0.01)', borderRadius: theme.radius.md, border: `1px solid ${theme.border.subtle}` }}>
-                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                                                    <p style={{ fontSize: '10px', fontWeight: 700, color: theme.text.label, textTransform: 'uppercase', margin: 0 }}>
-                                                                        Project Details
-                                                                    </p>
-                                                                    <span style={{ fontSize: '10px', color: theme.text.muted }}>
-                                                                        {mod.projects?.length || 0} project{mod.projects?.length !== 1 ? 's' : ''}
+                                                        {/* Module Test */}
+                                                        {hasTest && (
+                                                            <div style={{
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+                                                                padding: '10px 14px', borderRadius: theme.radius.sm,
+                                                                background: releaseMap[`module_test_${mod.id}`] ? `${theme.accent.yellow}08` : 'rgba(255,255,255,0.02)',
+                                                                border: `1px solid ${releaseMap[`module_test_${mod.id}`] ? `${theme.accent.yellow}25` : theme.border.subtle}`,
+                                                            }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
+                                                                    <FileSignature size={14} color={theme.accent.yellow} style={{ flexShrink: 0 }} />
+                                                                    <span style={{ fontSize: '13px', fontWeight: 600, color: theme.text.primary }}>Module Test</span>
+                                                                    {mod.test_url && (
+                                                                        <a href={mod.test_url} target="_blank" rel="noopener noreferrer"
+                                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: theme.accent.yellow, textDecoration: 'none' }}>
+                                                                            <ExternalLink size={10} /> View
+                                                                        </a>
+                                                                    )}
+                                                                    {testFiles.map(f => (
+                                                                        <a key={f.id} href={`/uploads/content/${f.stored_name}`} target="_blank" rel="noopener noreferrer"
+                                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: theme.accent.yellow, textDecoration: 'none' }}>
+                                                                            <Download size={10} /> {f.original_name}
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                                <AssignBtn releaseType="module_test" entityId={mod.id} moduleId={mod.id}
+                                                                    name={`${mod.name} — Test`} releaseMap={releaseMap} onOpen={openAssignModal} />
+                                                            </div>
+                                                        )}
+
+                                                        {/* Interview Questions */}
+                                                        {hasIQ && (
+                                                            <div style={{
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+                                                                padding: '10px 14px', borderRadius: theme.radius.sm,
+                                                                background: releaseMap[`module_interview_questions_${mod.id}`] ? 'rgba(6,182,212,0.08)' : 'rgba(255,255,255,0.02)',
+                                                                border: `1px solid ${releaseMap[`module_interview_questions_${mod.id}`] ? 'rgba(6,182,212,0.25)' : theme.border.subtle}`,
+                                                            }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, flexWrap: 'wrap' }}>
+                                                                    <HelpCircle size={14} color="#06b6d4" style={{ flexShrink: 0 }} />
+                                                                    <span style={{ fontSize: '13px', fontWeight: 600, color: theme.text.primary }}>Interview Questions</span>
+                                                                    {mod.interview_questions_url && (
+                                                                        <a href={mod.interview_questions_url} target="_blank" rel="noopener noreferrer"
+                                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#06b6d4', textDecoration: 'none' }}>
+                                                                            <ExternalLink size={10} /> Link
+                                                                        </a>
+                                                                    )}
+                                                                    {iqFiles.map(f => (
+                                                                        <a key={f.id} href={`/uploads/content/${f.stored_name}`} target="_blank" rel="noopener noreferrer"
+                                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#06b6d4', textDecoration: 'none' }}>
+                                                                            <Download size={10} /> {f.original_name}
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                                <AssignBtn releaseType="module_interview_questions" entityId={mod.id} moduleId={mod.id}
+                                                                    name={`${mod.name} — Interview Questions`} releaseMap={releaseMap} onOpen={openAssignModal} />
+                                                            </div>
+                                                        )}
+
+                                                        {/* Feedback Form */}
+                                                        {feedbackForm && (
+                                                            <div style={{
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap',
+                                                                padding: '10px 14px', borderRadius: theme.radius.sm,
+                                                                background: releaseMap[`module_feedback_${feedbackForm.id}`] ? `${theme.accent.green}08` : 'rgba(255,255,255,0.02)',
+                                                                border: `1px solid ${releaseMap[`module_feedback_${feedbackForm.id}`] ? `${theme.accent.green}25` : theme.border.subtle}`,
+                                                            }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                                                                    <Star size={14} color={theme.accent.green} style={{ flexShrink: 0 }} />
+                                                                    <span style={{ fontSize: '13px', fontWeight: 600, color: theme.text.primary }}>
+                                                                        {feedbackForm.title || 'Feedback Form'}
                                                                     </span>
                                                                 </div>
+                                                                <AssignBtn releaseType="module_feedback" entityId={feedbackForm.id} moduleId={mod.id}
+                                                                    name={feedbackForm.title || 'Feedback Form'} releaseMap={releaseMap} onOpen={openAssignModal} />
+                                                            </div>
+                                                        )}
 
-                                                                {mod.module_project_details && (
-                                                                    <div style={{ fontSize: '12px', color: theme.text.muted, marginBottom: '10px', padding: '8px', background: 'rgba(0,0,0,0.1)', borderRadius: '4px' }}>
-                                                                        <Info size={12} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                                                                        {mod.module_project_details}
-                                                                    </div>
-                                                                )}
-
-                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                                                    {mod.projects?.map((proj, idx) => {
+                                                        {/* Projects — one at a time */}
+                                                        {mod.projects?.length > 0 && (
+                                                            <div style={{ marginTop: '4px' }}>
+                                                                <p style={{ fontSize: '10px', fontWeight: 700, color: theme.text.label, textTransform: 'uppercase', marginBottom: '8px' }}>
+                                                                    Projects — Assign One at a Time
+                                                                </p>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                    {mod.projects.map((proj, idx) => {
                                                                         const releaseKey = `module_project_${proj.id}`;
                                                                         const existingRelease = releaseMap[releaseKey] || null;
                                                                         const isAssigned = !!existingRelease;
@@ -550,24 +665,19 @@ export const TrainerContentManager = () => {
                                                                             }}>
                                                                                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
                                                                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                                                                        {/* Project name + assigned badge */}
                                                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                                                                                             <span style={{
                                                                                                 fontSize: '10px', fontWeight: 800, color: theme.accent.blue,
                                                                                                 background: `${theme.accent.blue}15`, padding: '1px 6px',
                                                                                                 borderRadius: theme.radius.sm,
-                                                                                            }}>
-                                                                                                P{idx + 1}
-                                                                                            </span>
+                                                                                            }}>P{idx + 1}</span>
                                                                                             <p style={{ fontSize: '13px', fontWeight: 700, color: theme.text.primary, margin: 0 }}>
                                                                                                 {proj.name}
                                                                                             </p>
                                                                                             {isAssigned && (
                                                                                                 <span style={{
-                                                                                                    fontSize: '10px', fontWeight: 700,
-                                                                                                    padding: '2px 8px', borderRadius: theme.radius.full,
-                                                                                                    background: `${theme.accent.green}15`,
-                                                                                                    color: theme.accent.green,
+                                                                                                    fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: theme.radius.full,
+                                                                                                    background: `${theme.accent.green}15`, color: theme.accent.green,
                                                                                                     border: `1px solid ${theme.accent.green}30`,
                                                                                                     display: 'inline-flex', alignItems: 'center', gap: '3px',
                                                                                                 }}>
@@ -575,15 +685,11 @@ export const TrainerContentManager = () => {
                                                                                                 </span>
                                                                                             )}
                                                                                         </div>
-
-                                                                                        {/* Description */}
                                                                                         {proj.description && (
                                                                                             <p style={{ fontSize: '12px', color: theme.text.muted, margin: '0 0 8px', lineHeight: 1.5 }}>
                                                                                                 {proj.description}
                                                                                             </p>
                                                                                         )}
-
-                                                                                        {/* Due date if assigned */}
                                                                                         {isAssigned && existingRelease.due_date && (
                                                                                             <div style={{
                                                                                                 display: 'inline-flex', alignItems: 'center', gap: '4px',
@@ -595,67 +701,46 @@ export const TrainerContentManager = () => {
                                                                                                 {overdue && ' · Overdue'}
                                                                                             </div>
                                                                                         )}
-
-                                                                                        {/* Project files */}
-                                                                                        {proj.files?.length > 0 && (
+                                                                                        {proj.files?.length > 0 ? (
                                                                                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                                                                                 {proj.files.map(f => (
-                                                                                                    <a key={f.id}
-                                                                                                        href={`/uploads/content/${f.stored_name}`}
-                                                                                                        target="_blank" rel="noopener noreferrer"
+                                                                                                    <a key={f.id} href={`/uploads/content/${f.stored_name}`} target="_blank" rel="noopener noreferrer"
                                                                                                         style={{
                                                                                                             display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                                                                                            fontSize: '11px', color: theme.accent.blue,
-                                                                                                            textDecoration: 'none', padding: '3px 8px',
-                                                                                                            background: `${theme.accent.blue}10`,
-                                                                                                            borderRadius: theme.radius.sm,
-                                                                                                            border: `1px solid ${theme.accent.blue}20`,
+                                                                                                            fontSize: '11px', color: theme.accent.blue, textDecoration: 'none',
+                                                                                                            padding: '3px 8px', background: `${theme.accent.blue}10`,
+                                                                                                            borderRadius: theme.radius.sm, border: `1px solid ${theme.accent.blue}20`,
                                                                                                         }}>
                                                                                                         <Download size={11} /> {f.original_name}
                                                                                                     </a>
                                                                                                 ))}
                                                                                             </div>
-                                                                                        )}
-
-                                                                                        {/* No files notice */}
-                                                                                        {(!proj.files || proj.files.length === 0) && (
+                                                                                        ) : (
                                                                                             <div style={{
-                                                                                                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                                                                                fontSize: '10px', color: theme.text.muted,
-                                                                                                padding: '3px 8px', borderRadius: theme.radius.sm,
-                                                                                                background: 'rgba(255,255,255,0.03)',
-                                                                                                border: `1px solid ${theme.border.subtle}`,
+                                                                                                display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px',
+                                                                                                color: theme.text.muted, padding: '3px 8px', borderRadius: theme.radius.sm,
+                                                                                                background: 'rgba(255,255,255,0.03)', border: `1px solid ${theme.border.subtle}`,
                                                                                             }}>
                                                                                                 <AlertCircle size={10} /> No files uploaded
                                                                                             </div>
                                                                                         )}
                                                                                     </div>
-
-                                                                                    {/* Assign / Update button */}
-                                                                                    <div style={{ flexShrink: 0 }}>
-                                                                                        <button
-                                                                                            onClick={() => setAssignModal({
-                                                                                                project: { ...proj, module_id: mod.id },
-                                                                                                existingRelease,
-                                                                                            })}
-                                                                                            style={{
-                                                                                                display: 'flex', alignItems: 'center', gap: '6px',
-                                                                                                padding: '7px 14px', borderRadius: theme.radius.md,
-                                                                                                cursor: 'pointer', fontSize: '11px', fontWeight: 700,
-                                                                                                border: `1px solid ${isAssigned ? `${theme.accent.green}40` : `${theme.accent.blue}40`}`,
-                                                                                                background: isAssigned ? `${theme.accent.green}15` : `${theme.accent.blue}15`,
-                                                                                                color: isAssigned ? theme.accent.green : theme.accent.blue,
-                                                                                                transition: 'all 0.15s',
-                                                                                            }}
-                                                                                            onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
-                                                                                            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                                                                                        >
-                                                                                            {isAssigned
-                                                                                                ? <><Edit2 size={11} /> Update</>
-                                                                                                : <><Send size={11} /> Assign</>
-                                                                                            }
-                                                                                        </button>
-                                                                                    </div>
+                                                                                    <button
+                                                                                        onClick={() => openAssignModal(
+                                                                                            { release_type: 'module_project', entity_id: proj.id, module_id: mod.id, name: proj.name },
+                                                                                            existingRelease
+                                                                                        )}
+                                                                                        style={{
+                                                                                            display: 'flex', alignItems: 'center', gap: '6px',
+                                                                                            padding: '7px 14px', borderRadius: theme.radius.md,
+                                                                                            cursor: 'pointer', fontSize: '11px', fontWeight: 700, flexShrink: 0,
+                                                                                            border: `1px solid ${isAssigned ? `${theme.accent.green}40` : `${theme.accent.blue}40`}`,
+                                                                                            background: isAssigned ? `${theme.accent.green}15` : `${theme.accent.blue}15`,
+                                                                                            color: isAssigned ? theme.accent.green : theme.accent.blue,
+                                                                                            transition: 'all 0.15s',
+                                                                                        }}>
+                                                                                        {isAssigned ? <><Edit2 size={11} /> Update</> : <><Send size={11} /> Assign</>}
+                                                                                    </button>
                                                                                 </div>
                                                                             </div>
                                                                         );
@@ -711,14 +796,13 @@ export const TrainerContentManager = () => {
                 </div>
             )}
 
-            {/* Assign Modal */}
             {assignModal && (
                 <AssignModal
-                    project={assignModal.project}
+                    item={assignModal.item}
                     batchId={selectedBatchId}
                     existingRelease={assignModal.existingRelease}
                     onClose={() => setAssignModal(null)}
-                    onDone={handleAssignDone}
+                    onDone={() => loadReleases(selectedBatchId)}
                 />
             )}
 
