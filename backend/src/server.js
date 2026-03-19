@@ -6,7 +6,15 @@ const runMigrations = require('./config/migrate');
 
 const app = express();
 app.use(cors({
-    origin: process.env.FRONTEND_URL || '*',
+    origin: function (origin, callback) {
+        const allowed = (process.env.FRONTEND_URL || '').split(',').map(o => o.trim()).filter(Boolean);
+        // Allow if no FRONTEND_URL set (dev), or origin matches, or request has no origin (curl/mobile)
+        if (!allowed.length || !origin || allowed.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('CORS: origin not allowed'));
+        }
+    },
     credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
