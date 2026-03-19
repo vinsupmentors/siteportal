@@ -63,7 +63,7 @@ router.delete('/content-files/:id', crudController.deleteContentFile);
 // ==========================================
 // BATCHES
 // ==========================================
-router.get('/batches', requireRole([1, 2]), crudController.getBatches);
+router.get('/batches', requireRole([1, 2, 5]), crudController.getBatches);
 router.post('/batches', requireRole([1]), crudController.createBatch);
 router.put('/batches/:id', crudController.updateBatch);
 router.delete('/batches/:id', crudController.deleteBatch);
