@@ -271,7 +271,51 @@ const ReleaseCard = ({ release, onSubmit }) => {
                             )}
                         </div>
                     )}
+{/* Downloadable files */}
+                    {release.files?.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                            {release.files.map(f => (
+                                <a key={f.id}
+                                    href={`${API_BASE}/uploads/content/${f.stored_name}`}
+                                    target="_blank" rel="noopener noreferrer"
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                        padding: '7px 12px', borderRadius: theme.radius.sm,
+                                        background: `${meta.color}10`,
+                                        border: `1px solid ${meta.color}25`,
+                                        color: meta.color, fontSize: '12px', fontWeight: 600,
+                                        textDecoration: 'none',
+                                    }}>
+                                    <Download size={13} /> {f.original_name}
+                                </a>
+                            ))}
+                        </div>
+                    )}
 
+                    {/* External URL links */}
+                    {release.material_url && (
+                        <a href={release.material_url} target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 12px', borderRadius: theme.radius.sm, background: `${theme.accent.purple}10`, border: `1px solid ${theme.accent.purple}25`, color: theme.accent.purple, fontSize: '12px', fontWeight: 600, textDecoration: 'none', marginBottom: '10px' }}>
+                            <ExternalLink size={13} /> Open Study Material
+                        </a>
+                    )}
+                    {release.test_url && (
+                        <a href={release.test_url} target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 12px', borderRadius: theme.radius.sm, background: `${theme.accent.yellow}10`, border: `1px solid ${theme.accent.yellow}25`, color: theme.accent.yellow, fontSize: '12px', fontWeight: 600, textDecoration: 'none', marginBottom: '10px' }}>
+                            <ExternalLink size={13} /> Take Test
+                        </a>
+                    )}
+                    {release.iq_url && (
+                        <a href={release.iq_url} target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 12px', borderRadius: theme.radius.sm, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', color: '#06b6d4', fontSize: '12px', fontWeight: 600, textDecoration: 'none', marginBottom: '10px' }}>
+                            <ExternalLink size={13} /> View Interview Questions
+                        </a>
+                    )}
+                    {release.description && (
+                        <p style={{ fontSize: '12px', color: theme.text.muted, margin: '0 0 10px', lineHeight: 1.5 }}>
+                            {release.description}
+                        </p>
+                    )}
                     {/* Grader feedback */}
                     {graded && release.submission_feedback && (
                         <div style={{
@@ -326,9 +370,15 @@ export const StudentMaterials = () => {
     const [releaseFilter, setReleaseFilter] = useState('all');
 
     // Load curriculum
-    useEffect(() => {
+ useEffect(() => {
         studentAPI.getCurriculum()
-            .then(res => setModules(res.data?.modules || res.data || []))
+            .then(res => {
+                const mods = res.data?.modules || res.data || [];
+                setModules(mods);
+                // Auto-select first unlocked module
+                const firstUnlocked = mods.find(m => m.is_unlocked !== false);
+                if (firstUnlocked) setSelectedModule(firstUnlocked.id);
+            })
             .catch(console.error)
             .finally(() => setCurrLoading(false));
     }, []);

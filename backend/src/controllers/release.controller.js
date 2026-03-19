@@ -363,28 +363,67 @@ exports.getStudentReleases = async (req, res) => {
 
         const enriched = await Promise.all(releases.map(async r => {
             let name = '';
+            let files = [];
+            let extra = {};
+
             try {
                 if (r.release_type === 'module_project') {
-                    const [[row]] = await pool.query('SELECT name FROM ModuleProjects WHERE id = ?', [r.entity_id]);
+                    const [[row]] = await pool.query('SELECT name, description FROM ModuleProjects WHERE id = ?', [r.entity_id]);
                     name = row?.name || 'Project';
+                    extra.description = row?.description || '';
+                    // Get project files
+                    const [pFiles] = await pool.query(
+                        "SELECT * FROM ContentFiles WHERE entity_type = 'project' AND entity_id = ?", [r.entity_id]
+                    );
+                    files = pFiles;
+
                 } else if (r.release_type === 'module_test') {
-                    const [[mod]] = await pool.query('SELECT name FROM Modules WHERE id = ?', [r.entity_id]);
+                    const [[mod]] = await pool.query('SELECT name, test_url FROM Modules WHERE id = ?', [r.entity_id]);
                     name = `${mod?.name || 'Module'} — Test`;
+                    extra.test_url = mod?.test_url || null;
+                    // Get test files
+                    const [tFiles] = await pool.query(
+                        "SELECT * FROM ContentFiles WHERE entity_type = 'module' AND entity_id = ? AND category = 'test'", [r.entity_id]
+                    );
+                    files = tFiles;
+
                 } else if (r.release_type === 'module_feedback') {
                     const [[form]] = await pool.query('SELECT title FROM FeedbackForms WHERE id = ?', [r.entity_id]);
                     name = form?.title || 'Feedback Form';
+
                 } else if (r.release_type === 'module_study_material') {
-                    const [[mod]] = await pool.query('SELECT name FROM Modules WHERE id = ?', [r.entity_id]);
+                    const [[mod]] = await pool.query('SELECT name, study_material_url FROM Modules WHERE id = ?', [r.entity_id]);
                     name = `${mod?.name || 'Module'} — Study Materials`;
+                    extra.material_url = mod?.study_material_url || null;
+                    // Get study material files
+                    const [sFiles] = await pool.query(
+                        "SELECT * FROM ContentFiles WHERE entity_type = 'module' AND entity_id = ? AND category = 'study_material'", [r.entity_id]
+                    );
+                    files = sFiles;
+
                 } else if (r.release_type === 'module_interview_questions') {
-                    const [[mod]] = await pool.query('SELECT name FROM Modules WHERE id = ?', [r.entity_id]);
+                    const [[mod]] = await pool.query('SELECT name, interview_questions_url FROM Modules WHERE id = ?', [r.entity_id]);
                     name = `${mod?.name || 'Module'} — Interview Questions`;
+                    extra.iq_url = mod?.interview_questions_url || null;
+                    // Get IQ files
+                    const [iFiles] = await pool.query(
+                        "SELECT * FROM ContentFiles WHERE entity_type = 'module' AND entity_id = ? AND category = 'interview_questions'", [r.entity_id]
+                    );
+                    files = iFiles;
+
                 } else if (r.release_type === 'capstone_project') {
-                    const [[cap]] = await pool.query('SELECT name FROM CapstoneProjecs WHERE id = ?', [r.entity_id]);
+                    const [[cap]] = await pool.query('SELECT name, description FROM CapstoneProjecs WHERE id = ?', [r.entity_id]);
                     name = cap?.name || 'Capstone Project';
+                    extra.description = cap?.description || '';
+                    // Get capstone files
+                    const [cFiles] = await pool.query(
+                        "SELECT * FROM ContentFiles WHERE entity_type = 'capstone' AND entity_id = ?", [r.entity_id]
+                    );
+                    files = cFiles;
                 }
             } catch (_) {}
-            return { ...r, name };
+
+            return { ...r, name, files, ...extra };
         }));
 
         res.json({ releases: enriched, batch });
