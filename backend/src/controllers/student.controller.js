@@ -167,13 +167,22 @@ exports.getStudentCalendar = async (req, res) => {
 
         // 5. Map days to calendar dates (skip Sundays for weekday batches)
         const events = [];
-        let currentDate = new Date(batch.start_date || new Date());
+       // Guard against null start_date
+        const safeStart = batch.start_date ? new Date(batch.start_date) : new Date();
+        let currentDate = new Date(safeStart);
+
+        // Safety limit — never loop more than 365 days
+        let dayLimit = 365;
 
         days.forEach((day) => {
             // Skip Sunday
-            while (currentDate.getDay() === 0) {
+            // Skip Sunday — with safety limit
+            let skipCount = 0;
+            while (currentDate.getDay() === 0 && skipCount < 7) {
                 currentDate.setDate(currentDate.getDate() + 1);
+                skipCount++;
             }
+            if (--dayLimit <= 0) return; // safety break
 
             const dateStr = currentDate.toISOString().split('T')[0];
 
