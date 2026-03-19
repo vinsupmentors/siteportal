@@ -49,7 +49,13 @@ exports.getRecruiterDashboard = async (req, res) => {
             SELECT
                 COUNT(DISTINCT CASE WHEN u.program_type = 'IOP' THEN u.id END) as total_iop,
                 COUNT(DISTINCT CASE WHEN u.program_type = 'IOP' AND bs.ready_for_interview = 1 THEN u.id END) as total_ready,
-                COUNT(DISTINCT CASE WHEN si.status = 'placed' THEN si.student_id END) as total_placed
+                COUNT(DISTINCT CASE WHEN si.status = 'placed' THEN si.student_id END) as total_placed,
+                COUNT(DISTINCT CASE WHEN u.program_type = 'IOP' AND bs.ready_for_interview = 1
+                    AND bs.course_completion_date IS NOT NULL
+                    AND DATEDIFF(CURDATE(), bs.course_completion_date) <= 90 THEN u.id END) as within_90_days,
+                COUNT(DISTINCT CASE WHEN u.program_type = 'IOP' AND bs.ready_for_interview = 1
+                    AND bs.course_completion_date IS NOT NULL
+                    AND DATEDIFF(CURDATE(), bs.course_completion_date) > 90 THEN u.id END) as crossed_90_days
             FROM Users u
             JOIN BatchStudents bs ON u.id = bs.student_id
             LEFT JOIN StudentInterviews si ON si.student_id = u.id
@@ -88,24 +94,35 @@ exports.getIopStudents = async (req, res) => {
 
         const [students] = await pool.query(query, params);
 
-        // Calculate 90-day window remaining
+        // Calculate 90-day window remaining + crossed flag
         const today = new Date();
+        today.setHours(0, 0, 0, 0);
         const enriched = students.map(s => {
             let daysRemaining = null;
-            if (s.course_completion_date) {
+            let daysSinceCompletion = null;
+            let crossed90Days = false;
+            let within90Days = false;
+            if (s.course_completion_date && s.ready_for_interview) {
                 const completionDate = new Date(s.course_completion_date);
+                completionDate.setHours(0, 0, 0, 0);
                 const deadline = new Date(completionDate);
                 deadline.setDate(deadline.getDate() + 90);
-                daysRemaining = Math.max(0, Math.round((deadline - today) / (1000 * 60 * 60 * 24)));
+                const diff = Math.round((deadline - today) / (1000 * 60 * 60 * 24));
+                daysRemaining = Math.max(0, diff);
+                daysSinceCompletion = Math.round((today - completionDate) / (1000 * 60 * 60 * 24));
+                crossed90Days = diff < 0;
+                within90Days = diff >= 0;
             }
-            return { ...s, days_remaining: daysRemaining };
+            return { ...s, days_remaining: daysRemaining, days_since_completion: daysSinceCompletion, crossed_90_days: crossed90Days, within_90_days: within90Days };
         });
 
         // Filter by status if requested
         let filtered = enriched;
         if (status === 'ready') filtered = enriched.filter(s => s.ready_for_interview);
         if (status === 'placed') filtered = enriched.filter(s => s.is_placed);
-        if (status === 'not_started') filtered = enriched.filter(s => s.ready_for_interview && s.interview_count === 0);
+        if (status === 'not_started') filtered = enriched.filter(s => s.ready_for_interview && Number(s.interview_count) === 0);
+        if (status === 'within_90_days') filtered = enriched.filter(s => s.within_90_days && !s.is_placed);
+        if (status === 'crossed_90_days') filtered = enriched.filter(s => s.crossed_90_days && !s.is_placed);
 
         res.json({ students: filtered });
     } catch (error) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { recruiterAPI, superAdminAPI } from '../../services/api';
-import { Search, Users, Clock, Briefcase, Rocket, CheckCircle, Calendar, X } from 'lucide-react';
+import { Search, Users, Clock, Briefcase, Rocket, CheckCircle, Calendar, X, AlertTriangle } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
 const STATUS_COLORS = {
     scheduled:   { bg: 'rgba(59,130,246,0.12)',  color: '#3b82f6', label: 'Scheduled'   },
@@ -136,12 +137,13 @@ const InterviewModal = ({ student, batches, onClose, onSaved }) => {
 };
 
 const RecruiterStudents = () => {
+    const [searchParams] = useSearchParams();
     const [students, setStudents] = useState([]);
     const [batches, setBatches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [batchFilter, setBatchFilter] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
     const [modal, setModal] = useState(null);
 
     const fetchStudents = async () => {
@@ -208,10 +210,22 @@ const RecruiterStudents = () => {
                 <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selectStyle}>
                     <option value="">All Status</option>
                     <option value="ready">Ready for Interview</option>
-                    <option value="placed">Placed</option>
+                    <option value="within_90_days">Within 90-Day Window</option>
+                    <option value="crossed_90_days">⚠ Crossed 90 Days</option>
                     <option value="not_started">Ready but 0 Interviews</option>
+                    <option value="placed">Placed</option>
                 </select>
             </div>
+
+            {/* Alert banner for crossed 90-day filter */}
+            {statusFilter === 'crossed_90_days' && filtered.length > 0 && (
+                <div style={{ padding: '14px 18px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <AlertTriangle size={18} color="#ef4444" />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#ef4444' }}>
+                        {filtered.length} student{filtered.length > 1 ? 's have' : ' has'} crossed the 90-day interview window. Immediate follow-up required.
+                    </span>
+                </div>
+            )}
 
             {filtered.length === 0 ? (
                 <div className="card text-center p-20">
@@ -225,9 +239,23 @@ const RecruiterStudents = () => {
                         const intCount = Number(s.interview_count || 0);
                         const isPlaced = !!s.is_placed;
                         const isReady = !!s.ready_for_interview;
+                        const hasCrossed = !!s.crossed_90_days;
+                        const daysOverdue = hasCrossed && s.days_since_completion != null
+                            ? Math.max(0, Number(s.days_since_completion) - 90)
+                            : null;
+                        const daysLeft = !hasCrossed && s.days_remaining != null ? Number(s.days_remaining) : null;
+
+                        // Border color: red for crossed, green for placed, blue for ready, default otherwise
+                        const borderColor = hasCrossed && !isPlaced
+                            ? 'rgba(239,68,68,0.4)'
+                            : isPlaced
+                                ? 'rgba(16,185,129,0.3)'
+                                : isReady
+                                    ? 'rgba(59,130,246,0.2)'
+                                    : 'rgba(255,255,255,0.06)';
 
                         return (
-                            <div key={s.id} style={{ padding: '18px', borderRadius: 14, background: '#141d2f', border: `1px solid ${isPlaced ? 'rgba(16,185,129,0.3)' : isReady ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
+                            <div key={s.id} style={{ padding: '18px', borderRadius: 14, background: '#141d2f', border: `1px solid ${borderColor}`, borderTop: hasCrossed && !isPlaced ? '3px solid #ef4444' : undefined }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                                     <div>
                                         <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{s.first_name} {s.last_name}</div>
@@ -236,6 +264,7 @@ const RecruiterStudents = () => {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                                         <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>IOP</span>
                                         {isPlaced && <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: 'rgba(16,185,129,0.15)', color: '#10b981' }}>Placed ✓</span>}
+                                        {hasCrossed && !isPlaced && <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>⚠ Overdue</span>}
                                     </div>
                                 </div>
 
@@ -254,10 +283,15 @@ const RecruiterStudents = () => {
                                     <span style={{ fontSize: 11, fontWeight: 700, color: '#8892a4', marginLeft: 4 }}>{intCount}/3</span>
                                 </div>
 
-                                {/* 90-day window */}
-                                {s.days_remaining !== null && isReady && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, fontSize: 11, fontWeight: 700, color: s.days_remaining < 30 ? '#ef4444' : '#f59e0b' }}>
-                                        <Clock size={13} /> {s.days_remaining} days remaining in 90-day window
+                                {/* 90-day window indicators */}
+                                {isReady && !isPlaced && hasCrossed && daysOverdue !== null && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, padding: '7px 10px', borderRadius: 7, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', fontSize: 11, fontWeight: 700, color: '#ef4444' }}>
+                                        <AlertTriangle size={12} /> {daysOverdue} day{daysOverdue !== 1 ? 's' : ''} overdue — window expired
+                                    </div>
+                                )}
+                                {isReady && !isPlaced && !hasCrossed && daysLeft !== null && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, fontSize: 11, fontWeight: 700, color: daysLeft < 15 ? '#ef4444' : daysLeft < 30 ? '#f59e0b' : '#3b82f6' }}>
+                                        <Clock size={13} /> {daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining in 90-day window
                                     </div>
                                 )}
 
@@ -271,7 +305,7 @@ const RecruiterStudents = () => {
                                 {isReady && !isPlaced && (
                                     <button
                                         onClick={() => setModal(s)}
-                                        style={{ width: '100%', padding: '9px', borderRadius: 8, background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                        style={{ width: '100%', padding: '9px', borderRadius: 8, background: hasCrossed ? 'rgba(239,68,68,0.15)' : '#3b82f6', color: hasCrossed ? '#ef4444' : '#fff', border: hasCrossed ? '1px solid rgba(239,68,68,0.3)' : 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                                         <Calendar size={14} /> Schedule / Manage Interviews
                                     </button>
                                 )}
