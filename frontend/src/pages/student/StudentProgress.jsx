@@ -6,27 +6,205 @@ import {
 } from './StudentComponents';
 import {
     TrendingUp, Award, Target, BarChart3, CheckCircle,
-    Flame, Star, Calendar, BookOpen, Briefcase, AlertCircle
+    Flame, Star, Calendar, BookOpen, Briefcase, AlertCircle,
+    FileText, MessageSquare, ChevronDown, ChevronRight, Trophy,
 } from 'lucide-react';
 
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+const fmtDate = (d) => {
+    if (!d) return null;
+    try {
+        const date = new Date(d);
+        if (isNaN(date.getTime())) return null;
+        return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch { return null; }
+};
+
+const scoreColor = (marks) => {
+    if (marks === null || marks === undefined) return theme.text.muted;
+    if (marks >= 80) return theme.accent.green;
+    if (marks >= 50) return theme.accent.yellow;
+    return theme.accent.red;
+};
+
+const scoreLabel = (marks) => {
+    if (marks === null || marks === undefined) return 'Not graded';
+    if (marks >= 80) return 'Excellent';
+    if (marks >= 60) return 'Good';
+    if (marks >= 50) return 'Average';
+    return 'Needs improvement';
+};
+
+const TYPE_META = {
+    module_project:   { label: 'Project',  color: theme.accent.blue,   icon: Briefcase  },
+    module_test:      { label: 'Test',     color: theme.accent.yellow, icon: FileText   },
+    capstone_project: { label: 'Capstone', color: '#f97316',           icon: Trophy     },
+};
+
+// ─── Score Ring ────────────────────────────────────────────────────────────────
+const ScoreRing = ({ value, size = 120, label }) => {
+    const radius = (size / 2) - 10;
+    const circumference = 2 * Math.PI * radius;
+    const pct = Math.min(100, Math.max(0, value || 0));
+    const strokeDash = (pct / 100) * circumference;
+    const color = scoreColor(value);
+
+    return (
+        <div style={{ position: 'relative', width: size, height: size }}>
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+                <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke={color} strokeWidth="8"
+                    strokeDasharray={circumference} strokeDashoffset={circumference - strokeDash}
+                    strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+                />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: size > 100 ? '28px' : '20px', fontWeight: 800, color }}>{value ?? '—'}</span>
+                {label && <span style={{ fontSize: '9px', fontWeight: 600, color: theme.text.muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>}
+            </div>
+        </div>
+    );
+};
+
+// ─── Grade Card ────────────────────────────────────────────────────────────────
+const GradeCard = ({ item }) => {
+    const [expanded, setExpanded] = useState(false);
+    const meta = TYPE_META[item.release_type] || { label: 'Submission', color: theme.accent.blue, icon: FileText };
+    const Icon = meta.icon;
+    const isGraded = item.status === 'graded' && item.marks !== null;
+    const color = isGraded ? scoreColor(item.marks) : theme.text.muted;
+
+    return (
+        <div style={{
+            background: theme.bg.card,
+            border: `1px solid ${isGraded ? `${color}30` : theme.border.subtle}`,
+            borderLeft: `4px solid ${meta.color}`,
+            borderRadius: theme.radius.lg,
+            overflow: 'hidden',
+            transition: 'box-shadow 0.2s',
+            boxShadow: theme.shadow.card,
+        }}>
+            {/* Header row */}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: '14px',
+                padding: '16px 20px', cursor: 'pointer',
+            }} onClick={() => setExpanded(p => !p)}>
+                {/* Icon */}
+                <div style={{
+                    width: '40px', height: '40px', borderRadius: theme.radius.md, flexShrink: 0,
+                    background: `${meta.color}15`, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', color: meta.color,
+                }}>
+                    <Icon size={18} />
+                </div>
+
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 700, color: theme.text.primary }}>{item.name}</span>
+                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: theme.radius.full, background: `${meta.color}15`, color: meta.color }}>
+                            {meta.label}
+                        </span>
+                        {item.status === 'returned' && (
+                            <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: theme.radius.full, background: `${theme.accent.yellow}15`, color: theme.accent.yellow }}>
+                                Returned for Rework
+                            </span>
+                        )}
+                    </div>
+                    <div style={{ fontSize: '11px', color: theme.text.muted }}>
+                        Submitted {fmtDate(item.submitted_at)}
+                        {item.graded_at && ` · Graded ${fmtDate(item.graded_at)}`}
+                    </div>
+                </div>
+
+                {/* Score */}
+                <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                    {isGraded ? (
+                        <>
+                            <div style={{ fontSize: '28px', fontWeight: 800, color, lineHeight: 1 }}>
+                                {item.marks}
+                            </div>
+                            <div style={{ fontSize: '10px', color: theme.text.muted, marginTop: '2px' }}>/100</div>
+                            <div style={{ fontSize: '10px', fontWeight: 700, color, marginTop: '2px' }}>
+                                {scoreLabel(item.marks)}
+                            </div>
+                        </>
+                    ) : (
+                        <div style={{ fontSize: '12px', color: theme.text.muted, fontWeight: 600 }}>
+                            {item.status === 'submitted' ? 'Pending Review' : 'Not Graded'}
+                        </div>
+                    )}
+                </div>
+
+                {/* Expand */}
+                <div style={{ color: theme.text.muted, flexShrink: 0 }}>
+                    {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </div>
+            </div>
+
+            {/* Score bar */}
+            {isGraded && (
+                <div style={{ height: '3px', background: 'rgba(255,255,255,0.05)', margin: '0 20px' }}>
+                    <div style={{
+                        height: '100%', background: color,
+                        width: `${item.marks}%`, transition: 'width 0.8s ease-out',
+                        borderRadius: '2px',
+                    }} />
+                </div>
+            )}
+
+            {/* Expanded feedback */}
+            {expanded && item.feedback && (
+                <div style={{
+                    padding: '14px 20px 16px',
+                    borderTop: `1px solid ${theme.border.subtle}`,
+                }}>
+                    <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: theme.text.label, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <MessageSquare size={12} /> Trainer Feedback
+                    </div>
+                    <div style={{
+                        padding: '12px 14px', borderRadius: theme.radius.md,
+                        background: `${theme.accent.green}08`, border: `1px solid ${theme.accent.green}20`,
+                        fontSize: '13px', color: theme.text.secondary, lineHeight: 1.6,
+                    }}>
+                        {item.feedback}
+                    </div>
+                </div>
+            )}
+
+            {expanded && !item.feedback && (
+                <div style={{ padding: '12px 20px 14px', borderTop: `1px solid ${theme.border.subtle}` }}>
+                    <div style={{ fontSize: '12px', color: theme.text.muted, fontStyle: 'italic' }}>
+                        No feedback provided yet.
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ══════════════════════════════════════════════════════════════════════════════
 export const StudentProgress = () => {
     const [progress, setProgress] = useState(null);
     const [eligibility, setEligibility] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [activeSection, setActiveSection] = useState('marks');
 
     useEffect(() => {
         const fetchData = async () => {
-            try { 
+            try {
                 const [progRes, eligRes] = await Promise.all([
                     studentAPI.getProgress(),
-                    jobAPI.getEligibility()
+                    jobAPI.getEligibility().catch(() => ({ data: null })),
                 ]);
-                setProgress(progRes.data || {}); 
+                setProgress(progRes.data || {});
                 setEligibility(eligRes.data || null);
             } catch (error) {
-                console.error("Error fetching progress data", error);
-            } finally { 
-                setLoading(false); 
+                console.error('Error fetching progress data', error);
+            } finally {
+                setLoading(false);
             }
         };
         fetchData();
@@ -34,259 +212,384 @@ export const StudentProgress = () => {
 
     if (loading) return <LoadingSpinner label="Loading progress..." />;
 
-    const p = progress || {};
-    const attendance = p.attendance || 0;
-    const streak = p.streak || 0;
-    const rank = p.rank || '—';
-    const loyaltyPoints = p.loyalty_points || p.loyaltyPoints || 0;
-    const testAvg = p.test_avg || p.testAverage || null;
-    const moduleData = p.modules || [];
-    const totalModules = moduleData.length;
-    const completedModules = moduleData.filter(m => m.completed || m.progress === 100).length;
+    if (progress?.noBatch) return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '16px' }}>
+            <div style={{ fontSize: '48px' }}>📊</div>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: theme.text.primary }}>No Active Batch</div>
+            <div style={{ fontSize: '14px', color: theme.text.muted }}>Enroll in a batch to track your progress.</div>
+        </div>
+    );
 
-    // Attendance ring
-    const radius = 56;
-    const circumference = 2 * Math.PI * radius;
-    const strokeDash = (attendance / 100) * circumference;
+    const p = progress || {};
+    const attendance = p.attendance?.pct || 0;
+    const streak = p.streak || 0;
+    const rank = p.rank || {};
+    const loyaltyMarks = p.loyaltyMarks || 0;
+    const avgTestScore = p.avgTestScore || 0;
+    const worksheets = p.worksheets || { submitted: 0, total: 0, pct: 0 };
+    const moduleRoadmap = p.moduleRoadmap || [];
+    const gradedItems = p.gradedItems || [];
+    const passedModules = p.passedModules || 0;
+    const totalModules = p.totalModules || 0;
+
+    // Split graded items by type
+    const gradedTests = gradedItems.filter(i => i.release_type === 'module_test');
+    const gradedProjects = gradedItems.filter(i => i.release_type === 'module_project');
+    const gradedCapstones = gradedItems.filter(i => i.release_type === 'capstone_project');
+
+    // Average of graded items
+    const gradedWithMarks = gradedItems.filter(i => i.marks !== null && i.marks !== undefined);
+    const overallAvg = gradedWithMarks.length > 0
+        ? Math.round(gradedWithMarks.reduce((a, i) => a + parseFloat(i.marks), 0) / gradedWithMarks.length)
+        : null;
+
     const attendanceColor = attendance >= 85 ? theme.accent.green : attendance >= 60 ? theme.accent.yellow : theme.accent.red;
+
+    const SECTIONS = [
+        { id: 'marks',    label: 'Marks & Grades',   count: gradedItems.length     },
+        { id: 'overview', label: 'Overview',          count: null                   },
+        { id: 'modules',  label: 'Module Roadmap',    count: moduleRoadmap.length   },
+    ];
 
     return (
         <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
             <PageHeader
                 title="My Progress"
-                subtitle="Track your learning journey and performance"
+                subtitle="Track your marks, grades and learning journey"
                 icon={<TrendingUp size={24} />}
                 accentColor={theme.accent.green}
             />
 
-            {/* Top Stats Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '24px' }}>
+            {/* Top Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px', marginBottom: '24px' }}>
                 <StatCard icon={<Calendar size={22} />} label="Attendance" value={`${attendance}%`} accentColor={theme.accent.cyan} />
                 <StatCard icon={<Flame size={22} />} label="Streak" value={`${streak} days`} accentColor={theme.accent.red} />
-                <StatCard icon={<Award size={22} />} label="Class Rank" value={`#${rank}`} accentColor={theme.accent.yellow} />
-                <StatCard icon={<Star size={22} />} label="Loyalty Points" value={loyaltyPoints} accentColor={theme.accent.purple} />
+                <StatCard icon={<Award size={22} />} label="Class Rank" value={rank.total ? `#${rank.position}/${rank.total}` : '—'} accentColor={theme.accent.yellow} />
+                <StatCard icon={<Star size={22} />} label="Loyalty Points" value={loyaltyMarks} accentColor={theme.accent.purple} />
+                <StatCard icon={<Trophy size={22} />} label="Overall Avg" value={overallAvg !== null ? `${overallAvg}%` : '—'} accentColor={theme.accent.green} />
             </div>
 
-            {/* Main Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                {/* Attendance Ring */}
-                <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', padding: '32px 24px' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label, marginBottom: '24px' }}>
-                        Attendance Overview
-                    </div>
-                    <div style={{ position: 'relative', width: '140px', height: '140px', marginBottom: '20px' }}>
-                        <svg width="140" height="140" viewBox="0 0 140 140" style={{ transform: 'rotate(-90deg)' }}>
-                            <circle cx="70" cy="70" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
-                            <circle cx="70" cy="70" r={radius} fill="none" stroke={attendanceColor} strokeWidth="10"
-                                strokeDasharray={circumference} strokeDashoffset={circumference - strokeDash}
-                                strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease-out' }}
-                            />
-                        </svg>
-                        <div style={{
-                            position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-                            alignItems: 'center', justifyContent: 'center',
+            {/* Section Tabs */}
+            <div style={{
+                display: 'flex', gap: '4px', marginBottom: '20px',
+                background: theme.bg.input, border: `1px solid ${theme.border.subtle}`,
+                borderRadius: theme.radius.lg, padding: '5px', width: 'fit-content',
+            }}>
+                {SECTIONS.map(s => {
+                    const isActive = activeSection === s.id;
+                    return (
+                        <button key={s.id} onClick={() => setActiveSection(s.id)} style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            padding: '9px 20px', borderRadius: theme.radius.md,
+                            border: 'none', cursor: 'pointer', fontSize: '13px',
+                            fontWeight: isActive ? 700 : 500,
+                            background: isActive ? theme.bg.card : 'transparent',
+                            color: isActive ? theme.text.primary : theme.text.muted,
+                            boxShadow: isActive ? theme.shadow.card : 'none',
+                            transition: 'all 0.15s',
                         }}>
-                            <span style={{ fontSize: '32px', fontWeight: 800, color: attendanceColor }}>{attendance}%</span>
-                            <span style={{ fontSize: '10px', fontWeight: 600, color: theme.text.muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Present</span>
-                        </div>
-                    </div>
-                    <div style={{
-                        padding: '8px 18px', borderRadius: theme.radius.full,
-                        background: `${attendanceColor}12`, border: `1px solid ${attendanceColor}25`,
-                        fontSize: '11px', fontWeight: 700, color: attendanceColor,
-                    }}>
-                        {attendance >= 85 ? '✅ Placement Eligible' : attendance >= 60 ? '⚠️ Needs Improvement' : '🚨 At Risk'}
-                    </div>
-                </Card>
-
-                {/* Test Performance */}
-                <Card>
-                    <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label, marginBottom: '20px' }}>
-                        Performance Metrics
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {/* Test Average */}
-                        <div style={{
-                            background: theme.bg.input, border: `1px solid ${theme.border.subtle}`,
-                            borderRadius: theme.radius.md, padding: '18px',
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <BarChart3 size={16} color={theme.accent.blue} />
-                                    <span style={{ fontSize: '12px', fontWeight: 700, color: theme.text.secondary }}>Test Average</span>
-                                </div>
+                            {s.label}
+                            {s.count !== null && (
                                 <span style={{
-                                    fontSize: '22px', fontWeight: 800,
-                                    color: testAvg && testAvg >= 80 ? theme.accent.green : testAvg && testAvg >= 50 ? theme.accent.yellow : theme.accent.red,
+                                    fontSize: '10px', fontWeight: 800, padding: '1px 6px',
+                                    borderRadius: theme.radius.full,
+                                    background: isActive ? `${theme.accent.blue}20` : theme.bg.input,
+                                    color: isActive ? theme.accent.blue : theme.text.muted,
                                 }}>
-                                    {testAvg ? `${testAvg}%` : '—'}
+                                    {s.count}
                                 </span>
-                            </div>
-                            <div style={{ height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)' }}>
-                                <div style={{
-                                    height: '100%', borderRadius: '3px', transition: 'width 0.6s',
-                                    width: `${testAvg || 0}%`,
-                                    background: testAvg >= 80 ? theme.accent.green : testAvg >= 50 ? theme.accent.yellow : theme.accent.red,
-                                }} />
-                            </div>
-                        </div>
-
-                        {/* Modules Completed */}
-                        <div style={{
-                            background: theme.bg.input, border: `1px solid ${theme.border.subtle}`,
-                            borderRadius: theme.radius.md, padding: '18px',
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <BookOpen size={16} color={theme.accent.green} />
-                                    <span style={{ fontSize: '12px', fontWeight: 700, color: theme.text.secondary }}>Modules Progress</span>
-                                </div>
-                                <span style={{ fontSize: '22px', fontWeight: 800, color: theme.text.primary }}>{completedModules}/{totalModules}</span>
-                            </div>
-                            <div style={{ height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)' }}>
-                                <div style={{
-                                    height: '100%', borderRadius: '3px', transition: 'width 0.6s',
-                                    width: totalModules ? `${(completedModules / totalModules) * 100}%` : '0%',
-                                    background: theme.accent.green,
-                                }} />
-                            </div>
-                        </div>
-
-                        {/* Loyalty Tier */}
-                        <div style={{
-                            background: `${theme.accent.yellow}08`, border: `1px solid ${theme.accent.yellow}20`,
-                            borderRadius: theme.radius.md, padding: '18px',
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <Star size={20} color={theme.accent.yellow} />
-                                <div>
-                                    <div style={{ fontSize: '12px', fontWeight: 700, color: theme.text.primary }}>Loyalty Tier</div>
-                                    <div style={{ fontSize: '10px', color: theme.text.muted, marginTop: '2px' }}>{loyaltyPoints} points earned</div>
-                                </div>
-                            </div>
-                            <span style={{ fontSize: '22px', fontWeight: 800, color: theme.accent.yellow }}>
-                                {loyaltyPoints >= 500 ? '💎' : loyaltyPoints >= 200 ? '🥇' : loyaltyPoints >= 100 ? '🥈' : '🥉'}
-                            </span>
-                        </div>
-                    </div>
-                </Card>
+                            )}
+                        </button>
+                    );
+                })}
             </div>
 
-            {/* Placement Eligibility Tracking */}
-            {eligibility && eligibility.criteria && (
-                <Card style={{ marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Briefcase size={20} color={theme.accent.purple} />
-                            <div style={{ fontSize: '14px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label }}>
-                                Placement Eligibility Criteria
+            {/* ══ SECTION: MARKS & GRADES ══ */}
+            {activeSection === 'marks' && (
+                <div>
+                    {gradedItems.length === 0 ? (
+                        <div style={{
+                            textAlign: 'center', padding: '48px',
+                            background: theme.bg.card, border: `1px solid ${theme.border.subtle}`,
+                            borderRadius: theme.radius.lg,
+                        }}>
+                            <Trophy size={48} color={theme.text.muted} style={{ marginBottom: '16px', opacity: 0.4 }} />
+                            <div style={{ fontSize: '18px', fontWeight: 700, color: theme.text.primary, marginBottom: '8px' }}>
+                                No grades yet
+                            </div>
+                            <div style={{ fontSize: '14px', color: theme.text.muted }}>
+                                Submit your projects and tests to see your grades here.
                             </div>
                         </div>
-                        {eligibility.canRequest ? (
-                            <span style={{ padding: '6px 12px', background: `${theme.accent.green}20`, color: theme.accent.green, borderRadius: theme.radius.full, fontSize: '12px', fontWeight: 700 }}>
-                                Eligible to Apply
-                            </span>
-                        ) : (
-                            <span style={{ padding: '6px 12px', background: `${theme.accent.red}20`, color: theme.accent.red, borderRadius: theme.radius.full, fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <AlertCircle size={14} /> Action Required
-                            </span>
-                        )}
-                    </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                        {Object.entries(eligibility.criteria).filter(([key]) => key !== 'portfolio' || eligibility.criteria.portfolio.met !== undefined).map(([key, data]) => {
-                            const isMet = data.met;
-                            const title = key.charAt(0).toUpperCase() + key.slice(1);
-                            
-                            let valueDisplay = '';
-                            let progressPct = 0;
-                            
-                            if (key === 'portfolio') {
-                                valueDisplay = isMet ? 'Approved' : 'Pending';
-                                progressPct = isMet ? 100 : 0;
-                            } else {
-                                valueDisplay = `${data.value} / ${data.target}${key !== 'capstone' ? '%' : ''}`;
-                                progressPct = Math.min(100, Math.max(0, (data.value / data.target) * 100));
-                            }
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-                            return (
-                                <div key={key} style={{
-                                    padding: '16px', borderRadius: theme.radius.md,
-                                    background: isMet ? `${theme.accent.green}05` : `${theme.accent.red}05`,
-                                    border: `1px solid ${isMet ? theme.accent.green + '20' : theme.accent.red + '20'}`
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                        <span style={{ fontSize: '13px', fontWeight: 600, color: theme.text.secondary }}>{title} Status</span>
-                                        <span style={{ fontSize: '13px', fontWeight: 800, color: isMet ? theme.accent.green : theme.text.primary }}>
-                                            {valueDisplay}
+                            {/* Summary row */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+                                {[
+                                    { label: 'Tests Submitted',    value: gradedTests.length,    color: theme.accent.yellow },
+                                    { label: 'Projects Submitted', value: gradedProjects.length, color: theme.accent.blue   },
+                                    { label: 'Capstones Done',     value: gradedCapstones.length,color: '#f97316'           },
+                                    { label: 'Overall Average',    value: overallAvg !== null ? `${overallAvg}%` : '—', color: theme.accent.green },
+                                ].map((s, i) => (
+                                    <div key={i} style={{
+                                        padding: '16px 20px', borderRadius: theme.radius.md,
+                                        background: theme.bg.card, border: `1px solid ${s.color}20`,
+                                        borderLeft: `4px solid ${s.color}`,
+                                    }}>
+                                        <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: theme.text.label, marginBottom: '6px' }}>
+                                            {s.label}
+                                        </div>
+                                        <div style={{ fontSize: '26px', fontWeight: 800, color: s.color }}>
+                                            {s.value}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Tests */}
+                            {gradedTests.length > 0 && (
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingBottom: '8px', borderBottom: `1px solid ${theme.border.subtle}` }}>
+                                        <FileText size={16} color={theme.accent.yellow} />
+                                        <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: theme.text.label }}>
+                                            Tests ({gradedTests.length})
                                         </span>
                                     </div>
-                                    <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)' }}>
-                                        <div style={{
-                                            height: '100%', borderRadius: '3px', transition: 'width 0.6s',
-                                            width: `${progressPct}%`,
-                                            background: isMet ? theme.accent.green : theme.accent.yellow,
-                                        }} />
-                                    </div>
-                                    <div style={{ fontSize: '11px', marginTop: '10px', color: theme.text.muted }}>
-                                        {isMet ? `Requirement met.` : `Goal: ${data.target}${key !== 'capstone' ? '%' : ''} required`}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {gradedTests.map(item => <GradeCard key={item.id} item={item} />)}
                                     </div>
                                 </div>
-                            );
-                        })}
+                            )}
+
+                            {/* Projects */}
+                            {gradedProjects.length > 0 && (
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingBottom: '8px', borderBottom: `1px solid ${theme.border.subtle}` }}>
+                                        <Briefcase size={16} color={theme.accent.blue} />
+                                        <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: theme.text.label }}>
+                                            Projects ({gradedProjects.length})
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {gradedProjects.map(item => <GradeCard key={item.id} item={item} />)}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Capstones */}
+                            {gradedCapstones.length > 0 && (
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', paddingBottom: '8px', borderBottom: `1px solid ${theme.border.subtle}` }}>
+                                        <Trophy size={16} color="#f97316" />
+                                        <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: theme.text.label }}>
+                                            Capstone Projects ({gradedCapstones.length})
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {gradedCapstones.map(item => <GradeCard key={item.id} item={item} />)}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ══ SECTION: OVERVIEW ══ */}
+            {activeSection === 'overview' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    {/* Attendance Ring */}
+                    <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', padding: '32px 24px' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label, marginBottom: '24px' }}>
+                            Attendance Overview
+                        </div>
+                        <ScoreRing value={attendance} size={140} label="Present" />
+                        <div style={{ marginTop: '20px', padding: '8px 18px', borderRadius: theme.radius.full, background: `${attendanceColor}12`, border: `1px solid ${attendanceColor}25`, fontSize: '11px', fontWeight: 700, color: attendanceColor }}>
+                            {attendance >= 85 ? '✅ Placement Eligible' : attendance >= 60 ? '⚠️ Needs Improvement' : '🚨 At Risk'}
+                        </div>
+                        <div style={{ marginTop: '12px', fontSize: '12px', color: theme.text.muted }}>
+                            {p.attendance?.present || 0} present / {p.attendance?.total || 0} total days
+                        </div>
+                    </Card>
+
+                    {/* Performance Metrics */}
+                    <Card>
+                        <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label, marginBottom: '20px' }}>
+                            Performance Metrics
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {/* Test Avg */}
+                            <div style={{ background: theme.bg.input, border: `1px solid ${theme.border.subtle}`, borderRadius: theme.radius.md, padding: '18px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <BarChart3 size={16} color={theme.accent.blue} />
+                                        <span style={{ fontSize: '12px', fontWeight: 700, color: theme.text.secondary }}>Test Average</span>
+                                    </div>
+                                    <span style={{ fontSize: '22px', fontWeight: 800, color: scoreColor(avgTestScore) }}>
+                                        {avgTestScore > 0 ? `${avgTestScore}%` : '—'}
+                                    </span>
+                                </div>
+                                <div style={{ height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)' }}>
+                                    <div style={{ height: '100%', borderRadius: '3px', width: `${avgTestScore}%`, background: scoreColor(avgTestScore), transition: 'width 0.6s' }} />
+                                </div>
+                            </div>
+
+                            {/* Worksheets */}
+                            <div style={{ background: theme.bg.input, border: `1px solid ${theme.border.subtle}`, borderRadius: theme.radius.md, padding: '18px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <BookOpen size={16} color={theme.accent.cyan} />
+                                        <span style={{ fontSize: '12px', fontWeight: 700, color: theme.text.secondary }}>Worksheets</span>
+                                    </div>
+                                    <span style={{ fontSize: '22px', fontWeight: 800, color: theme.text.primary }}>
+                                        {worksheets.submitted}/{worksheets.total}
+                                    </span>
+                                </div>
+                                <div style={{ height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)' }}>
+                                    <div style={{ height: '100%', borderRadius: '3px', width: `${worksheets.pct}%`, background: theme.accent.cyan, transition: 'width 0.6s' }} />
+                                </div>
+                            </div>
+
+                            {/* Modules */}
+                            <div style={{ background: theme.bg.input, border: `1px solid ${theme.border.subtle}`, borderRadius: theme.radius.md, padding: '18px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Target size={16} color={theme.accent.green} />
+                                        <span style={{ fontSize: '12px', fontWeight: 700, color: theme.text.secondary }}>Modules Passed</span>
+                                    </div>
+                                    <span style={{ fontSize: '22px', fontWeight: 800, color: theme.text.primary }}>{passedModules}/{totalModules}</span>
+                                </div>
+                                <div style={{ height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)' }}>
+                                    <div style={{ height: '100%', borderRadius: '3px', width: totalModules ? `${(passedModules / totalModules) * 100}%` : '0%', background: theme.accent.green, transition: 'width 0.6s' }} />
+                                </div>
+                            </div>
+
+                            {/* Loyalty */}
+                            <div style={{ background: `${theme.accent.yellow}08`, border: `1px solid ${theme.accent.yellow}20`, borderRadius: theme.radius.md, padding: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <Star size={20} color={theme.accent.yellow} />
+                                    <div>
+                                        <div style={{ fontSize: '12px', fontWeight: 700, color: theme.text.primary }}>Loyalty Tier</div>
+                                        <div style={{ fontSize: '10px', color: theme.text.muted, marginTop: '2px' }}>{loyaltyMarks} points earned</div>
+                                    </div>
+                                </div>
+                                <span style={{ fontSize: '28px' }}>
+                                    {loyaltyMarks >= 500 ? '💎' : loyaltyMarks >= 200 ? '🥇' : loyaltyMarks >= 100 ? '🥈' : '🥉'}
+                                </span>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Placement Eligibility */}
+                    {eligibility?.criteria && (
+                        <Card style={{ gridColumn: '1 / -1' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Briefcase size={20} color={theme.accent.purple} />
+                                    <div style={{ fontSize: '14px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label }}>
+                                        Placement Eligibility
+                                    </div>
+                                </div>
+                                {eligibility.canRequest ? (
+                                    <span style={{ padding: '6px 12px', background: `${theme.accent.green}20`, color: theme.accent.green, borderRadius: theme.radius.full, fontSize: '12px', fontWeight: 700 }}>
+                                        ✅ Eligible to Apply
+                                    </span>
+                                ) : (
+                                    <span style={{ padding: '6px 12px', background: `${theme.accent.red}20`, color: theme.accent.red, borderRadius: theme.radius.full, fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <AlertCircle size={14} /> Action Required
+                                    </span>
+                                )}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+                                {Object.entries(eligibility.criteria).map(([key, data]) => {
+                                    const isMet = data.met;
+                                    const progressPct = key === 'portfolio' ? (isMet ? 100 : 0) : Math.min(100, (data.value / data.target) * 100);
+                                    return (
+                                        <div key={key} style={{ padding: '14px', borderRadius: theme.radius.md, background: isMet ? `${theme.accent.green}05` : `${theme.accent.red}05`, border: `1px solid ${isMet ? theme.accent.green + '20' : theme.accent.red + '20'}` }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                <span style={{ fontSize: '13px', fontWeight: 600, color: theme.text.secondary, textTransform: 'capitalize' }}>{key}</span>
+                                                <span style={{ fontSize: '13px', fontWeight: 800, color: isMet ? theme.accent.green : theme.text.primary }}>
+                                                    {key === 'portfolio' ? (isMet ? 'Approved' : 'Pending') : `${data.value} / ${data.target}${key !== 'capstone' ? '%' : ''}`}
+                                                </span>
+                                            </div>
+                                            <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)' }}>
+                                                <div style={{ height: '100%', borderRadius: '3px', width: `${progressPct}%`, background: isMet ? theme.accent.green : theme.accent.yellow, transition: 'width 0.6s' }} />
+                                            </div>
+                                            <div style={{ fontSize: '11px', marginTop: '8px', color: theme.text.muted }}>
+                                                {isMet ? 'Requirement met ✓' : `Need: ${data.target}${key !== 'capstone' && key !== 'portfolio' ? '%' : ''}`}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </Card>
+                    )}
+                </div>
+            )}
+
+            {/* ══ SECTION: MODULE ROADMAP ══ */}
+            {activeSection === 'modules' && (
+                <Card>
+                    <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label, marginBottom: '20px' }}>
+                        Module Roadmap — {passedModules}/{totalModules} Passed
                     </div>
+                    {moduleRoadmap.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '24px', color: theme.text.muted }}>No modules found.</div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {moduleRoadmap.map((mod, idx) => {
+                                const statusColors = {
+                                    passed:  theme.accent.green,
+                                    failed:  theme.accent.red,
+                                    active:  theme.accent.blue,
+                                    pending: theme.accent.yellow,
+                                    locked:  theme.text.muted,
+                                };
+                                const statusLabels = {
+                                    passed:  'Passed ✓',
+                                    failed:  'Failed',
+                                    active:  'In Progress',
+                                    pending: 'Pending Review',
+                                    locked:  'Locked',
+                                };
+                                const color = statusColors[mod.status] || theme.text.muted;
+                                return (
+                                    <div key={mod.id} style={{
+                                        display: 'flex', alignItems: 'center', gap: '14px',
+                                        padding: '16px 18px', borderRadius: theme.radius.md,
+                                        background: mod.status === 'passed' ? `${theme.accent.green}06` : 'rgba(255,255,255,0.02)',
+                                        border: `1px solid ${color}20`,
+                                    }}>
+                                        <div style={{ width: '36px', height: '36px', borderRadius: theme.radius.sm, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '13px', fontWeight: 800, color }}>
+                                            {mod.status === 'passed' ? <CheckCircle size={18} /> : mod.sequence_order}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '14px', fontWeight: 700, color: theme.text.primary, marginBottom: '4px' }}>{mod.name}</div>
+                                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: '11px', color, fontWeight: 700 }}>{statusLabels[mod.status]}</span>
+                                                {mod.best_score !== null && (
+                                                    <span style={{ fontSize: '11px', color: theme.text.muted }}>Best score: <strong style={{ color: scoreColor(mod.best_score) }}>{mod.best_score}/100</strong></span>
+                                                )}
+                                                {mod.attempts > 0 && (
+                                                    <span style={{ fontSize: '11px', color: theme.text.muted }}>{mod.attempts} attempt{mod.attempts !== 1 ? 's' : ''}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {mod.best_score !== null && (
+                                            <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                                                <div style={{ fontSize: '24px', fontWeight: 800, color: scoreColor(mod.best_score) }}>{mod.best_score}</div>
+                                                <div style={{ fontSize: '10px', color: theme.text.muted }}>/100</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </Card>
             )}
 
-            {/* Module Roadmap */}
-            {moduleData.length > 0 && (
-                <Card>
-                    <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label, marginBottom: '20px' }}>
-                        Module Roadmap
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {moduleData.map((mod, idx) => {
-                            const prog = mod.progress || (mod.completed ? 100 : 0);
-                            const isComplete = prog === 100 || mod.completed;
-                            const modColor = isComplete ? theme.accent.green : prog > 0 ? theme.accent.blue : theme.text.muted;
-                            return (
-                                <div key={mod.id || idx} style={{
-                                    display: 'flex', alignItems: 'center', gap: '14px',
-                                    padding: '14px 16px', borderRadius: theme.radius.md,
-                                    background: isComplete ? `${theme.accent.green}06` : 'rgba(255,255,255,0.02)',
-                                    border: `1px solid ${isComplete ? theme.accent.green + '20' : theme.border.subtle}`,
-                                }}>
-                                    <div style={{
-                                        width: '34px', height: '34px', borderRadius: theme.radius.sm,
-                                        background: `${modColor}15`, display: 'flex',
-                                        alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                                        fontSize: '12px', fontWeight: 800, color: modColor,
-                                    }}>
-                                        {isComplete ? <CheckCircle size={16} /> : idx + 1}
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{
-                                            fontSize: '13px', fontWeight: 700, color: theme.text.primary,
-                                            marginBottom: '6px',
-                                        }}>
-                                            {mod.name || mod.module_name}
-                                        </div>
-                                        <div style={{ height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.06)' }}>
-                                            <div style={{
-                                                height: '100%', borderRadius: '2px',
-                                                width: `${prog}%`, background: modColor,
-                                                transition: 'width 0.4s',
-                                            }} />
-                                        </div>
-                                    </div>
-                                    <span style={{ fontSize: '12px', fontWeight: 700, color: modColor }}>{prog}%</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </Card>
-            )}
             <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
         </div>
     );

@@ -408,7 +408,7 @@ exports.getStudentProgress = async (req, res) => {
         const present_days = att[0].present_days || 0;
         const attendancePct = total_days > 0 ? Math.round((present_days / total_days) * 100) : 0;
 
-        // 2. Consecutive streak (class days, most recent first)
+        // 2. Consecutive streak
         const [attRows] = await pool.query(`
             SELECT status FROM StudentAttendance
             WHERE student_id = ? AND batch_id = ?
@@ -431,7 +431,7 @@ exports.getStudentProgress = async (req, res) => {
         const rankPos = batchStudents.findIndex(s => s.student_id === studentId) + 1;
         const totalStudents = batchStudents.length;
 
-        // 4. Performance (test avg, projects)
+        // 4. Performance (test avg, projects, worksheets)
         const [perf] = await pool.query(`
             SELECT
                 AVG(CASE WHEN submission_type = 'module_test' AND marks IS NOT NULL THEN marks ELSE NULL END) as avg_test_score,
@@ -440,7 +440,7 @@ exports.getStudentProgress = async (req, res) => {
             FROM Submissions WHERE student_id = ?
         `, [studentId]);
 
-        // 5. Total worksheets available (total Days in course)
+        // 5. Total worksheets available
         const [dayCount] = await pool.query(`
             SELECT COUNT(d.id) as total_days
             FROM Days d
@@ -461,8 +461,7 @@ exports.getStudentProgress = async (req, res) => {
         if (moduleIds.length) {
             const ph = moduleIds.map(() => '?').join(',');
             const [testSubs] = await pool.query(`
-                SELECT module_id, MAX(marks) as best_marks,
-                       COUNT(*) as attempts
+                SELECT module_id, MAX(marks) as best_marks, COUNT(*) as attempts
                 FROM Submissions
                 WHERE student_id = ? AND submission_type = 'module_test'
                 AND module_id IN (${ph})
@@ -497,6 +496,35 @@ exports.getStudentProgress = async (req, res) => {
             });
         }
 
+        // 7. Graded submissions from release system (projects, tests, capstone)
+        const [gradedSubmissions] = await pool.query(`
+            SELECT srs.id, srs.release_id, srs.marks, srs.feedback, srs.status,
+                   srs.submitted_at, srs.graded_at,
+                   br.release_type, br.due_date, br.entity_id
+            FROM StudentReleaseSubmissions srs
+            JOIN BatchReleases br ON srs.release_id = br.id
+            WHERE srs.student_id = ? AND srs.batch_id = ?
+            ORDER BY srs.submitted_at DESC
+        `, [studentId, batch_id]);
+
+        // Enrich with names
+        const gradedItems = await Promise.all(gradedSubmissions.map(async s => {
+            let name = '';
+            try {
+                if (s.release_type === 'module_project') {
+                    const [[row]] = await pool.query('SELECT name FROM ModuleProjects WHERE id = ?', [s.entity_id]);
+                    name = row?.name || 'Project';
+                } else if (s.release_type === 'module_test') {
+                    const [[mod]] = await pool.query('SELECT name FROM Modules WHERE id = ?', [s.entity_id]);
+                    name = `${mod?.name || 'Module'} — Test`;
+                } else if (s.release_type === 'capstone_project') {
+                    const [[cap]] = await pool.query('SELECT name FROM CapstoneProjecs WHERE id = ?', [s.entity_id]);
+                    name = cap?.name || 'Capstone Project';
+                }
+            } catch (_) {}
+            return { ...s, name };
+        }));
+
         const worksheetsSubmitted = perf[0].worksheets_submitted || 0;
         const totalWorksheets = dayCount[0].total_days || 0;
         const worksheetPct = totalWorksheets > 0
@@ -515,6 +543,7 @@ exports.getStudentProgress = async (req, res) => {
             passedModules,
             totalModules: modules.length,
             moduleRoadmap,
+            gradedItems,
         });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching progress', error: error.message });
