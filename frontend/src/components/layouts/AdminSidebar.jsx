@@ -3,7 +3,7 @@ import { BrandLogo } from '../icons/BrandLogo';
 import {
     LayoutDashboard, Users,
     ClipboardList, Megaphone, Link as LinkIcon,
-    BarChart3, HelpCircle, MessageSquare, Hexagon, Calendar, Briefcase, Settings
+    BarChart3, HelpCircle, MessageSquare, Hexagon, Calendar, Briefcase, Settings, Target, Rocket
 } from 'lucide-react';
 
 export const AdminSidebar = ({ isOpen, setIsOpen }) => {
@@ -42,6 +42,8 @@ export const AdminSidebar = ({ isOpen, setIsOpen }) => {
             label: 'Placements',
             links: [
                 { name: 'Job Openings', path: '/admin/jobs', icon: Briefcase },
+                { name: 'IOP Dashboard', path: '/admin/iop-dashboard', icon: Target },
+                { name: 'IOP Students', path: '/admin/iop-students', icon: Rocket },
             ]
         },
         {

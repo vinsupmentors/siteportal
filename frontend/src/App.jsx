@@ -103,6 +103,8 @@ const AppRoutes = () => {
         <Route path="trainer-leaves" element={<SATrainerLeaves />} />
         <Route path="job-requests" element={<SAJobRequests />} />
         <Route path="jobs" element={<RecruiterJobs />} />
+        <Route path="iop-dashboard" element={<RecruiterDashboard />} />
+        <Route path="iop-students" element={<RecruiterStudents />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 
@@ -122,6 +124,8 @@ const AppRoutes = () => {
         <Route path="reports" element={<AdminReports />} />
         <Route path="trainer-leaves" element={<AdminTrainerLeaves />} />
         <Route path="audit-logs" element={<AdminAuditLogs />} />
+        <Route path="iop-dashboard" element={<RecruiterDashboard />} />
+        <Route path="iop-students" element={<RecruiterStudents />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 
@@ -176,6 +180,7 @@ const AppRoutes = () => {
         <Route path="dashboard" element={<RecruiterDashboard />} />
         <Route path="jobs" element={<RecruiterJobs />} />
         <Route path="students" element={<RecruiterStudents />} />
+        <Route path="iop-students" element={<RecruiterStudents />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 

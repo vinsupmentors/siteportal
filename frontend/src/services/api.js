@@ -337,9 +337,10 @@ export const userAPI = {
 export const recruiterAPI = {
     getDashboard: () => api.get('/recruiter/dashboard'),
     getIopStudents: (params) => api.get('/recruiter/iop-students', { params }),
+    getStudentFullReport: (studentId) => api.get(`/recruiter/students/${studentId}/full-report`),
+    getStudentInterviews: (studentId) => api.get(`/recruiter/students/${studentId}/interviews`),
     scheduleInterview: (data) => api.post('/recruiter/interviews', data),
     updateInterview: (id, data) => api.put(`/recruiter/interviews/${id}`, data),
-    getStudentInterviews: (studentId) => api.get(`/recruiter/students/${studentId}/interviews`),
 };
 
 export default api;
