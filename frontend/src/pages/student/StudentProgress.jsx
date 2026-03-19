@@ -8,6 +8,7 @@ import {
     TrendingUp, Award, Target, BarChart3, CheckCircle,
     Flame, Star, Calendar, BookOpen, Briefcase, AlertCircle,
     FileText, MessageSquare, ChevronDown, ChevronRight, Trophy,
+    GraduationCap, Rocket, Download, Clock, BadgeCheck,
 } from 'lucide-react';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -189,8 +190,22 @@ const GradeCard = ({ item }) => {
 export const StudentProgress = () => {
     const [progress, setProgress] = useState(null);
     const [eligibility, setEligibility] = useState(null);
+    const [careerData, setCareerData] = useState(null);
+    const [certificates, setCertificates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeSection, setActiveSection] = useState('marks');
+    const [generatingCert, setGeneratingCert] = useState(null);
+    const [markingReady, setMarkingReady] = useState(false);
+    const [certMsg, setCertMsg] = useState('');
+
+    const fetchCareerData = async () => {
+        const [careerRes, certsRes] = await Promise.all([
+            studentAPI.getInternshipEligibility().catch(() => ({ data: null })),
+            studentAPI.getCertificates().catch(() => ({ data: { certificates: [] } })),
+        ]);
+        setCareerData(careerRes.data || null);
+        setCertificates(certsRes.data?.certificates || []);
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -201,6 +216,7 @@ export const StudentProgress = () => {
                 ]);
                 setProgress(progRes.data || {});
                 setEligibility(eligRes.data || null);
+                await fetchCareerData();
             } catch (error) {
                 console.error('Error fetching progress data', error);
             } finally {
@@ -209,6 +225,45 @@ export const StudentProgress = () => {
         };
         fetchData();
     }, []);
+
+    const handleGenerateCert = async (cert_type) => {
+        setGeneratingCert(cert_type);
+        setCertMsg('');
+        try {
+            const res = await studentAPI.generateCertificate({ cert_type });
+            setCertMsg(`Certificate generated! Opening preview...`);
+            // Open the HTML cert in a new window
+            const w = window.open('', '_blank');
+            if (w) w.document.write(res.data.html);
+            await fetchCareerData();
+        } catch (err) {
+            setCertMsg(err.response?.data?.message || 'Failed to generate certificate');
+        } finally {
+            setGeneratingCert(null);
+        }
+    };
+
+    const handleDownloadCert = async (certId, certType) => {
+        try {
+            const res = await studentAPI.downloadCertificate(certId);
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/html' }));
+            const a = document.createElement('a');
+            a.href = url; a.download = `${certType}_certificate.html`;
+            document.body.appendChild(a); a.click(); a.remove();
+        } catch { setCertMsg('Download failed'); }
+    };
+
+    const handleMarkReady = async () => {
+        setMarkingReady(true);
+        try {
+            await studentAPI.markReadyForInterview();
+            await fetchCareerData();
+        } catch (err) {
+            setCertMsg(err.response?.data?.message || 'Failed');
+        } finally {
+            setMarkingReady(false);
+        }
+    };
 
     if (loading) return <LoadingSpinner label="Loading progress..." />;
 
@@ -249,6 +304,7 @@ export const StudentProgress = () => {
         { id: 'marks',    label: 'Marks & Grades',   count: gradedItems.length     },
         { id: 'overview', label: 'Overview',          count: null                   },
         { id: 'modules',  label: 'Module Roadmap',    count: moduleRoadmap.length   },
+        { id: 'career',   label: 'Career Readiness',  count: null                   },
     ];
 
     return (
@@ -588,6 +644,195 @@ export const StudentProgress = () => {
                         </div>
                     )}
                 </Card>
+            )}
+
+            {/* ══ SECTION: CAREER READINESS ══ */}
+            {activeSection === 'career' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Program Type Badge */}
+                    {careerData && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                            <div style={{
+                                padding: '8px 18px', borderRadius: theme.radius.full, fontWeight: 800, fontSize: '14px',
+                                background: careerData.program_type === 'IOP' ? `${theme.accent.green}20` : `${theme.accent.blue}20`,
+                                color: careerData.program_type === 'IOP' ? theme.accent.green : theme.accent.blue,
+                                border: `1px solid ${careerData.program_type === 'IOP' ? theme.accent.green : theme.accent.blue}40`,
+                                display: 'flex', alignItems: 'center', gap: '8px',
+                            }}>
+                                <Rocket size={16} />
+                                {careerData.program_type === 'IOP' ? 'Interview Opportunity Program (IOP)' : 'Job Readiness Program (JRP)'}
+                            </div>
+                            {careerData.internshipEligible && (
+                                <div style={{ padding: '6px 14px', borderRadius: theme.radius.full, background: `${theme.accent.green}15`, color: theme.accent.green, fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <BadgeCheck size={14} /> All Criteria Met
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {certMsg && (
+                        <div style={{ padding: '12px 16px', borderRadius: theme.radius.md, background: `${theme.accent.blue}10`, border: `1px solid ${theme.accent.blue}30`, color: theme.accent.blue, fontSize: '13px' }}>
+                            {certMsg}
+                        </div>
+                    )}
+
+                    {/* Eligibility Criteria */}
+                    {careerData?.criteria && (
+                        <Card>
+                            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Target size={14} /> Internship Criteria Checklist
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                                {[
+                                    { key: 'attendance',      label: 'Attendance',            value: `${careerData.criteria.attendance.value}%`,      required: '≥ 80%',  met: careerData.criteria.attendance.met },
+                                    { key: 'module_projects', label: 'Module Projects Avg',   value: `${careerData.criteria.module_projects.value}%`,  required: '≥ 75%',  met: careerData.criteria.module_projects.met },
+                                    { key: 'capstone',        label: 'Capstone Completed',    value: careerData.criteria.capstone.value,              required: 'Min 1',  met: careerData.criteria.capstone.met },
+                                    { key: 'test_attendance', label: 'Test Attendance',       value: `${careerData.criteria.test_attendance.value}%`, required: '100%',   met: careerData.criteria.test_attendance.met },
+                                    { key: 'feedback_forms',  label: 'Feedback Forms',        value: `${careerData.criteria.feedback_forms.value}%`,  required: '100%',   met: careerData.criteria.feedback_forms.met },
+                                    { key: 'portfolio',       label: 'Portfolio',             value: careerData.criteria.portfolio.status,            required: 'Approved', met: careerData.criteria.portfolio.met },
+                                ].map(item => (
+                                    <div key={item.key} style={{
+                                        display: 'flex', alignItems: 'center', gap: '12px', padding: '14px',
+                                        borderRadius: theme.radius.md,
+                                        background: item.met ? `${theme.accent.green}06` : `${theme.accent.red}06`,
+                                        border: `1px solid ${item.met ? theme.accent.green + '25' : theme.accent.red + '20'}`,
+                                    }}>
+                                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: item.met ? `${theme.accent.green}20` : `${theme.accent.red}15` }}>
+                                            {item.met
+                                                ? <CheckCircle size={16} color={theme.accent.green} />
+                                                : <AlertCircle size={16} color={theme.accent.red} />
+                                            }
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '12px', fontWeight: 700, color: theme.text.primary }}>{item.label}</div>
+                                            <div style={{ fontSize: '11px', color: theme.text.muted, marginTop: '2px' }}>
+                                                {item.value} <span style={{ color: theme.text.label }}>/ required {item.required}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    )}
+
+                    {/* Certificates */}
+                    <Card>
+                        <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <GraduationCap size={14} /> Certificates
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+                            {[
+                                {
+                                    type: 'completion',
+                                    label: 'Course Completion Certificate',
+                                    desc: 'Requires 75% attendance',
+                                    eligible: careerData?.completionEligible,
+                                    color: theme.accent.blue,
+                                },
+                                {
+                                    type: 'internship',
+                                    label: 'Internship Certificate',
+                                    desc: 'Requires all criteria met',
+                                    eligible: careerData?.internshipEligible,
+                                    color: theme.accent.green,
+                                },
+                            ].map(cert => {
+                                const existing = certificates.find(c => c.cert_type === cert.type && !c.reset_by_admin);
+                                return (
+                                    <div key={cert.type} style={{
+                                        padding: '20px', borderRadius: theme.radius.md,
+                                        background: theme.bg.input, border: `1px solid ${cert.color}25`,
+                                        borderTop: `3px solid ${cert.color}`,
+                                    }}>
+                                        <div style={{ fontSize: '13px', fontWeight: 700, color: theme.text.primary, marginBottom: '6px' }}>{cert.label}</div>
+                                        <div style={{ fontSize: '11px', color: theme.text.muted, marginBottom: '16px' }}>{cert.desc}</div>
+                                        {existing ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                <div style={{ fontSize: '11px', color: theme.accent.green, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <CheckCircle size={13} /> Generated on {fmtDate(existing.generated_at)}
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDownloadCert(existing.id, cert.type)}
+                                                    style={{ padding: '8px 14px', borderRadius: theme.radius.sm, background: `${cert.color}15`, color: cert.color, border: `1px solid ${cert.color}30`, cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <Download size={13} /> Download
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => cert.eligible && handleGenerateCert(cert.type)}
+                                                disabled={!cert.eligible || generatingCert === cert.type}
+                                                style={{
+                                                    width: '100%', padding: '10px', borderRadius: theme.radius.sm, fontSize: '12px', fontWeight: 700,
+                                                    cursor: cert.eligible ? 'pointer' : 'not-allowed',
+                                                    background: cert.eligible ? cert.color : 'transparent',
+                                                    color: cert.eligible ? '#fff' : theme.text.muted,
+                                                    border: `1px solid ${cert.eligible ? cert.color : theme.border.subtle}`,
+                                                    opacity: generatingCert === cert.type ? 0.6 : 1,
+                                                }}>
+                                                {generatingCert === cert.type ? 'Generating...' : cert.eligible ? 'Generate Certificate' : 'Not Yet Eligible'}
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </Card>
+
+                    {/* IOP: Ready for Interview */}
+                    {careerData?.program_type === 'IOP' && (
+                        <Card>
+                            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Briefcase size={14} /> Interview Readiness (IOP)
+                            </div>
+                            {careerData.ready_for_interview ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <div style={{ padding: '16px', borderRadius: theme.radius.md, background: `${theme.accent.green}08`, border: `1px solid ${theme.accent.green}25`, display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                        <BadgeCheck size={32} color={theme.accent.green} />
+                                        <div>
+                                            <div style={{ fontSize: '14px', fontWeight: 700, color: theme.accent.green }}>Ready for Interview</div>
+                                            <div style={{ fontSize: '12px', color: theme.text.muted, marginTop: '4px' }}>
+                                                Course completion date: {fmtDate(careerData.course_completion_date)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {careerData.course_completion_date && (() => {
+                                        const deadline = new Date(careerData.course_completion_date);
+                                        deadline.setDate(deadline.getDate() + 90);
+                                        const daysLeft = Math.max(0, Math.round((deadline - new Date()) / (1000 * 60 * 60 * 24)));
+                                        return (
+                                            <div style={{ padding: '12px 16px', borderRadius: theme.radius.md, background: daysLeft < 30 ? `${theme.accent.red}08` : `${theme.accent.yellow}08`, border: `1px solid ${daysLeft < 30 ? theme.accent.red : theme.accent.yellow}25`, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <Clock size={18} color={daysLeft < 30 ? theme.accent.red : theme.accent.yellow} />
+                                                <span style={{ fontSize: '13px', fontWeight: 700, color: daysLeft < 30 ? theme.accent.red : theme.accent.yellow }}>
+                                                    90-day interview window: {daysLeft} days remaining
+                                                </span>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <div style={{ fontSize: '13px', color: theme.text.muted }}>
+                                        Once all internship criteria are met, mark yourself as ready to start your 90-day interview window.
+                                    </div>
+                                    <button
+                                        onClick={handleMarkReady}
+                                        disabled={!careerData.internshipEligible || markingReady}
+                                        style={{
+                                            width: 'fit-content', padding: '12px 24px', borderRadius: theme.radius.md,
+                                            fontSize: '13px', fontWeight: 700, cursor: careerData.internshipEligible ? 'pointer' : 'not-allowed',
+                                            background: careerData.internshipEligible ? theme.gradient.green : 'transparent',
+                                            color: careerData.internshipEligible ? '#fff' : theme.text.muted,
+                                            border: `1px solid ${careerData.internshipEligible ? 'transparent' : theme.border.subtle}`,
+                                            display: 'flex', alignItems: 'center', gap: '8px',
+                                        }}>
+                                        <Rocket size={15} />
+                                        {markingReady ? 'Processing...' : 'Mark Ready for Interview'}
+                                    </button>
+                                </div>
+                            )}
+                        </Card>
+                    )}
+                </div>
             )}
 
             <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>

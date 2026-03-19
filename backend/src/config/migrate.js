@@ -326,6 +326,40 @@ async function runMigrations() {
         `);
         // ── ContentFiles: add binary storage column ─────────────────────────
         await addColumnIfNotExists('ContentFiles', 'file_data LONGBLOB');
+
+        // ── JRP/IOP Program Type ─────────────────────────────────────────────
+        await addColumnIfNotExists('Users', "program_type ENUM('JRP','IOP') DEFAULT 'JRP'");
+
+        // ── Course Completion Tracking on BatchStudents ──────────────────────
+        await addColumnIfNotExists('BatchStudents', 'course_completion_date DATE NULL');
+        await addColumnIfNotExists('BatchStudents', 'ready_for_interview TINYINT(1) DEFAULT 0');
+
+        // ── Certificate Enhancements ─────────────────────────────────────────
+        await addColumnIfNotExists('Certificates', "cert_type ENUM('completion','internship') DEFAULT 'completion'");
+        await addColumnIfNotExists('Certificates', 'generated_at DATETIME NULL');
+        await addColumnIfNotExists('Certificates', 'reset_by_admin TINYINT(1) DEFAULT 0');
+        await addColumnIfNotExists('Certificates', "program_type ENUM('JRP','IOP') DEFAULT 'JRP'");
+        await addColumnIfNotExists('Certificates', 'cert_data LONGBLOB NULL');
+
+        // ── StudentInterviews ────────────────────────────────────────────────
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS StudentInterviews (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id INT NOT NULL,
+                batch_id INT NOT NULL,
+                recruiter_id INT NOT NULL,
+                interview_number TINYINT NOT NULL,
+                company_name VARCHAR(255),
+                scheduled_date DATE NULL,
+                status ENUM('scheduled','in_progress','placed','rejected') DEFAULT 'scheduled',
+                notes TEXT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (student_id) REFERENCES Users(id),
+                FOREIGN KEY (batch_id) REFERENCES Batches(id)
+            )
+        `);
+
         console.log('[Migration] All migrations applied successfully.');
     } catch (err) {
         console.error('[Migration] Error:', err.message);

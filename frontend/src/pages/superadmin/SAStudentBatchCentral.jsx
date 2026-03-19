@@ -19,7 +19,7 @@ export const SAStudentBatchCentral = () => {
     const [studentSearch, setStudentSearch] = useState('');
     const [showStudentForm, setShowStudentForm] = useState(false);
     const [editingStudentId, setEditingStudentId] = useState(null);
-    const [studentForm, setStudentForm] = useState({ first_name: '', last_name: '', email: '', phone: '', batch_id: '', student_status: 'Regular' });
+    const [studentForm, setStudentForm] = useState({ first_name: '', last_name: '', email: '', phone: '', batch_id: '', student_status: 'Regular', program_type: 'JRP' });
     const [selectedStudents, setSelectedStudents] = useState([]);
     const [assignBatchId, setAssignBatchId] = useState('');
     const [transferModal, setTransferModal] = useState({ show: false, studentId: null, newBatchId: '' });
@@ -201,7 +201,7 @@ export const SAStudentBatchCentral = () => {
                                 style={{ padding: '10px 16px', borderRadius: '8px', background: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer' }}>
                                 <Upload size={16} /> Bulk Upload
                             </button>
-                            <button onClick={() => { setShowStudentForm(true); setEditingStudentId(null); setStudentForm({ first_name: '', last_name: '', email: '', phone: '', batch_id: '' }); }}
+                            <button onClick={() => { setShowStudentForm(true); setEditingStudentId(null); setStudentForm({ first_name: '', last_name: '', email: '', phone: '', batch_id: '', student_status: 'Regular', program_type: 'JRP' }); }}
                                 style={{ padding: '10px 16px', borderRadius: '8px', background: 'var(--primary)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer' }}>
                                 <UserPlus size={16} /> Add Student
                             </button>
@@ -246,6 +246,18 @@ export const SAStudentBatchCentral = () => {
                                         <option value="Course Completed">Course Completed</option>
                                     </select>
                                 )}
+                                {/* Program Type — JRP / IOP */}
+                                <div style={{ gridColumn: editingStudentId ? 'span 1' : 'span 1' }}>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>Program Type</label>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        {['JRP', 'IOP'].map(pt => (
+                                            <button key={pt} type="button" onClick={() => setStudentForm({ ...studentForm, program_type: pt })}
+                                                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: `1px solid ${studentForm.program_type === pt ? (pt === 'IOP' ? '#10b981' : 'var(--primary)') : 'var(--border-color)'}`, background: studentForm.program_type === pt ? (pt === 'IOP' ? 'rgba(16,185,129,0.15)' : 'rgba(59,130,246,0.15)') : 'transparent', color: studentForm.program_type === pt ? (pt === 'IOP' ? '#10b981' : 'var(--primary)') : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem' }}>
+                                                {pt === 'JRP' ? 'JRP (Job Readiness)' : 'IOP (Interview Opp.)'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                                 <div style={{ gridColumn: 'span 2', display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                                     <button type="button" onClick={() => setShowStudentForm(false)} style={{ padding: '10px 20px', borderRadius: '8px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-color)', cursor: 'pointer' }}>Cancel</button>
                                     <button type="submit" style={{ padding: '10px 25px', borderRadius: '8px', background: 'var(--primary)', color: 'white', border: 'none', fontWeight: 600, cursor: 'pointer' }}>Save Student</button>
@@ -316,11 +328,12 @@ export const SAStudentBatchCentral = () => {
                                         <td style={{ padding: '1rem' }}>
                                             <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(255,255,255,0.05)', color: 'var(--text-accent)' }}>{s.student_phase || 'Joined'}</span>
                                             <span style={{ marginLeft: '8px', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, background: 'rgba(255,100,100,0.1)', color: 'var(--text-main)' }}>{s.student_status || 'Regular'}</span>
+                                            <span style={{ marginLeft: '8px', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, background: s.program_type === 'IOP' ? 'rgba(16,185,129,0.12)' : 'rgba(59,130,246,0.12)', color: s.program_type === 'IOP' ? '#10b981' : '#3b82f6' }}>{s.program_type || 'JRP'}</span>
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: 'right' }}>
                                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                                 <button onClick={() => setTransferModal({ show: true, studentId: s.id, newBatchId: '' })} style={{ padding: '4px 10px', borderRadius: '6px', background: '#ffb90020', border: '1px solid #ffb90040', color: '#ffb900', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Transfer</button>
-                                                <button onClick={() => { setEditingStudentId(s.id); setStudentForm({ first_name: s.first_name, last_name: s.last_name, email: s.email, phone: s.phone || '', status: s.status, student_status: s.student_status || 'Regular' }); setShowStudentForm(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><Pencil size={18} /></button>
+                                                <button onClick={() => { setEditingStudentId(s.id); setStudentForm({ first_name: s.first_name, last_name: s.last_name, email: s.email, phone: s.phone || '', status: s.status, student_status: s.student_status || 'Regular', program_type: s.program_type || 'JRP' }); setShowStudentForm(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><Pencil size={18} /></button>
                                                 <button onClick={() => handleStudentDelete(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ff6b6b' }}><Trash2 size={18} /></button>
                                             </div>
                                         </td>

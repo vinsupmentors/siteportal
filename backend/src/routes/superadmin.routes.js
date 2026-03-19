@@ -75,10 +75,13 @@ router.get('/students', requireRole([1, 2]), crudController.getStudents);
 router.post('/students', requireRole([1]), crudController.createStudent);
 router.post('/students/bulk', crudController.bulkCreateStudents);
 router.post('/students/bulk-assign-batch', crudController.bulkAssignBatch);
-router.post('/students/:id/transfer-batch', requireRole([1]), crudController.transferStudentBatch);
+router.get('/students/program-overview', requireRole([1, 2]), crudController.getStudentsWithProgramType);
 router.get('/students/template', crudController.downloadStudentTemplate);
+router.post('/students/:id/transfer-batch', requireRole([1]), crudController.transferStudentBatch);
 router.put('/students/:id', crudController.updateStudent);
 router.delete('/students/:id', crudController.deleteStudent);
+router.put('/students/:studentId/program-type', requireRole([1]), crudController.updateStudentProgramType);
+router.post('/students/:studentId/certificates/reset', requireRole([1]), crudController.resetStudentCertificate);
 
 // ==========================================
 // TRAINERS

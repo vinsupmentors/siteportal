@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { jobAPI } from '../../services/api';
-import { Lock, CheckCircle, XCircle, Briefcase, Building, Clock, MapPin, Search, Upload, ExternalLink, IndianRupee } from 'lucide-react';
+import { jobAPI, studentAPI, recruiterAPI } from '../../services/api';
+import { Lock, CheckCircle, XCircle, Briefcase, Building, Clock, MapPin, Search, Upload, ExternalLink, IndianRupee, Rocket, Calendar, AlertCircle } from 'lucide-react';
+
+const IOP_STATUS_META = {
+    scheduled:   { label: 'Scheduled',   bg: 'rgba(59,130,246,0.12)',  color: '#3b82f6' },
+    in_progress: { label: 'In Progress', bg: 'rgba(245,158,11,0.12)', color: '#f59e0b' },
+    placed:      { label: 'Placed ✓',    bg: 'rgba(16,185,129,0.12)', color: '#10b981' },
+    rejected:    { label: 'Rejected ✗',  bg: 'rgba(239,68,68,0.12)',  color: '#ef4444' },
+};
 
 const StudentJobPortal = () => {
     const [eligibility, setEligibility] = useState(null);
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+    const [careerData, setCareerData] = useState(null);
+    const [interviews, setInterviews] = useState([null, null, null]);
     const [formData, setFormData] = useState({
         portfolio_link: '',
         google_review_img: null,
@@ -24,6 +33,20 @@ const StudentJobPortal = () => {
             if (res.data.status === 'unlocked' || res.data.status === 'Approved') {
                 const jobsRes = await jobAPI.getStudentJobs();
                 setJobs(jobsRes.data);
+            }
+            // Fetch career data for IOP pipeline (works for all students, shows IOP section if applicable)
+            const careerRes = await studentAPI.getInternshipEligibility().catch(() => ({ data: null }));
+            if (careerRes.data) {
+                setCareerData(careerRes.data);
+                if (careerRes.data.program_type === 'IOP') {
+                    // Get student ID from token
+                    const token = localStorage.getItem('token');
+                    if (token) {
+                        const payload = JSON.parse(atob(token.split('.')[1]));
+                        const intRes = await recruiterAPI.getStudentInterviews(payload.id).catch(() => ({ data: { interviews: [null, null, null] } }));
+                        setInterviews(intRes.data?.interviews || [null, null, null]);
+                    }
+                }
             }
         } catch (err) {
             console.error('Fetch error:', err);
@@ -234,6 +257,78 @@ const StudentJobPortal = () => {
                     </div>
                 </div>
             </div>
+
+            {/* IOP Interview Pipeline — only for IOP students */}
+            {careerData?.program_type === 'IOP' && (
+                <div className="card p-6 mb-8">
+                    <div className="flex items-center gap-3 mb-5">
+                        <Rocket size={20} className="text-green-400" />
+                        <div>
+                            <h3 className="font-bold text-main">IOP Interview Pipeline</h3>
+                            <p className="text-xs text-muted">Your 3-interview journey — tracked by your placement officer</p>
+                        </div>
+                        {careerData.ready_for_interview && careerData.course_completion_date && (() => {
+                            const deadline = new Date(careerData.course_completion_date);
+                            deadline.setDate(deadline.getDate() + 90);
+                            const daysLeft = Math.max(0, Math.round((deadline - new Date()) / (1000 * 60 * 60 * 24)));
+                            return (
+                                <div style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: '999px', background: daysLeft < 30 ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)', color: daysLeft < 30 ? '#ef4444' : '#f59e0b', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Clock size={13} /> {daysLeft} days remaining
+                                </div>
+                            );
+                        })()}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {[0, 1, 2].map(i => {
+                            const interview = interviews[i];
+                            const num = i + 1;
+                            const meta = interview ? (IOP_STATUS_META[interview.status] || IOP_STATUS_META.scheduled) : null;
+                            return (
+                                <div key={i} style={{
+                                    padding: '16px', borderRadius: '12px',
+                                    background: interview ? meta.bg : 'rgba(255,255,255,0.02)',
+                                    border: `1px solid ${interview ? meta.color + '40' : 'rgba(255,255,255,0.06)'}`,
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                        <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: interview ? meta.color : '#5a6478' }}>
+                                            Interview {num}
+                                        </span>
+                                        {interview && (
+                                            <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '999px', background: meta.bg, color: meta.color, border: `1px solid ${meta.color}30` }}>
+                                                {meta.label}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {interview ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            {interview.company_name && (
+                                                <div style={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>{interview.company_name}</div>
+                                            )}
+                                            {interview.scheduled_date && (
+                                                <div style={{ fontSize: '12px', color: '#8892a4', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    <Calendar size={12} /> {new Date(interview.scheduled_date).toLocaleDateString('en-IN')}
+                                                </div>
+                                            )}
+                                            {interview.notes && (
+                                                <div style={{ fontSize: '11px', color: '#5a6478', fontStyle: 'italic', marginTop: '4px' }}>{interview.notes}</div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div style={{ fontSize: '12px', color: '#5a6478', fontStyle: 'italic' }}>
+                                            {!careerData.ready_for_interview ? 'Mark yourself ready first' : 'Not yet scheduled by recruiter'}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {!careerData.ready_for_interview && (
+                        <div className="mt-4 p-3 rounded-lg text-sm" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <AlertCircle size={16} /> Complete all criteria in Progress → Career Readiness to activate your interview pipeline.
+                        </div>
+                    )}
+                </div>
+            )}
 
             {jobs.length === 0 ? (
                 <div className="card text-center p-20">

@@ -254,6 +254,13 @@ submitReleaseWork: (releaseId, formData) => api.post(`/student/releases/${releas
     // Dynamic Feedback System
     getReleasedFeedback: () => api.get('/student/released-feedback'),
     submitFeedback: (data) => api.post('/student/submit-feedback', data),
+
+    // Career Readiness & Certificates
+    getInternshipEligibility: () => api.get('/student/internship-eligibility'),
+    markReadyForInterview: () => api.post('/student/ready-for-interview'),
+    generateCertificate: (data) => api.post('/student/certificates/generate', data),
+    getCertificates: () => api.get('/student/certificates'),
+    downloadCertificate: (id) => api.get(`/student/certificates/${id}/download`, { responseType: 'blob' }),
 };
 
 // Admin API (administrative portal)
@@ -289,6 +296,11 @@ export const adminAPI = {
     // Downloads
     downloadTrainerKRA: (id, month, year) => api.get(`/super-admin/reports/trainer/${id}/download-kra?month=${month}&year=${year}`, { responseType: 'blob' }),
     downloadTrainerFullReport: (id) => api.get(`/super-admin/reports/trainer/${id}/download-full-report`, { responseType: 'blob' }),
+
+    // JRP/IOP Program Management
+    updateProgramType: (studentId, data) => api.put(`/super-admin/students/${studentId}/program-type`, data),
+    resetCertificate: (studentId, data) => api.post(`/super-admin/students/${studentId}/certificates/reset`, data),
+    getProgramOverview: () => api.get('/super-admin/students/program-overview'),
 };
 
 // Job Portal API
@@ -319,6 +331,15 @@ export const jobAPI = {
 export const userAPI = {
     getProfile: () => api.get('/user/profile'),
     updateProfile: (data) => api.put('/user/profile', data)
+};
+
+// Recruiter API (Placement Officer)
+export const recruiterAPI = {
+    getDashboard: () => api.get('/recruiter/dashboard'),
+    getIopStudents: (params) => api.get('/recruiter/iop-students', { params }),
+    scheduleInterview: (data) => api.post('/recruiter/interviews', data),
+    updateInterview: (id, data) => api.put(`/recruiter/interviews/${id}`, data),
+    getStudentInterviews: (studentId) => api.get(`/recruiter/students/${studentId}/interviews`),
 };
 
 export default api;

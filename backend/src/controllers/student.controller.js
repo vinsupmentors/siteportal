@@ -887,3 +887,295 @@ exports.submitFeedback = async (req, res) => {
         res.status(500).json({ message: 'Error submitting feedback', error: error.message });
     }
 };
+
+// ── Career Readiness / Internship Eligibility ─────────────────────────────────
+
+exports.checkInternshipEligibility = async (req, res) => {
+    try {
+        const studentId = req.user.id;
+
+        // 1. Get student's active batch + program type
+        const [batchRows] = await pool.query(`
+            SELECT b.id as batch_id, b.course_id, bs.course_completion_date, bs.ready_for_interview,
+                   u.program_type
+            FROM Batches b
+            JOIN BatchStudents bs ON b.id = bs.batch_id
+            JOIN Users u ON u.id = ?
+            WHERE bs.student_id = ? AND b.status = 'active'
+            LIMIT 1
+        `, [studentId, studentId]);
+
+        if (!batchRows.length) {
+            return res.json({ program_type: 'JRP', allMet: false, criteria: {}, completionEligible: false, internshipEligible: false });
+        }
+        const { batch_id, course_id, course_completion_date, ready_for_interview, program_type } = batchRows[0];
+
+        // 2. Attendance
+        const [attRows] = await pool.query(`
+            SELECT COUNT(*) as total, SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present
+            FROM StudentAttendance WHERE student_id = ? AND batch_id = ?
+        `, [studentId, batch_id]);
+        const attTotal = attRows[0].total || 0;
+        const attPct = attTotal > 0 ? Math.round((attRows[0].present / attTotal) * 100) : 0;
+
+        // 3. Module projects avg >= 75% (from StudentReleaseSubmissions)
+        const [projRows] = await pool.query(`
+            SELECT AVG(srs.marks) as avg_marks
+            FROM StudentReleaseSubmissions srs
+            JOIN BatchReleases br ON srs.release_id = br.id
+            WHERE srs.student_id = ? AND srs.batch_id = ? AND br.release_type = 'module_project' AND srs.status = 'graded'
+        `, [studentId, batch_id]);
+        const projAvg = projRows[0].avg_marks ? Math.round(projRows[0].avg_marks) : 0;
+
+        // 4. Capstone min 1 completed
+        const [capRows] = await pool.query(`
+            SELECT COUNT(*) as cnt
+            FROM StudentReleaseSubmissions srs
+            JOIN BatchReleases br ON srs.release_id = br.id
+            WHERE srs.student_id = ? AND srs.batch_id = ? AND br.release_type = 'capstone_project' AND srs.status = 'graded'
+        `, [studentId, batch_id]);
+        const capCount = capRows[0].cnt || 0;
+
+        // 5. Test attendance 100% (all released tests have submissions)
+        const [releasedTests] = await pool.query(`
+            SELECT COUNT(*) as total FROM BatchReleases WHERE batch_id = ? AND release_type = 'module_test'
+        `, [batch_id]);
+        const [submittedTests] = await pool.query(`
+            SELECT COUNT(*) as submitted
+            FROM StudentReleaseSubmissions srs
+            JOIN BatchReleases br ON srs.release_id = br.id
+            WHERE srs.student_id = ? AND srs.batch_id = ? AND br.release_type = 'module_test'
+        `, [studentId, batch_id]);
+        const testTotal = releasedTests[0].total || 0;
+        const testSubmitted = submittedTests[0].submitted || 0;
+        const testPct = testTotal > 0 ? Math.round((testSubmitted / testTotal) * 100) : 100;
+
+        // 6. Feedback forms 100%
+        const [releasedFB] = await pool.query(`
+            SELECT COUNT(*) as total FROM BatchFeedbackStatus WHERE batch_id = ? AND is_released = 1
+        `, [batch_id]);
+        const [submittedFB] = await pool.query(`
+            SELECT COUNT(*) as submitted
+            FROM StudentFeedbackResponses WHERE student_id = ? AND batch_id = ?
+        `, [studentId, batch_id]);
+        const fbTotal = releasedFB[0].total || 0;
+        const fbSubmitted = submittedFB[0].submitted || 0;
+        const fbPct = fbTotal > 0 ? Math.round((fbSubmitted / fbTotal) * 100) : 100;
+
+        // 7. Portfolio approved
+        const [portRows] = await pool.query(`
+            SELECT status FROM JobPortalRequests WHERE student_id = ? ORDER BY created_at DESC LIMIT 1
+        `, [studentId]);
+        const portfolioStatus = portRows.length ? portRows[0].status : 'not_submitted';
+        const portfolioApproved = portfolioStatus === 'approved';
+
+        const criteria = {
+            attendance:      { met: attPct >= 80,   value: attPct,      required: 80 },
+            module_projects: { met: projAvg >= 75,  value: projAvg,     required: 75 },
+            capstone:        { met: capCount >= 1,  value: capCount,    required: 1 },
+            test_attendance: { met: testPct >= 100, value: testPct,     required: 100 },
+            feedback_forms:  { met: fbPct >= 100,   value: fbPct,       required: 100 },
+            portfolio:       { met: portfolioApproved, status: portfolioStatus },
+        };
+
+        const completionEligible = attPct >= 75;
+        const internshipEligible = Object.values(criteria).every(c => c.met);
+
+        res.json({
+            program_type,
+            criteria,
+            allMet: internshipEligible,
+            completionEligible,
+            internshipEligible,
+            course_completion_date,
+            ready_for_interview: !!ready_for_interview,
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error checking eligibility', error: error.message });
+    }
+};
+
+exports.markReadyForInterview = async (req, res) => {
+    try {
+        const studentId = req.user.id;
+
+        // Get active batch + check IOP + check eligibility
+        const [batchRows] = await pool.query(`
+            SELECT b.id as batch_id, u.program_type, bs.ready_for_interview
+            FROM Batches b
+            JOIN BatchStudents bs ON b.id = bs.batch_id
+            JOIN Users u ON u.id = ?
+            WHERE bs.student_id = ? AND b.status = 'active'
+            LIMIT 1
+        `, [studentId, studentId]);
+
+        if (!batchRows.length) return res.status(400).json({ message: 'No active batch found' });
+        const { batch_id, program_type, ready_for_interview } = batchRows[0];
+
+        if (program_type !== 'IOP') return res.status(403).json({ message: 'Only IOP students can mark ready for interview' });
+        if (ready_for_interview) return res.status(400).json({ message: 'Already marked as ready for interview' });
+
+        await pool.query(
+            'UPDATE BatchStudents SET course_completion_date = CURDATE(), ready_for_interview = 1 WHERE student_id = ? AND batch_id = ?',
+            [studentId, batch_id]
+        );
+
+        const today = new Date().toISOString().split('T')[0];
+        res.json({ message: 'Course completion date recorded', date: today });
+    } catch (error) {
+        res.status(500).json({ message: 'Error marking ready for interview', error: error.message });
+    }
+};
+
+const generateCertificateHTML = (type, studentName, courseName, batchName, date) => {
+    const formatted = new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    if (type === 'completion') {
+        return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  body { font-family: 'Georgia', serif; background: #fff; margin: 0; padding: 0; }
+  .cert { width: 900px; height: 636px; padding: 60px; box-sizing: border-box; border: 8px solid #2c5282; position: relative; text-align: center; }
+  .cert::before { content: ''; position: absolute; inset: 12px; border: 2px solid #bee3f8; }
+  h1 { font-size: 42px; color: #1a365d; margin: 0 0 8px; }
+  .sub { font-size: 16px; color: #4a5568; letter-spacing: 4px; text-transform: uppercase; }
+  .name { font-size: 36px; color: #2b6cb0; font-style: italic; margin: 24px 0; border-bottom: 2px solid #bee3f8; padding-bottom: 12px; }
+  .body { font-size: 16px; color: #4a5568; line-height: 1.8; }
+  .course { font-size: 22px; font-weight: bold; color: #1a365d; margin: 8px 0; }
+  .date { margin-top: 32px; font-size: 14px; color: #718096; }
+  .seal { font-size: 60px; position: absolute; bottom: 60px; right: 80px; opacity: 0.15; }
+</style></head>
+<body><div class="cert">
+  <h1>Certificate of Completion</h1>
+  <div class="sub">Edutech Pro · LMS Platform</div>
+  <p class="body">This is to certify that</p>
+  <div class="name">${studentName}</div>
+  <p class="body">has successfully completed the course</p>
+  <div class="course">${courseName}</div>
+  <p class="body">as part of the <strong>${batchName}</strong> batch.</p>
+  <div class="date">Issued on ${formatted}</div>
+  <div class="seal">🎓</div>
+</div></body></html>`;
+    }
+    return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  body { font-family: 'Georgia', serif; background: #fff; margin: 0; padding: 0; }
+  .cert { width: 900px; height: 636px; padding: 60px; box-sizing: border-box; border: 8px solid #276749; position: relative; text-align: center; }
+  .cert::before { content: ''; position: absolute; inset: 12px; border: 2px solid #9ae6b4; }
+  h1 { font-size: 38px; color: #22543d; margin: 0 0 8px; }
+  .sub { font-size: 16px; color: #4a5568; letter-spacing: 4px; text-transform: uppercase; }
+  .name { font-size: 36px; color: #276749; font-style: italic; margin: 24px 0; border-bottom: 2px solid #9ae6b4; padding-bottom: 12px; }
+  .body { font-size: 16px; color: #4a5568; line-height: 1.8; }
+  .course { font-size: 22px; font-weight: bold; color: #22543d; margin: 8px 0; }
+  .date { margin-top: 32px; font-size: 14px; color: #718096; }
+  .seal { font-size: 60px; position: absolute; bottom: 60px; right: 80px; opacity: 0.15; }
+</style></head>
+<body><div class="cert">
+  <h1>Internship Completion Certificate</h1>
+  <div class="sub">IOP Program · Edutech Pro</div>
+  <p class="body">This is to certify that</p>
+  <div class="name">${studentName}</div>
+  <p class="body">has fulfilled all requirements of the Interview Opportunity Program (IOP) and completed</p>
+  <div class="course">${courseName}</div>
+  <p class="body">as part of the <strong>${batchName}</strong> batch.</p>
+  <div class="date">Issued on ${formatted}</div>
+  <div class="seal">🏆</div>
+</div></body></html>`;
+};
+
+exports.generateCertificate = async (req, res) => {
+    try {
+        const studentId = req.user.id;
+        const { cert_type } = req.body;
+        if (!['completion', 'internship'].includes(cert_type)) {
+            return res.status(400).json({ message: 'cert_type must be completion or internship' });
+        }
+
+        // Get student + batch info
+        const [infoRows] = await pool.query(`
+            SELECT u.first_name, u.last_name, u.program_type, b.id as batch_id,
+                   b.batch_name, c.name as course_name
+            FROM Users u
+            JOIN BatchStudents bs ON u.id = bs.student_id
+            JOIN Batches b ON bs.batch_id = b.id
+            JOIN Courses c ON b.course_id = c.id
+            WHERE u.id = ? AND b.status = 'active'
+            LIMIT 1
+        `, [studentId]);
+
+        if (!infoRows.length) return res.status(400).json({ message: 'No active batch found' });
+        const info = infoRows[0];
+
+        // Check existing non-reset certificate
+        const [existing] = await pool.query(
+            'SELECT id FROM Certificates WHERE student_id = ? AND cert_type = ? AND reset_by_admin = 0',
+            [studentId, cert_type]
+        );
+        if (existing.length) return res.status(400).json({ message: 'Certificate already generated' });
+
+        // Check eligibility
+        if (cert_type === 'internship') {
+            // All criteria must be met — do a quick check
+            const [attRows] = await pool.query(`
+                SELECT COUNT(*) as total, SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present
+                FROM StudentAttendance WHERE student_id = ? AND batch_id = ?
+            `, [studentId, info.batch_id]);
+            const attPct = attRows[0].total > 0 ? (attRows[0].present / attRows[0].total) * 100 : 0;
+            if (attPct < 80) return res.status(403).json({ message: 'Attendance requirement not met (80% required)' });
+        } else {
+            const [attRows] = await pool.query(`
+                SELECT COUNT(*) as total, SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present
+                FROM StudentAttendance WHERE student_id = ? AND batch_id = ?
+            `, [studentId, info.batch_id]);
+            const attPct = attRows[0].total > 0 ? (attRows[0].present / attRows[0].total) * 100 : 0;
+            if (attPct < 75) return res.status(403).json({ message: 'Attendance requirement not met (75% required)' });
+        }
+
+        const studentName = `${info.first_name} ${info.last_name}`;
+        const html = generateCertificateHTML(cert_type, studentName, info.course_name, info.batch_name, new Date());
+
+        // Store as HTML in cert_data (base64)
+        const htmlBuffer = Buffer.from(html);
+        const [result] = await pool.query(
+            'INSERT INTO Certificates (student_id, cert_type, program_type, generated_at, cert_data) VALUES (?, ?, ?, NOW(), ?)',
+            [studentId, cert_type, info.program_type, htmlBuffer]
+        );
+
+        res.json({ message: 'Certificate generated', certificate_id: result.insertId, html });
+    } catch (error) {
+        res.status(500).json({ message: 'Error generating certificate', error: error.message });
+    }
+};
+
+exports.getCertificates = async (req, res) => {
+    try {
+        const studentId = req.user.id;
+        const [certs] = await pool.query(
+            'SELECT id, cert_type, program_type, generated_at, reset_by_admin FROM Certificates WHERE student_id = ?',
+            [studentId]
+        );
+        res.json({ certificates: certs });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching certificates', error: error.message });
+    }
+};
+
+exports.downloadCertificate = async (req, res) => {
+    try {
+        const studentId = req.user.id;
+        const { id } = req.params;
+        const [rows] = await pool.query(
+            'SELECT cert_data, cert_type FROM Certificates WHERE id = ? AND student_id = ?',
+            [id, studentId]
+        );
+        if (!rows.length || !rows[0].cert_data) {
+            return res.status(404).json({ message: 'Certificate not found' });
+        }
+        const html = rows[0].cert_data.toString('utf8');
+        res.setHeader('Content-Type', 'text/html');
+        res.setHeader('Content-Disposition', `attachment; filename="${rows[0].cert_type}_certificate.html"`);
+        res.send(html);
+    } catch (error) {
+        res.status(500).json({ message: 'Error downloading certificate', error: error.message });
+    }
+};

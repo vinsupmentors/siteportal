@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { BrandLogo } from '../icons/BrandLogo';
-import { LayoutDashboard, Briefcase, Settings } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Settings, Users } from 'lucide-react';
 
 export const RecruiterSidebar = ({ isOpen, setIsOpen }) => {
     const location = useLocation();
@@ -10,6 +10,7 @@ export const RecruiterSidebar = ({ isOpen, setIsOpen }) => {
             label: 'Jobs Central',
             links: [
                 { name: 'Dashboard', path: '/recruiter/dashboard', icon: LayoutDashboard },
+                { name: 'IOP Students', path: '/recruiter/students', icon: Users },
                 { name: 'Job Postings', path: '/recruiter/jobs', icon: Briefcase },
             ]
         },

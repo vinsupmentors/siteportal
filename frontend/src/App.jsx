@@ -63,6 +63,7 @@ import { AdminAuditLogs } from './pages/admin/AdminAuditLogs';
 // Recruiter Pages
 import RecruiterDashboard from './pages/recruiter/RecruiterDashboard';
 import RecruiterJobs from './pages/recruiter/RecruiterJobs';
+import RecruiterStudents from './pages/recruiter/RecruiterStudents';
 
 const ProtectedRoute = ({ children, requiredRole }) => {
   const { user } = useAuth();
@@ -174,6 +175,7 @@ const AppRoutes = () => {
       }>
         <Route path="dashboard" element={<RecruiterDashboard />} />
         <Route path="jobs" element={<RecruiterJobs />} />
+        <Route path="students" element={<RecruiterStudents />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 

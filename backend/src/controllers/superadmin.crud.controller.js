@@ -593,10 +593,11 @@ exports.getStudents = async (req, res) => {
 
 exports.createStudent = async (req, res) => {
     try {
-        const { first_name, last_name, email, password, phone, batch_id } = req.body;
+        const { first_name, last_name, email, password, phone, batch_id, program_type } = req.body;
+        const pt = ['JRP', 'IOP'].includes(program_type) ? program_type : 'JRP';
         const [result] = await pool.query(
-            'INSERT INTO Users (role_id, first_name, last_name, email, password, phone) VALUES (4, ?, ?, ?, ?, ?)',
-            [first_name, last_name, email, password || 'abcd@1234', phone || null]
+            'INSERT INTO Users (role_id, first_name, last_name, email, password, phone, program_type) VALUES (4, ?, ?, ?, ?, ?, ?)',
+            [first_name, last_name, email, password || 'abcd@1234', phone || null, pt]
         );
         if (batch_id) {
             await pool.query('INSERT INTO BatchStudents (batch_id, student_id) VALUES (?, ?)', [batch_id, result.insertId]);
@@ -666,7 +667,7 @@ exports.downloadStudentTemplate = async (req, res) => {
 exports.updateStudent = async (req, res) => {
     try {
         const { id } = req.params;
-        const { first_name, last_name, email, phone, status, student_status } = req.body;
+        const { first_name, last_name, email, phone, status, student_status, program_type } = req.body;
 
         let query = 'UPDATE Users SET first_name=?, last_name=?, email=?, phone=?, status=?';
         let params = [first_name, last_name, email, phone || null, status];
@@ -674,6 +675,11 @@ exports.updateStudent = async (req, res) => {
         if (student_status) {
             query += ', student_status=?';
             params.push(student_status);
+        }
+
+        if (program_type && ['JRP', 'IOP'].includes(program_type)) {
+            query += ', program_type=?';
+            params.push(program_type);
         }
 
         query += ' WHERE id=? AND role_id=4';
@@ -2061,5 +2067,56 @@ exports.getFeedbackReports = async (req, res) => {
         res.json({ reports });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching feedback reports', error: error.message });
+    }
+};
+
+// ── JRP/IOP Program Type Management ──────────────────────────────────────────
+
+exports.updateStudentProgramType = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        const { program_type } = req.body;
+        if (!['JRP', 'IOP'].includes(program_type)) {
+            return res.status(400).json({ message: 'program_type must be JRP or IOP' });
+        }
+        await pool.query('UPDATE Users SET program_type = ? WHERE id = ? AND role_id = 4', [program_type, studentId]);
+        res.json({ message: 'Program type updated' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating program type', error: error.message });
+    }
+};
+
+exports.resetStudentCertificate = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        const { cert_type } = req.body;
+        if (!['completion', 'internship'].includes(cert_type)) {
+            return res.status(400).json({ message: 'cert_type must be completion or internship' });
+        }
+        await pool.query(
+            'UPDATE Certificates SET reset_by_admin = 1, generated_at = NULL, cert_data = NULL WHERE student_id = ? AND cert_type = ?',
+            [studentId, cert_type]
+        );
+        res.json({ message: 'Certificate reset successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error resetting certificate', error: error.message });
+    }
+};
+
+exports.getStudentsWithProgramType = async (req, res) => {
+    try {
+        const [students] = await pool.query(`
+            SELECT u.id, u.first_name, u.last_name, u.email, u.program_type, u.status,
+                   bs.batch_id, bs.course_completion_date, bs.ready_for_interview,
+                   b.batch_name
+            FROM Users u
+            JOIN BatchStudents bs ON u.id = bs.student_id
+            JOIN Batches b ON bs.batch_id = b.id
+            WHERE u.role_id = 4
+            ORDER BY u.program_type DESC, u.first_name
+        `);
+        res.json({ students });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching program overview', error: error.message });
     }
 };

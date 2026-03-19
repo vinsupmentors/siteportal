@@ -32,6 +32,14 @@ router.post('/submit', uploadHandling.single('file'), uploadController.uploadSub
 // Dynamic Feedback System (Student)
 router.get('/released-feedback', studentController.getReleasedFeedback);
 router.post('/submit-feedback', studentController.submitFeedback);
+
+// ── Career Readiness & Certificates ─────────────────────────────────────────
+router.get('/internship-eligibility', studentController.checkInternshipEligibility);
+router.post('/ready-for-interview', studentController.markReadyForInterview);
+router.post('/certificates/generate', studentController.generateCertificate);
+router.get('/certificates', studentController.getCertificates);
+router.get('/certificates/:id/download', studentController.downloadCertificate);
+
 // ── Student Released Content & Submissions ───────────────────────────────────
 router.get('/releases', releaseCtrl.getStudentReleases);
 router.post('/releases/:releaseId/submit',
