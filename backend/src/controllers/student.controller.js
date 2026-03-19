@@ -679,7 +679,8 @@ exports.getStudentCurriculum = async (req, res) => {
         const unlockedModules = allModules.filter(m => unlockMap[m.id] !== undefined);
         const unlockedModuleIds = unlockedModules.map(m => m.id);
         
-        let days = [];
+       let days = [];
+        let dayFiles = [];
         if (unlockedModuleIds.length > 0) {
             const unlockPh = unlockedModuleIds.map(() => '?').join(',');
             const [queryDays] = await pool.query(`
@@ -691,6 +692,17 @@ exports.getStudentCurriculum = async (req, res) => {
                 ORDER BY d.module_id, d.day_number
             `, [studentId, ...unlockedModuleIds]);
             days = queryDays;
+
+            // Fetch uploaded content files for each day
+            if (queryDays.length > 0) {
+                const dayIds = queryDays.map(d => d.id);
+                const dayPh = dayIds.map(() => '?').join(',');
+                const [qDayFiles] = await pool.query(
+                    `SELECT * FROM ContentFiles WHERE entity_type = 'day' AND entity_id IN (${dayPh})`,
+                    dayIds
+                );
+                dayFiles = qDayFiles;
+            }
         }
 
         // Get Module Projects and Content Files for released content
@@ -728,11 +740,21 @@ exports.getStudentCurriculum = async (req, res) => {
             const modDays = days
                 .filter(d => d.module_id === mod.id)
                 .filter(d => upToDayLimit === -1 || d.day_number <= upToDayLimit)
-                .map(d => {
-                    const content_files = [];
-                    // Day materials are usually worksheets or day sessions
-                    if (d.material_url) content_files.push({ name: 'Study Material', url: d.material_url });
-                    if (d.worksheet_url) content_files.push({ name: 'Worksheet', url: d.worksheet_url });
+               .map(d => {
+                    // Uploaded files from ContentFiles table
+                    const uploaded_files = dayFiles.filter(f => f.entity_id === d.id);
+                    
+                    // URL-based files (legacy)
+                    const url_files = [];
+                    if (d.material_url) url_files.push({ name: 'Study Material', url: d.material_url, original_name: 'Study Material' });
+                    if (d.worksheet_url) url_files.push({ name: 'Worksheet', url: d.worksheet_url, original_name: 'Worksheet' });
+                    
+                    // Merge both — uploaded files take priority
+                    const content_files = [
+                        ...uploaded_files,
+                        ...url_files,
+                    ];
+                    
                     return { ...d, submitted: !!d.submission_id, content_files };
                 });
 

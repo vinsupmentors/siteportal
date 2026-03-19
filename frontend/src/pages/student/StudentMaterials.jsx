@@ -13,9 +13,14 @@ import {
 } from 'lucide-react';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-const fmtDate = (d) => d
-    ? new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-    : null;
+const fmtDate = (d) => {
+    if (!d) return null;
+    try {
+        const date = new Date(d);
+        if (isNaN(date.getTime())) return null;
+        return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch { return null; }
+};
 
 const isOverdue = (d) => d && new Date(d) < new Date();
 
@@ -98,7 +103,7 @@ const SubmitModal = ({ release, onClose, onDone }) => {
                                 color: isOverdue(release.due_date) ? '#f87171' : theme.text.muted,
                             }}>
                                 <Calendar size={11} />
-                                Due: {fmtDate(release.due_date)}
+                               Due: {fmtDate(release.due_date) || 'No due date set'}
                                 {isOverdue(release.due_date) && ' · Late submission'}
                             </div>
                         )}
@@ -260,7 +265,7 @@ const ReleaseCard = ({ release, onSubmit }) => {
                             display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px',
                         }}>
                             <Calendar size={12} />
-                            Due: {fmtDate(release.due_date)}
+                            Due: {fmtDate(release.due_date) || 'No due date set'}
                             {overdue && !submitted && (
                                 <span style={{ color: '#f87171', fontWeight: 700 }}> · Overdue!</span>
                             )}
