@@ -324,6 +324,8 @@ async function runMigrations() {
                 FOREIGN KEY (graded_by) REFERENCES Users(id) ON DELETE SET NULL
             )
         `);
+        // ── ContentFiles: add binary storage column ─────────────────────────
+        await addColumnIfNotExists('ContentFiles', 'file_data LONGBLOB');
         console.log('[Migration] All migrations applied successfully.');
     } catch (err) {
         console.error('[Migration] Error:', err.message);

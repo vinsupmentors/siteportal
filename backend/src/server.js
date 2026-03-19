@@ -29,6 +29,25 @@ app.use('/uploads/content', express.static(path.join(__dirname, '../uploads/cont
 app.use('/uploads/job_requests', express.static(path.join(__dirname, '../uploads/job_requests')));
 app.use('/public', express.static(path.join(__dirname, '../public')));
 
+// ── Serve files from DB by ID ─────────────────────────────────────────────────
+const pool = require('./config/db');
+app.get('/api/files/:id', async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            'SELECT original_name, mime_type, file_data FROM ContentFiles WHERE id = ?',
+            [req.params.id]
+        );
+        if (!rows.length || !rows[0].file_data) {
+            return res.status(404).json({ message: 'File not found' });
+        }
+        const file = rows[0];
+        res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `inline; filename="${file.original_name}"`);
+        res.send(file.file_data);
+    } catch (err) {
+        res.status(500).json({ message: 'Error serving file', error: err.message });
+    }
+});
 // Main App API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/super-admin', superAdminRoutes);

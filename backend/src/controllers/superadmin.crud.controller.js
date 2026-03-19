@@ -440,49 +440,39 @@ exports.uploadContentFiles = async (req, res) => {
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ message: 'No files uploaded' });
         }
-
         const { entity_type, entity_id, category } = req.body;
         if (!entity_type || !entity_id || !category) {
             return res.status(400).json({ message: 'entity_type, entity_id, and category are required' });
         }
 
-        const values = [];
-        const contentDir = path.join(__dirname, '../../uploads/content');
-        if (!fs.existsSync(contentDir)) {
-            fs.mkdirSync(contentDir, { recursive: true });
-        }
-
         for (const file of req.files) {
-            // Move file from temp to content dir
-            const tempPath = file.path;
-            const finalPath = path.join(contentDir, file.filename);
-            fs.renameSync(tempPath, finalPath);
-
-            values.push([
-                entity_type,
-                entity_id,
-                category,
-                file.originalname,
-                file.filename,
-                file.size,
-                file.mimetype
-            ]);
-        }
-
-        if (values.length > 0) {
             await pool.query(
-                'INSERT INTO ContentFiles (entity_type, entity_id, category, original_name, stored_name, file_size, mime_type) VALUES ?',
-                [values]
+                `INSERT INTO ContentFiles 
+                    (entity_type, entity_id, category, original_name, stored_name, file_size, mime_type, file_data)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    entity_type,
+                    entity_id,
+                    category,
+                    file.originalname,
+                    file.originalname, // stored_name = original_name (no disk path needed)
+                    file.size,
+                    file.mimetype,
+                    file.buffer        // binary data stored in DB
+                ]
             );
-            await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'UPLOAD_FILES', 'ContentFiles', entity_id]);
         }
 
-        res.status(201).json({ message: `${values.length} files uploaded successfully` });
+        await pool.query(
+            'INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
+            [req.user.id, 'UPLOAD_FILES', 'ContentFiles', entity_id]
+        );
+
+        res.status(201).json({ message: `${req.files.length} file(s) uploaded successfully` });
     } catch (error) {
         res.status(500).json({ message: 'File upload error', error: error.message });
     }
 };
-
 exports.getContentFiles = async (req, res) => {
     try {
         const { entityType, entityId } = req.params;
@@ -499,24 +489,19 @@ exports.getContentFiles = async (req, res) => {
 exports.deleteContentFile = async (req, res) => {
     try {
         const { id } = req.params;
-        const [files] = await pool.query('SELECT stored_name FROM ContentFiles WHERE id = ?', [id]);
+        const [files] = await pool.query('SELECT id FROM ContentFiles WHERE id = ?', [id]);
+        if (files.length === 0) return res.status(404).json({ message: 'File not found' });
 
-        if (files.length > 0) {
-            const filePath = path.join(__dirname, '../../uploads/content', files[0].stored_name);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-            await pool.query('DELETE FROM ContentFiles WHERE id = ?', [id]);
-            await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'DELETE_FILE', 'ContentFiles', id]);
-            res.json({ message: 'File deleted successfully' });
-        } else {
-            res.status(404).json({ message: 'File not found' });
-        }
+        await pool.query('DELETE FROM ContentFiles WHERE id = ?', [id]);
+        await pool.query(
+            'INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
+            [req.user.id, 'DELETE_FILE', 'ContentFiles', id]
+        );
+        res.json({ message: 'File deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'File delete error', error: error.message });
     }
 };
-
 // ==========================================
 // BATCHES CRUD
 // ==========================================
