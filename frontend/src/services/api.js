@@ -168,6 +168,9 @@ deleteCapstoneFile: (fileId) => api.delete(`/super-admin/capstone-files/${fileId
     createIOPTopic: (data) => api.post('/super-admin/iop-topics', data),
     updateIOPTopic: (id, data) => api.put(`/super-admin/iop-topics/${id}`, data),
     deleteIOPTopic: (id) => api.delete(`/super-admin/iop-topics/${id}`),
+    // IOP Module Files (BLOB stored in Aiven MySQL)
+    uploadIOPModuleFile: (moduleId, formData) => api.post(`/super-admin/iop-modules/${moduleId}/files`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    deleteIOPModuleFile: (fileId) => api.delete(`/super-admin/iop-module-files/${fileId}`),
 };
 
 // Auth API (for password change, available to all logged-in users)
@@ -236,6 +239,7 @@ gradeReleaseSubmission: (submissionId, data) => api.put(`/trainer/release-submis
     getMyIOPBatches: () => api.get('/trainer/my-iop-batches'),
     getIOPCurriculum: (batchId) => api.get(`/trainer/batches/${batchId}/iop-curriculum`),
     unlockIOPModule: (batchId, data) => api.post(`/trainer/batches/${batchId}/iop-unlock`, data),
+    downloadIOPModuleFile: (fileId) => api.get(`/trainer/iop-module-files/${fileId}/download`, { responseType: 'blob' }),
 };
 
 // Student API (student portal)
@@ -279,6 +283,7 @@ submitReleaseWork: (releaseId, formData) => api.post(`/student/releases/${releas
 
     // IOP Curriculum (IOP students only)
     getIOPCurriculum: () => api.get('/student/iop-curriculum'),
+    downloadIOPModuleFile: (fileId) => api.get(`/student/iop-module-files/${fileId}/download`, { responseType: 'blob' }),
 };
 
 // Admin API (administrative portal)

@@ -339,6 +339,16 @@ export const TrainerContentManager = () => {
         finally { setIopUnlockLoading(null); }
     };
 
+    const handleIOPFileDownload = async (fileId, fileName) => {
+        try {
+            const r = await trainerAPI.downloadIOPModuleFile(fileId);
+            const url = window.URL.createObjectURL(new Blob([r.data]));
+            const a = document.createElement('a');
+            a.href = url; a.download = fileName; a.click();
+            window.URL.revokeObjectURL(url);
+        } catch { alert('Download failed'); }
+    };
+
     const handleUnlockModule = async (moduleId, config) => {
         setActionLoading(moduleId);
         try {
@@ -962,6 +972,34 @@ export const TrainerContentManager = () => {
                                                 ))}
                                             </div>
                                         )}
+
+                                        {/* Module file downloads */}
+                                        {(() => {
+                                            const FILE_SLOTS = [
+                                                { key: 'concepts',        label: 'Concepts',        color: '#3b82f6' },
+                                                { key: 'sample_problems', label: 'Sample Problems', color: '#8b5cf6' },
+                                                { key: 'worksheet',       label: 'Worksheets',      color: '#f59e0b' },
+                                            ];
+                                            const hasFiles = mod.files && Object.keys(mod.files).length > 0;
+                                            if (!hasFiles) return null;
+                                            return (
+                                                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${theme.border.subtle}` }}>
+                                                    <div style={{ fontSize: '11px', fontWeight: 700, color: theme.text.muted, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Module Files</div>
+                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                        {FILE_SLOTS.map(slot => {
+                                                            const f = mod.files?.[slot.key];
+                                                            if (!f) return null;
+                                                            return (
+                                                                <button key={slot.key} onClick={() => handleIOPFileDownload(f.id, f.file_name)}
+                                                                    style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: '6px', border: `1px solid ${slot.color}`, background: `${slot.color}12`, color: slot.color, cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}>
+                                                                    <Download size={11} /> {slot.label}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                     </Card>
                                 );
                             })}

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { superAdminAPI } from '../../services/api';
-import { BookOpen, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Layers } from 'lucide-react';
+import { BookOpen, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Layers, Upload, Download, X, FileText } from 'lucide-react';
 
 const TYPE_LABELS = { soft_skills: 'Soft Skills', aptitude: 'Aptitude' };
 const TYPE_COLORS = {
@@ -30,6 +30,10 @@ export const SAIOPCurriculum = () => {
     const [showTopicForm, setShowTopicForm] = useState({}); // { moduleId: true/false }
     const [editingTopic, setEditingTopic] = useState(null);
     const [topicForms, setTopicForms] = useState({});  // { moduleId: { day_number, topic_name, notes } }
+
+    // File upload state per module: { [moduleId]: { uploading: bool, error: str } }
+    const [fileState, setFileState] = useState({});
+    const fileInputRefs = useRef({});
 
     const fetchModules = async () => {
         setLoading(true);
@@ -124,6 +128,39 @@ export const SAIOPCurriculum = () => {
         } catch (e) { alert(e.response?.data?.message || 'Error deleting'); }
     };
 
+    // ── IOP Module File Handlers ──────────────────────────────────────────────
+    const FILE_SLOTS = [
+        { key: 'concepts',        label: 'Concepts',              color: '#3b82f6' },
+        { key: 'sample_problems', label: 'Sample Problem Solving', color: '#8b5cf6' },
+        { key: 'worksheet',       label: 'Worksheets',             color: '#f59e0b' },
+    ];
+
+    const handleFileUpload = async (moduleId, fileType, file) => {
+        if (!file) return;
+        setFileState(prev => ({ ...prev, [`${moduleId}_${fileType}`]: { uploading: true } }));
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('file_type', fileType);
+            await superAdminAPI.uploadIOPModuleFile(moduleId, fd);
+            await fetchModules();
+        } catch (e) {
+            alert(e.response?.data?.message || 'Upload failed');
+        } finally {
+            setFileState(prev => ({ ...prev, [`${moduleId}_${fileType}`]: { uploading: false } }));
+        }
+    };
+
+    const handleFileDelete = async (fileId, moduleId) => {
+        if (!window.confirm('Remove this file?')) return;
+        try {
+            await superAdminAPI.deleteIOPModuleFile(fileId);
+            await fetchModules();
+        } catch (e) {
+            alert(e.response?.data?.message || 'Delete failed');
+        }
+    };
+
     const filteredModules = modules.filter(m => m.type === tab);
 
     const card = { background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '16px 20px', marginBottom: 12 };
@@ -203,6 +240,42 @@ export const SAIOPCurriculum = () => {
                             </div>
                             <button onClick={() => openEditMod(m)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><Pencil size={14} /></button>
                             <button onClick={() => deleteModule(m.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={14} /></button>
+                        </div>
+
+                        {/* File Upload Slots — 3 files per module */}
+                        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                            {FILE_SLOTS.map(slot => {
+                                const existing = m.files?.[slot.key];
+                                const isUploading = fileState[`${m.id}_${slot.key}`]?.uploading;
+                                return (
+                                    <div key={slot.key} style={{ flex: 1, minWidth: 160, background: 'rgba(255,255,255,0.04)', borderRadius: 8, border: `1px solid ${existing ? slot.color : 'rgba(255,255,255,0.08)'}`, padding: '8px 10px' }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: slot.color, marginBottom: 5 }}>{slot.label}</div>
+                                        {existing ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <FileText size={12} color={slot.color} />
+                                                <span style={{ fontSize: 11, color: 'var(--text-primary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{existing.file_name}</span>
+                                                <button onClick={() => handleFileDelete(existing.id, m.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0 }}><X size={12} /></button>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <input
+                                                    type="file"
+                                                    style={{ display: 'none' }}
+                                                    ref={el => { if (!fileInputRefs.current[m.id]) fileInputRefs.current[m.id] = {}; fileInputRefs.current[m.id][slot.key] = el; }}
+                                                    onChange={e => handleFileUpload(m.id, slot.key, e.target.files[0])}
+                                                    accept=".pdf,.docx,.xlsx,.pptx,.txt"
+                                                />
+                                                <button
+                                                    onClick={() => fileInputRefs.current[m.id]?.[slot.key]?.click()}
+                                                    disabled={isUploading}
+                                                    style={{ background: 'none', border: `1px dashed ${slot.color}`, color: slot.color, borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, opacity: isUploading ? 0.6 : 1 }}>
+                                                    <Upload size={10} /> {isUploading ? 'Uploading...' : 'Upload'}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         {/* Topics (expanded) */}

@@ -382,6 +382,22 @@ async function runMigrations() {
         // IOP trainer assigned per batch (separate from the technical trainer_id)
         await addColumnIfNotExists('Batches', 'iop_trainer_id INT NULL');
 
+        // ── IOPModuleFiles (3 files per module: concepts, sample_problems, worksheet) ──
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS IOPModuleFiles (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                module_id INT NOT NULL,
+                file_type ENUM('concepts','sample_problems','worksheet') NOT NULL,
+                file_name VARCHAR(255) NOT NULL,
+                mime_type VARCHAR(100) NOT NULL,
+                file_size INT,
+                file_data LONGBLOB NOT NULL,
+                uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (module_id) REFERENCES IOPModules(id) ON DELETE CASCADE,
+                UNIQUE KEY uq_iop_module_filetype (module_id, file_type)
+            )
+        `);
+
         // ── StudentInterviews ────────────────────────────────────────────────
         await pool.query(`
             CREATE TABLE IF NOT EXISTS StudentInterviews (

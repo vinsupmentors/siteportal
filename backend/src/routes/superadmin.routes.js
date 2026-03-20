@@ -191,4 +191,8 @@ router.post('/iop-topics',                  requireRole([1]), iopCtrl.createIOPT
 router.put('/iop-topics/:id',               requireRole([1]), iopCtrl.updateIOPTopic);
 router.delete('/iop-topics/:id',            requireRole([1]), iopCtrl.deleteIOPTopic);
 
+// IOP Module Files (SA upload/delete; BLOB stored in Aiven MySQL)
+router.post('/iop-modules/:moduleId/files', requireRole([1]), uploadHandling.single('file'), iopCtrl.uploadIOPModuleFile);
+router.delete('/iop-module-files/:fileId',  requireRole([1]), iopCtrl.deleteIOPModuleFile);
+
 module.exports = router;

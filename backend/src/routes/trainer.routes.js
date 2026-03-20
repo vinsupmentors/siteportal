@@ -68,8 +68,9 @@ router.put('/release-submissions/:submissionId/grade', releaseCtrl.gradeReleaseS
 
 // ── IOP Curriculum (trainer as iop_trainer_id) ────────────────────────────────
 const iopCtrl = require('../controllers/iop.controller');
-router.get('/my-iop-batches',                  iopCtrl.getMyIOPBatches);
-router.get('/batches/:batchId/iop-curriculum', iopCtrl.getIOPCurriculum);
-router.post('/batches/:batchId/iop-unlock',    iopCtrl.unlockIOPModule);
+router.get('/my-iop-batches',                      iopCtrl.getMyIOPBatches);
+router.get('/batches/:batchId/iop-curriculum',     iopCtrl.getIOPCurriculum);
+router.post('/batches/:batchId/iop-unlock',        iopCtrl.unlockIOPModule);
+router.get('/iop-module-files/:fileId/download',   iopCtrl.downloadIOPModuleFile);
 
 module.exports = router;

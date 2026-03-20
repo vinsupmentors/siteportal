@@ -11,7 +11,16 @@ exports.getIOPModules = async (req, res) => {
             GROUP BY m.id
             ORDER BY m.type, m.sequence_order
         `);
-        res.json({ modules: rows });
+        // Include file metadata (no binary data) for each module
+        const [files] = await pool.query(
+            'SELECT id, module_id, file_type, file_name, file_size, uploaded_at FROM IOPModuleFiles'
+        );
+        const filesByModule = {};
+        files.forEach(f => {
+            if (!filesByModule[f.module_id]) filesByModule[f.module_id] = {};
+            filesByModule[f.module_id][f.file_type] = { id: f.id, file_name: f.file_name, file_size: f.file_size, uploaded_at: f.uploaded_at };
+        });
+        res.json({ modules: rows.map(m => ({ ...m, files: filesByModule[m.id] || {} })) });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching IOP modules', error: error.message });
     }
@@ -150,10 +159,21 @@ exports.getIOPCurriculum = async (req, res) => {
         const unlockMap = {};
         unlocks.forEach(u => { unlockMap[u.module_id] = u.unlocked_up_to_day; });
 
+        // File metadata for each module
+        const [files] = await pool.query(
+            'SELECT id, module_id, file_type, file_name FROM IOPModuleFiles'
+        );
+        const filesByModule = {};
+        files.forEach(f => {
+            if (!filesByModule[f.module_id]) filesByModule[f.module_id] = {};
+            filesByModule[f.module_id][f.file_type] = { id: f.id, file_name: f.file_name };
+        });
+
         // Build response
         const result = modules.map(m => ({
             ...m,
             unlocked_up_to_day: unlockMap[m.id] || 0,
+            files: filesByModule[m.id] || {},
             topics: topics
                 .filter(t => t.module_id === m.id)
                 .map(t => ({ ...t, is_unlocked: t.day_number <= (unlockMap[m.id] || 0) }))
@@ -223,6 +243,93 @@ exports.getMyIOPBatches = async (req, res) => {
     }
 };
 
+// ── SA: Upload file for an IOP module ────────────────────────────────────────
+
+exports.uploadIOPModuleFile = async (req, res) => {
+    try {
+        const { moduleId } = req.params;
+        const { file_type } = req.body;
+
+        if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+        if (!file_type || !['concepts', 'sample_problems', 'worksheet'].includes(file_type)) {
+            return res.status(400).json({ message: 'file_type must be concepts, sample_problems, or worksheet' });
+        }
+
+        const [[mod]] = await pool.query('SELECT id FROM IOPModules WHERE id = ?', [moduleId]);
+        if (!mod) return res.status(404).json({ message: 'IOP module not found' });
+
+        await pool.query(`
+            INSERT INTO IOPModuleFiles (module_id, file_type, file_name, mime_type, file_size, file_data)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                file_name = VALUES(file_name),
+                mime_type = VALUES(mime_type),
+                file_size = VALUES(file_size),
+                file_data = VALUES(file_data),
+                uploaded_at = CURRENT_TIMESTAMP
+        `, [moduleId, file_type, req.file.originalname, req.file.mimetype, req.file.size, req.file.buffer]);
+
+        res.json({ message: 'File uploaded', file_name: req.file.originalname });
+    } catch (error) {
+        res.status(500).json({ message: 'Error uploading file', error: error.message });
+    }
+};
+
+// ── Trainer / Student: Download an IOP module file ────────────────────────────
+
+exports.downloadIOPModuleFile = async (req, res) => {
+    try {
+        const { fileId } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role_id;
+
+        const [[file]] = await pool.query('SELECT * FROM IOPModuleFiles WHERE id = ?', [fileId]);
+        if (!file) return res.status(404).json({ message: 'File not found' });
+
+        // Students: verify IOP + module unlocked in their batch
+        if (userRole === 4) {
+            const [[user]] = await pool.query('SELECT program_type FROM Users WHERE id = ?', [userId]);
+            if (!user || user.program_type !== 'IOP') {
+                return res.status(403).json({ message: 'IOP files are only for IOP students' });
+            }
+            const [[bs]] = await pool.query(`
+                SELECT bs.batch_id FROM BatchStudents bs
+                JOIN Batches b ON bs.batch_id = b.id
+                WHERE bs.student_id = ? AND b.status = 'active'
+                LIMIT 1
+            `, [userId]);
+            if (bs) {
+                const [[unlock]] = await pool.query(
+                    'SELECT unlocked_up_to_day FROM IOPBatchUnlocks WHERE batch_id = ? AND module_id = ?',
+                    [bs.batch_id, file.module_id]
+                );
+                if (!unlock || unlock.unlocked_up_to_day === 0) {
+                    return res.status(403).json({ message: 'This module has not been unlocked yet' });
+                }
+            }
+        }
+
+        res.setHeader('Content-Type', file.mime_type);
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.file_name)}"`);
+        if (file.file_size) res.setHeader('Content-Length', file.file_size);
+        res.send(file.file_data);
+    } catch (error) {
+        res.status(500).json({ message: 'Error downloading file', error: error.message });
+    }
+};
+
+// ── SA: Delete an IOP module file ─────────────────────────────────────────────
+
+exports.deleteIOPModuleFile = async (req, res) => {
+    try {
+        const { fileId } = req.params;
+        await pool.query('DELETE FROM IOPModuleFiles WHERE id = ?', [fileId]);
+        res.json({ message: 'File deleted' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting file', error: error.message });
+    }
+};
+
 // ── Student: Get IOP curriculum ───────────────────────────────────────────────
 
 exports.getStudentIOPCurriculum = async (req, res) => {
@@ -265,14 +372,28 @@ exports.getStudentIOPCurriculum = async (req, res) => {
         const unlockMap = {};
         unlocks.forEach(u => { unlockMap[u.module_id] = u.unlocked_up_to_day; });
 
-        const result = modules.map(m => ({
-            ...m,
-            unlocked_up_to_day: unlockMap[m.id] || 0,
-            is_unlocked: (unlockMap[m.id] || 0) > 0,
-            topics: topics
-                .filter(t => t.module_id === m.id)
-                .map(t => ({ ...t, is_unlocked: t.day_number <= (unlockMap[m.id] || 0) }))
-        }));
+        // File metadata (only for unlocked modules)
+        const [files] = await pool.query(
+            'SELECT id, module_id, file_type, file_name FROM IOPModuleFiles'
+        );
+        const filesByModule = {};
+        files.forEach(f => {
+            if (!filesByModule[f.module_id]) filesByModule[f.module_id] = {};
+            filesByModule[f.module_id][f.file_type] = { id: f.id, file_name: f.file_name };
+        });
+
+        const result = modules.map(m => {
+            const isUnlocked = (unlockMap[m.id] || 0) > 0;
+            return {
+                ...m,
+                unlocked_up_to_day: unlockMap[m.id] || 0,
+                is_unlocked: isUnlocked,
+                files: isUnlocked ? (filesByModule[m.id] || {}) : {},
+                topics: topics
+                    .filter(t => t.module_id === m.id)
+                    .map(t => ({ ...t, is_unlocked: t.day_number <= (unlockMap[m.id] || 0) }))
+            };
+        });
 
         res.json({ modules: result });
     } catch (error) {

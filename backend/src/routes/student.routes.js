@@ -49,6 +49,7 @@ router.post('/releases/:releaseId/submit',
 
 // ── IOP Curriculum (IOP students only) ───────────────────────────────────────
 const iopCtrl = require('../controllers/iop.controller');
-router.get('/iop-curriculum', iopCtrl.getStudentIOPCurriculum);
+router.get('/iop-curriculum',                    iopCtrl.getStudentIOPCurriculum);
+router.get('/iop-module-files/:fileId/download', iopCtrl.downloadIOPModuleFile);
 
 module.exports = router;
