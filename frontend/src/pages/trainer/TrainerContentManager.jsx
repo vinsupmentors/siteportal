@@ -9,7 +9,7 @@ import {
     ChevronRight, ChevronDown, CheckCircle, Lock, Unlock,
     BookOpen, BookOpenCheck, FileSignature, Briefcase, MessageSquare,
     HelpCircle, Download, ExternalLink, FileText, Info, GraduationCap,
-    Send, X, Calendar, AlertCircle, Edit2, Star
+    Send, X, Calendar, AlertCircle, Edit2, Star, Layers, Plus, Minus
 } from 'lucide-react';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -247,17 +247,30 @@ export const TrainerContentManager = () => {
     const [releaseMap, setReleaseMap] = useState({});
     const [assignModal, setAssignModal] = useState(null);
 
+    // IOP Training state
+    const [iopBatches, setIopBatches] = useState([]);
+    const [iopCurriculum, setIopCurriculum] = useState(null);
+    const [iopCurrLoading, setIopCurrLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('curriculum'); // 'curriculum' | 'iop'
+    const [iopTypeFilter, setIopTypeFilter] = useState('soft_skills');
+    const [iopUnlockLoading, setIopUnlockLoading] = useState(null);
+
     useEffect(() => {
         (async () => {
             try {
-                const res = await trainerAPI.getMyCalendar();
-                const activeBatches = (res.data.batches || []).filter(
+                const [calRes, iopRes] = await Promise.all([
+                    trainerAPI.getMyCalendar(),
+                    trainerAPI.getMyIOPBatches().catch(() => ({ data: { batches: [] } })),
+                ]);
+                const activeBatches = (calRes.data.batches || []).filter(
                     b => b.status === 'active' || b.status === 'upcoming'
                 );
                 setBatches(activeBatches);
+                setIopBatches(iopRes.data.batches || []);
                 if (preselectedBatch && activeBatches.find(b => String(b.id) === preselectedBatch)) {
                     loadCurriculum(preselectedBatch);
                     loadReleases(preselectedBatch);
+                    loadIOPCurriculum(preselectedBatch);
                 }
             } catch (err) { console.error(err); }
             finally { setLoading(false); }
@@ -272,6 +285,17 @@ export const TrainerContentManager = () => {
             setCurriculum(res.data);
         } catch (err) { console.error(err); setCurriculum(null); }
         finally { setCurrLoading(false); }
+    };
+
+    const loadIOPCurriculum = async (batchId) => {
+        if (!batchId) { setIopCurriculum(null); return; }
+        setIopCurrLoading(true);
+        try {
+            const res = await trainerAPI.getIOPCurriculum(batchId);
+            setIopCurriculum(res.data);
+        } catch {
+            setIopCurriculum(null); // 403 = not IOP trainer for this batch — hide tab silently
+        } finally { setIopCurrLoading(false); }
     };
 
     const loadReleases = async (batchId) => {
@@ -298,8 +322,21 @@ export const TrainerContentManager = () => {
         setSelectedBatchId(batchId);
         setExpandedModule(null);
         setReleaseMap({});
+        setActiveTab('curriculum');
+        setIopCurriculum(null);
+        setIopTypeFilter('soft_skills');
         loadCurriculum(batchId);
         loadReleases(batchId);
+        loadIOPCurriculum(batchId);
+    };
+
+    const handleIOPUnlock = async (moduleId, newDay) => {
+        setIopUnlockLoading(moduleId);
+        try {
+            await trainerAPI.unlockIOPModule(selectedBatchId, { module_id: moduleId, unlocked_up_to_day: newDay });
+            await loadIOPCurriculum(selectedBatchId);
+        } catch (err) { alert('Error: ' + (err.response?.data?.message || err.message)); }
+        finally { setIopUnlockLoading(null); }
     };
 
     const handleUnlockModule = async (moduleId, config) => {
@@ -347,8 +384,14 @@ export const TrainerContentManager = () => {
                         onChange={e => handleBatchChange(e.target.value)}
                     >
                         <option value="">— Choose a batch —</option>
-                        {Object.entries(batches.reduce((acc, b) => { if (!acc[b.batch_name]) acc[b.batch_name] = []; acc[b.batch_name].push(b); return acc; }, {})).map(([bn, cs]) => (
+                        {batches.length > 0 && Object.entries(batches.reduce((acc, b) => { if (!acc[b.batch_name]) acc[b.batch_name] = []; acc[b.batch_name].push(b); return acc; }, {})).map(([bn, cs]) => (
                             <optgroup key={bn} label={bn}>{cs.map(b => <option key={b.id} value={b.id}>{b.course_name}</option>)}</optgroup>
+                        ))}
+                        {iopBatches.filter(ib => !batches.find(b => b.id === ib.id)).length > 0 && Object.entries(
+                            iopBatches.filter(ib => !batches.find(b => b.id === ib.id))
+                                .reduce((acc, b) => { if (!acc[b.batch_name]) acc[b.batch_name] = []; acc[b.batch_name].push(b); return acc; }, {})
+                        ).map(([bn, cs]) => (
+                            <optgroup key={`iop-${bn}`} label={`${bn} — IOP Trainer`}>{cs.map(b => <option key={b.id} value={b.id}>{b.course_name} [IOP only]</option>)}</optgroup>
                         ))}
                     </select>
                 </FormField>
@@ -362,9 +405,41 @@ export const TrainerContentManager = () => {
                 />
             )}
 
-            {currLoading && <LoadingSpinner label="Loading curriculum..." />}
+            {/* ── Tab switcher (shown only when both tech + IOP curriculum are available) ── */}
+            {selectedBatchId && iopCurriculum && (
+                <div style={{
+                    display: 'flex', gap: '4px', marginBottom: '20px',
+                    background: theme.bg.input, border: `1px solid ${theme.border.subtle}`,
+                    borderRadius: theme.radius.lg, padding: '5px', width: 'fit-content',
+                }}>
+                    <button onClick={() => setActiveTab('curriculum')} style={{
+                        padding: '9px 20px', borderRadius: theme.radius.md, border: 'none',
+                        cursor: 'pointer', fontSize: '13px',
+                        fontWeight: activeTab === 'curriculum' ? 700 : 500,
+                        background: activeTab === 'curriculum' ? theme.bg.card : 'transparent',
+                        color: activeTab === 'curriculum' ? theme.text.primary : theme.text.muted,
+                        boxShadow: activeTab === 'curriculum' ? theme.shadow.card : 'none',
+                        transition: 'all 0.15s',
+                    }}>Curriculum</button>
+                    <button onClick={() => setActiveTab('iop')} style={{
+                        padding: '9px 20px', borderRadius: theme.radius.md, border: 'none',
+                        cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px',
+                        fontWeight: activeTab === 'iop' ? 700 : 500,
+                        background: activeTab === 'iop' ? theme.bg.card : 'transparent',
+                        color: activeTab === 'iop' ? '#10b981' : theme.text.muted,
+                        boxShadow: activeTab === 'iop' ? theme.shadow.card : 'none',
+                        transition: 'all 0.15s',
+                    }}><Layers size={14} /> IOP Training
+                        <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: theme.radius.full, background: activeTab === 'iop' ? 'rgba(16,185,129,0.15)' : theme.bg.input, color: activeTab === 'iop' ? '#10b981' : theme.text.muted, fontWeight: 800 }}>
+                            {iopCurriculum.iop_student_count} IOP
+                        </span>
+                    </button>
+                </div>
+            )}
 
-            {curriculum && !currLoading && (
+            {currLoading && activeTab === 'curriculum' && <LoadingSpinner label="Loading curriculum..." />}
+
+            {curriculum && !currLoading && activeTab === 'curriculum' && (
                 <div>
                     <SectionTitle count={curriculum.modules?.length}>
                         {curriculum.course} — Modules
@@ -784,6 +859,107 @@ export const TrainerContentManager = () => {
                                                         ))}
                                                     </div>
                                                 )}
+                                            </div>
+                                        )}
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── IOP Training Section ── */}
+            {iopCurrLoading && activeTab === 'iop' && <LoadingSpinner label="Loading IOP curriculum..." />}
+
+            {iopCurriculum && !iopCurrLoading && activeTab === 'iop' && (
+                <div>
+                    {/* Type filter pills */}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                        {[
+                            { key: 'soft_skills', label: 'Soft Skills', color: '#10b981' },
+                            { key: 'aptitude',    label: 'Aptitude',    color: '#fb923c' },
+                        ].map(t => (
+                            <button key={t.key} onClick={() => setIopTypeFilter(t.key)} style={{
+                                padding: '7px 18px', borderRadius: '24px', fontWeight: 700, fontSize: '12px', cursor: 'pointer', transition: 'all .2s',
+                                background: iopTypeFilter === t.key ? `rgba(${t.key === 'soft_skills' ? '16,185,129' : '251,146,60'},0.12)` : 'transparent',
+                                color: iopTypeFilter === t.key ? t.color : theme.text.muted,
+                                border: `1.5px solid ${iopTypeFilter === t.key ? t.color : theme.border.subtle}`,
+                            }}>{t.label}</button>
+                        ))}
+                    </div>
+
+                    {iopCurriculum.modules.filter(m => m.type === iopTypeFilter).length === 0 ? (
+                        <EmptyState icon={<Layers size={24} />} title="No modules" subtitle={`No ${iopTypeFilter === 'soft_skills' ? 'Soft Skills' : 'Aptitude'} modules configured yet.`} />
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {iopCurriculum.modules.filter(m => m.type === iopTypeFilter).map(mod => {
+                                const totalTopics = mod.topics.length;
+                                const unlockedDay = mod.unlocked_up_to_day || 0;
+                                const typeColor = iopTypeFilter === 'soft_skills' ? '#10b981' : '#fb923c';
+                                const isLoading = iopUnlockLoading === mod.id;
+                                return (
+                                    <Card key={mod.id}>
+                                        {/* Module header + controls */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: totalTopics > 0 ? '14px' : 0 }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 700, fontSize: '14px', color: theme.text.primary }}>
+                                                    {mod.sequence_order}. {mod.title}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: theme.text.muted, marginTop: '2px' }}>
+                                                    {totalTopics} topic{totalTopics !== 1 ? 's' : ''} — Unlocked: Day {unlockedDay} / {totalTopics}
+                                                </div>
+                                            </div>
+                                            {/* +/- Day controls */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                                                <button
+                                                    disabled={unlockedDay <= 0 || isLoading}
+                                                    onClick={() => handleIOPUnlock(mod.id, Math.max(0, unlockedDay - 1))}
+                                                    title="Lock previous day"
+                                                    style={{ width: '28px', height: '28px', borderRadius: '6px', border: `1px solid ${theme.border.subtle}`, background: 'transparent', color: theme.text.muted, cursor: unlockedDay <= 0 || isLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: unlockedDay <= 0 ? 0.35 : 1 }}>
+                                                    <Minus size={12} />
+                                                </button>
+                                                <span style={{ minWidth: '72px', textAlign: 'center', fontSize: '12px', fontWeight: 700, color: typeColor }}>
+                                                    Day {unlockedDay} / {totalTopics}
+                                                </span>
+                                                <button
+                                                    disabled={unlockedDay >= totalTopics || isLoading}
+                                                    onClick={() => handleIOPUnlock(mod.id, Math.min(totalTopics, unlockedDay + 1))}
+                                                    title="Unlock next day"
+                                                    style={{ width: '28px', height: '28px', borderRadius: '6px', border: `1px solid ${theme.border.subtle}`, background: 'transparent', color: theme.text.muted, cursor: unlockedDay >= totalTopics || isLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: unlockedDay >= totalTopics ? 0.35 : 1 }}>
+                                                    <Plus size={12} />
+                                                </button>
+                                                {unlockedDay < totalTopics && (
+                                                    <ActionButton disabled={isLoading} variant="success" onClick={() => handleIOPUnlock(mod.id, totalTopics)}>
+                                                        {isLoading ? '…' : 'Unlock All'}
+                                                    </ActionButton>
+                                                )}
+                                                {unlockedDay > 0 && (
+                                                    <ActionButton disabled={isLoading} variant="danger" onClick={() => handleIOPUnlock(mod.id, 0)}>
+                                                        {isLoading ? '…' : 'Lock'}
+                                                    </ActionButton>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Topic rows */}
+                                        {totalTopics > 0 && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: `1px solid ${theme.border.subtle}`, paddingTop: '12px' }}>
+                                                {mod.topics.map(t => (
+                                                    <div key={t.id} style={{
+                                                        display: 'flex', alignItems: 'center', gap: '10px',
+                                                        padding: '8px 10px', borderRadius: '6px',
+                                                        background: t.is_unlocked ? `rgba(16,185,129,0.05)` : 'transparent',
+                                                        border: `1px solid ${t.is_unlocked ? 'rgba(16,185,129,0.14)' : 'transparent'}`,
+                                                    }}>
+                                                        {t.is_unlocked
+                                                            ? <CheckCircle size={13} color={typeColor} />
+                                                            : <Lock size={13} color={theme.text.muted} style={{ opacity: 0.35 }} />}
+                                                        <span style={{ fontSize: '11px', fontWeight: 700, color: typeColor, minWidth: '48px' }}>Day {t.day_number}</span>
+                                                        <span style={{ fontSize: '13px', color: t.is_unlocked ? theme.text.primary : theme.text.muted, flex: 1 }}>{t.topic_name}</span>
+                                                        {t.notes && <span style={{ fontSize: '11px', color: theme.text.muted, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.notes}</span>}
+                                                    </div>
+                                                ))}
                                             </div>
                                         )}
                                     </Card>

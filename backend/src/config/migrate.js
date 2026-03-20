@@ -342,6 +342,46 @@ async function runMigrations() {
         await addColumnIfNotExists('Certificates', "program_type ENUM('JRP','IOP') DEFAULT 'JRP'");
         await addColumnIfNotExists('Certificates', 'cert_data LONGBLOB NULL');
 
+        // ── IOP Curriculum ───────────────────────────────────────────────────
+        // Global soft skills + aptitude modules (created once by SA, shared across all batches)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS IOPModules (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                type ENUM('soft_skills','aptitude') NOT NULL,
+                title VARCHAR(200) NOT NULL,
+                sequence_order INT DEFAULT 0
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS IOPTopics (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                module_id INT NOT NULL,
+                day_number INT NOT NULL,
+                topic_name VARCHAR(300) NOT NULL,
+                notes TEXT,
+                FOREIGN KEY (module_id) REFERENCES IOPModules(id) ON DELETE CASCADE
+            )
+        `);
+
+        // Per-batch IOP unlock state (IOP trainer controls unlock pace per batch)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS IOPBatchUnlocks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                batch_id INT NOT NULL,
+                module_id INT NOT NULL,
+                unlocked_up_to_day INT DEFAULT 0,
+                unlocked_by INT,
+                unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_iop_batch_module (batch_id, module_id),
+                FOREIGN KEY (batch_id) REFERENCES Batches(id) ON DELETE CASCADE,
+                FOREIGN KEY (module_id) REFERENCES IOPModules(id) ON DELETE CASCADE
+            )
+        `);
+
+        // IOP trainer assigned per batch (separate from the technical trainer_id)
+        await addColumnIfNotExists('Batches', 'iop_trainer_id INT NULL');
+
         // ── StudentInterviews ────────────────────────────────────────────────
         await pool.query(`
             CREATE TABLE IF NOT EXISTS StudentInterviews (

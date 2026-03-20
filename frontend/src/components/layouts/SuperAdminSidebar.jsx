@@ -4,7 +4,7 @@ import {
     LayoutDashboard, Calendar, BookOpen, Users,
     GraduationCap, UserCog, ClipboardList, Clock,
     Briefcase, Megaphone, Link as LinkIcon, Settings,
-    BarChart3, FileText, HelpCircle, MessageSquare, Award, Rocket, Target
+    BarChart3, FileText, HelpCircle, MessageSquare, Award, Rocket, Target, Layers
 } from 'lucide-react';
 
 export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
@@ -22,6 +22,7 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
             label: 'Curriculum',
             links: [
                 { name: 'Manage Courses', path: '/super-admin/courses', icon: BookOpen },
+                { name: 'IOP Curriculum', path: '/super-admin/iop-curriculum', icon: Layers },
                 { name: 'Student & Batch Hub', path: '/super-admin/student-batch-hub', icon: Users },
                 { name: 'Feedback Builder', path: '/super-admin/feedback-builder', icon: ClipboardList },
                 { name: 'Certificates & Internships', path: '/super-admin/certificates', icon: Award },

@@ -179,4 +179,16 @@ router.post('/capstones/:id/files',
     releaseCtrl.uploadCapstoneFilesHandler
 );
 router.delete('/capstone-files/:fileId', releaseCtrl.deleteCapstoneFile);
+
+// ── IOP Curriculum Management (SA only, role 1) ───────────────────────────────
+const iopCtrl = require('../controllers/iop.controller');
+router.get('/iop-modules',                  requireRole([1, 2]), iopCtrl.getIOPModules);
+router.post('/iop-modules',                 requireRole([1]), iopCtrl.createIOPModule);
+router.put('/iop-modules/:id',              requireRole([1]), iopCtrl.updateIOPModule);
+router.delete('/iop-modules/:id',           requireRole([1]), iopCtrl.deleteIOPModule);
+router.get('/iop-modules/:moduleId/topics', requireRole([1, 2]), iopCtrl.getIOPTopics);
+router.post('/iop-topics',                  requireRole([1]), iopCtrl.createIOPTopic);
+router.put('/iop-topics/:id',               requireRole([1]), iopCtrl.updateIOPTopic);
+router.delete('/iop-topics/:id',            requireRole([1]), iopCtrl.deleteIOPTopic);
+
 module.exports = router;

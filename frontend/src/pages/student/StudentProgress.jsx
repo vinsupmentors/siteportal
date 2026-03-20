@@ -8,7 +8,7 @@ import {
     TrendingUp, Award, Target, BarChart3, CheckCircle,
     Flame, Star, Calendar, BookOpen, Briefcase, AlertCircle,
     FileText, MessageSquare, ChevronDown, ChevronRight, Trophy,
-    GraduationCap, Rocket, Download, Clock, BadgeCheck,
+    GraduationCap, Rocket, Download, Clock, BadgeCheck, Layers, Lock,
 } from 'lucide-react';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -197,6 +197,8 @@ export const StudentProgress = () => {
     const [generatingCert, setGeneratingCert] = useState(null);
     const [markingReady, setMarkingReady] = useState(false);
     const [certMsg, setCertMsg] = useState('');
+    const [iopModules, setIopModules] = useState([]);
+    const [iopTypeFilter, setIopTypeFilter] = useState('soft_skills');
 
     const fetchCareerData = async () => {
         const [careerRes, certsRes] = await Promise.all([
@@ -217,6 +219,10 @@ export const StudentProgress = () => {
                 setProgress(progRes.data || {});
                 setEligibility(eligRes.data || null);
                 await fetchCareerData();
+                // Fetch IOP curriculum — server returns 403 for JRP students (silently ignored)
+                studentAPI.getIOPCurriculum()
+                    .then(r => setIopModules(r.data.modules || []))
+                    .catch(() => {});
             } catch (error) {
                 console.error('Error fetching progress data', error);
             } finally {
@@ -300,11 +306,14 @@ export const StudentProgress = () => {
 
     const attendanceColor = attendance >= 85 ? theme.accent.green : attendance >= 60 ? theme.accent.yellow : theme.accent.red;
 
+    const isIOP = careerData?.program_type === 'IOP';
+
     const SECTIONS = [
         { id: 'marks',    label: 'Marks & Grades',   count: gradedItems.length     },
         { id: 'overview', label: 'Overview',          count: null                   },
         { id: 'modules',  label: 'Module Roadmap',    count: moduleRoadmap.length   },
         { id: 'career',   label: 'Career Readiness',  count: null                   },
+        ...(isIOP ? [{ id: 'iop', label: 'IOP Training', count: iopModules.length, accent: '#10b981' }] : []),
     ];
 
     return (
@@ -325,6 +334,48 @@ export const StudentProgress = () => {
                 <StatCard icon={<Trophy size={22} />} label="Overall Avg" value={overallAvg !== null ? `${overallAvg}%` : '—'} accentColor={theme.accent.green} />
             </div>
 
+            {/* IOP Journey Banner — shown only for IOP students */}
+            {isIOP && (
+                <div style={{
+                    marginBottom: '24px', padding: '16px 20px',
+                    background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)',
+                    borderRadius: theme.radius.lg,
+                }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#10b981', marginBottom: '12px' }}>
+                        IOP Student Journey
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0', flexWrap: 'wrap', rowGap: '8px' }}>
+                        {[
+                            { label: 'Joined',                  done: true,                                    emoji: '🎓' },
+                            { label: 'Soft Skills & Aptitude',  done: iopModules.some(m => m.is_unlocked),    emoji: '🧠' },
+                            { label: 'Technical Class',         done: passedModules > 0,                       emoji: '💻' },
+                            { label: 'Projects',                done: gradedCapstones.length > 0,              emoji: '🏗️' },
+                            { label: 'Certificate',             done: certificates.length > 0,                 emoji: '🏆' },
+                            { label: 'Placements',              done: careerData?.ready_for_interview,         emoji: '🚀' },
+                        ].map((step, i, arr) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: '6px',
+                                    padding: '5px 12px', borderRadius: '20px',
+                                    background: step.done ? 'rgba(16,185,129,0.14)' : 'rgba(255,255,255,0.04)',
+                                    border: `1px solid ${step.done ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                                    fontSize: '12px', fontWeight: step.done ? 700 : 500,
+                                    color: step.done ? '#10b981' : theme.text.muted,
+                                    opacity: step.done ? 1 : 0.6,
+                                }}>
+                                    <span>{step.emoji}</span>
+                                    <span>{step.label}</span>
+                                    {step.done && <CheckCircle size={11} color="#10b981" />}
+                                </div>
+                                {i < arr.length - 1 && (
+                                    <span style={{ padding: '0 6px', color: theme.text.muted, fontSize: '14px', opacity: 0.4 }}>→</span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Section Tabs */}
             <div style={{
                 display: 'flex', gap: '4px', marginBottom: '20px',
@@ -340,17 +391,18 @@ export const StudentProgress = () => {
                             border: 'none', cursor: 'pointer', fontSize: '13px',
                             fontWeight: isActive ? 700 : 500,
                             background: isActive ? theme.bg.card : 'transparent',
-                            color: isActive ? theme.text.primary : theme.text.muted,
+                            color: isActive ? (s.accent || theme.text.primary) : theme.text.muted,
                             boxShadow: isActive ? theme.shadow.card : 'none',
                             transition: 'all 0.15s',
                         }}>
+                            {s.id === 'iop' && <Layers size={13} />}
                             {s.label}
                             {s.count !== null && (
                                 <span style={{
                                     fontSize: '10px', fontWeight: 800, padding: '1px 6px',
                                     borderRadius: theme.radius.full,
-                                    background: isActive ? `${theme.accent.blue}20` : theme.bg.input,
-                                    color: isActive ? theme.accent.blue : theme.text.muted,
+                                    background: isActive ? `${s.accent || theme.accent.blue}20` : theme.bg.input,
+                                    color: isActive ? (s.accent || theme.accent.blue) : theme.text.muted,
                                 }}>
                                     {s.count}
                                 </span>
@@ -831,6 +883,92 @@ export const StudentProgress = () => {
                                 </div>
                             )}
                         </Card>
+                    )}
+                </div>
+            )}
+
+            {/* ══ SECTION: IOP TRAINING ══ */}
+            {activeSection === 'iop' && isIOP && (
+                <div>
+                    {iopModules.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '48px', background: theme.bg.card, border: `1px solid ${theme.border.subtle}`, borderRadius: theme.radius.lg }}>
+                            <Layers size={48} color={theme.text.muted} style={{ marginBottom: '16px', opacity: 0.4 }} />
+                            <div style={{ fontSize: '18px', fontWeight: 700, color: theme.text.primary, marginBottom: '8px' }}>No IOP modules yet</div>
+                            <div style={{ fontSize: '14px', color: theme.text.muted }}>Your IOP trainer will unlock modules as sessions progress.</div>
+                        </div>
+                    ) : (
+                        <div>
+                            {/* Type filter pills */}
+                            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                                {[
+                                    { key: 'soft_skills', label: 'Soft Skills', color: '#10b981' },
+                                    { key: 'aptitude',    label: 'Aptitude',    color: '#fb923c' },
+                                ].map(t => (
+                                    <button key={t.key} onClick={() => setIopTypeFilter(t.key)} style={{
+                                        padding: '7px 18px', borderRadius: '24px', fontWeight: 700, fontSize: '12px', cursor: 'pointer', transition: 'all .2s',
+                                        background: iopTypeFilter === t.key ? `rgba(${t.key === 'soft_skills' ? '16,185,129' : '251,146,60'},0.12)` : 'transparent',
+                                        color: iopTypeFilter === t.key ? t.color : theme.text.muted,
+                                        border: `1.5px solid ${iopTypeFilter === t.key ? t.color : theme.border.subtle}`,
+                                    }}>{t.label} ({iopModules.filter(m => m.type === t.key).length})</button>
+                                ))}
+                            </div>
+
+                            {iopModules.filter(m => m.type === iopTypeFilter).length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '32px', color: theme.text.muted, fontSize: '14px' }}>
+                                    No {iopTypeFilter === 'soft_skills' ? 'Soft Skills' : 'Aptitude'} modules configured yet.
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {iopModules.filter(m => m.type === iopTypeFilter).map(mod => {
+                                        const typeColor = iopTypeFilter === 'soft_skills' ? '#10b981' : '#fb923c';
+                                        const unlockedDay = mod.unlocked_up_to_day || 0;
+                                        const totalTopics = mod.topics.length;
+                                        const unlockedCount = mod.topics.filter(t => t.is_unlocked).length;
+                                        return (
+                                            <Card key={mod.id}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: totalTopics > 0 ? '14px' : 0 }}>
+                                                    <div style={{ width: '36px', height: '36px', borderRadius: theme.radius.md, background: `rgba(${iopTypeFilter === 'soft_skills' ? '16,185,129' : '251,146,60'},0.12)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                        <Layers size={16} color={typeColor} />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontWeight: 700, fontSize: '14px', color: theme.text.primary }}>
+                                                            {mod.sequence_order}. {mod.title}
+                                                        </div>
+                                                        <div style={{ fontSize: '12px', color: theme.text.muted, marginTop: '2px' }}>
+                                                            {unlockedCount} / {totalTopics} topics unlocked
+                                                        </div>
+                                                    </div>
+                                                    {/* Progress pill */}
+                                                    <div style={{ fontSize: '12px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', background: unlockedCount > 0 ? `rgba(${iopTypeFilter === 'soft_skills' ? '16,185,129' : '251,146,60'},0.12)` : 'rgba(255,255,255,0.04)', color: unlockedCount > 0 ? typeColor : theme.text.muted, border: `1px solid ${unlockedCount > 0 ? typeColor + '40' : 'transparent'}` }}>
+                                                        Day {unlockedDay}/{totalTopics}
+                                                    </div>
+                                                </div>
+
+                                                {totalTopics > 0 && (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: `1px solid ${theme.border.subtle}`, paddingTop: '12px' }}>
+                                                        {mod.topics.map(t => (
+                                                            <div key={t.id} style={{
+                                                                display: 'flex', alignItems: 'center', gap: '10px',
+                                                                padding: '8px 10px', borderRadius: '6px',
+                                                                background: t.is_unlocked ? `rgba(${iopTypeFilter === 'soft_skills' ? '16,185,129' : '251,146,60'},0.05)` : 'transparent',
+                                                                border: `1px solid ${t.is_unlocked ? typeColor + '20' : 'transparent'}`,
+                                                            }}>
+                                                                {t.is_unlocked
+                                                                    ? <CheckCircle size={13} color={typeColor} />
+                                                                    : <Lock size={13} color={theme.text.muted} style={{ opacity: 0.35 }} />}
+                                                                <span style={{ fontSize: '11px', fontWeight: 700, color: typeColor, minWidth: '48px' }}>Day {t.day_number}</span>
+                                                                <span style={{ fontSize: '13px', color: t.is_unlocked ? theme.text.primary : theme.text.muted, flex: 1 }}>{t.topic_name}</span>
+                                                                {t.notes && <span style={{ fontSize: '11px', color: theme.text.muted, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.notes}</span>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </Card>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
             )}

@@ -23,6 +23,7 @@ import StudentJobPortal from './pages/student/StudentJobPortal';
 import { SADashboard } from './pages/superadmin/SADashboard';
 import { SACalendar } from './pages/superadmin/SACalendar';
 import { SAManageCourses } from './pages/superadmin/SAManageCourses';
+import { SAIOPCurriculum } from './pages/superadmin/SAIOPCurriculum';
 import { SAStudentBatchCentral } from './pages/superadmin/SAStudentBatchCentral';
 import { SACertificates } from './pages/superadmin/SACertificates';
 import { SAManageTrainers } from './pages/superadmin/SAManageTrainers';
@@ -87,6 +88,7 @@ const AppRoutes = () => {
         <Route path="dashboard" element={<SADashboard />} />
         <Route path="calendar" element={<SACalendar />} />
         <Route path="courses" element={<SAManageCourses />} />
+        <Route path="iop-curriculum" element={<SAIOPCurriculum />} />
         <Route path="student-batch-hub" element={<SAStudentBatchCentral />} />
         <Route path="certificates" element={<SACertificates />} />
         <Route path="trainers" element={<SAManageTrainers />} />

@@ -34,7 +34,7 @@ export const SAStudentBatchCentral = () => {
     const [prefillBatchName, setPrefillBatchName] = useState('');
     const [showBatchForm, setShowBatchForm] = useState(false);
     const [editingBatchId, setEditingBatchId] = useState(null);
-    const [batchForm, setBatchForm] = useState({ batch_name: '', course_id: '', trainer_id: '', schedule_type: 'weekday', timing: 'morning', start_date: '', end_date: '', meeting_link: '', status: 'active' });
+    const [batchForm, setBatchForm] = useState({ batch_name: '', course_id: '', trainer_id: '', iop_trainer_id: '', schedule_type: 'weekday', timing: 'morning', start_date: '', end_date: '', meeting_link: '', status: 'active' });
 
     const fetchData = async () => {
         setLoading(true);
@@ -147,7 +147,7 @@ export const SAStudentBatchCentral = () => {
             if (editingBatchId) await superAdminAPI.updateBatch(editingBatchId, batchForm);
             else await superAdminAPI.createBatch(batchForm);
             setShowBatchForm(false); setEditingBatchId(null); setPrefillBatchName('');
-            setBatchForm({ batch_name: '', course_id: '', trainer_id: '', schedule_type: 'weekday', timing: 'morning', start_date: '', end_date: '', meeting_link: '', status: 'active' });
+            setBatchForm({ batch_name: '', course_id: '', trainer_id: '', iop_trainer_id: '', schedule_type: 'weekday', timing: 'morning', start_date: '', end_date: '', meeting_link: '', status: 'active' });
             fetchData();
         } catch (err) { alert(err.response?.data?.message || 'Error saving batch'); }
     };
@@ -396,7 +396,11 @@ export const SAStudentBatchCentral = () => {
                                     {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
                                 <select value={batchForm.trainer_id} onChange={e => setBatchForm({ ...batchForm, trainer_id: e.target.value })} style={inputStyle}>
-                                    <option value="">Assign Trainer</option>
+                                    <option value="">Assign Technical Trainer</option>
+                                    {trainers.map(t => <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>)}
+                                </select>
+                                <select value={batchForm.iop_trainer_id || ''} onChange={e => setBatchForm({ ...batchForm, iop_trainer_id: e.target.value })} style={inputStyle}>
+                                    <option value="">Assign IOP Trainer (optional)</option>
                                     {trainers.map(t => <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>)}
                                 </select>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -479,7 +483,10 @@ export const SAStudentBatchCentral = () => {
                                                             <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{b.course_name}</span>
                                                         </div>
                                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'capitalize', minWidth: 130 }}>{b.timing} · {b.schedule_type}</span>
-                                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: 140 }}>{b.trainer_name || 'No trainer'}</span>
+                                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: 140 }}>
+                                                            {b.trainer_name || 'No trainer'}
+                                                            {b.iop_trainer_name && <span style={{ display: 'block', fontSize: '0.73rem', color: '#10b981' }}>IOP: {b.iop_trainer_name}</span>}
+                                                        </span>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 80 }}>
                                                             <Users size={13} color="var(--text-muted)" />
                                                             <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{b.student_count || 0}</span>

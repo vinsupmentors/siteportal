@@ -510,10 +510,12 @@ exports.getBatches = async (req, res) => {
         const [batches] = await pool.query(`
             SELECT b.*, c.name as course_name,
                    CONCAT(u.first_name, ' ', u.last_name) as trainer_name,
+                   CONCAT(ui.first_name, ' ', ui.last_name) as iop_trainer_name,
                    (SELECT COUNT(*) FROM BatchStudents WHERE batch_id = b.id) as student_count
             FROM Batches b
             JOIN Courses c ON b.course_id = c.id
             LEFT JOIN Users u ON b.trainer_id = u.id
+            LEFT JOIN Users ui ON b.iop_trainer_id = ui.id
             ORDER BY b.start_date DESC
         `);
         res.json({ batches });
@@ -524,10 +526,10 @@ exports.getBatches = async (req, res) => {
 
 exports.createBatch = async (req, res) => {
     try {
-        const { course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link } = req.body;
+        const { course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link, iop_trainer_id } = req.body;
         const [result] = await pool.query(
-            `INSERT INTO Batches (course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
-            [course_id, trainer_id || null, batch_name, schedule_type, timing, start_date, end_date || null, meeting_link || null]
+            `INSERT INTO Batches (course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link, status, iop_trainer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
+            [course_id, trainer_id || null, batch_name, schedule_type, timing, start_date, end_date || null, meeting_link || null, iop_trainer_id || null]
         );
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'CREATE_BATCH', 'Batches', result.insertId]);
         res.status(201).json({ message: 'Batch created successfully', batchId: result.insertId });
@@ -539,10 +541,10 @@ exports.createBatch = async (req, res) => {
 exports.updateBatch = async (req, res) => {
     try {
         const { id } = req.params;
-        const { batch_name, course_id, trainer_id, schedule_type, timing, start_date, end_date, status, meeting_link } = req.body;
+        const { batch_name, course_id, trainer_id, schedule_type, timing, start_date, end_date, status, meeting_link, iop_trainer_id } = req.body;
         await pool.query(
-            'UPDATE Batches SET batch_name=?, course_id=?, trainer_id=?, schedule_type=?, timing=?, start_date=?, end_date=?, status=?, meeting_link=? WHERE id=?',
-            [batch_name, course_id, trainer_id || null, schedule_type, timing, start_date, end_date || null, status, meeting_link || null, id]
+            'UPDATE Batches SET batch_name=?, course_id=?, trainer_id=?, schedule_type=?, timing=?, start_date=?, end_date=?, status=?, meeting_link=?, iop_trainer_id=? WHERE id=?',
+            [batch_name, course_id, trainer_id || null, schedule_type, timing, start_date, end_date || null, status, meeting_link || null, iop_trainer_id || null, id]
         );
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'UPDATE_BATCH', 'Batches', id]);
         res.json({ message: 'Batch updated successfully' });

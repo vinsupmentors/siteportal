@@ -158,6 +158,16 @@ deleteCapstoneFile: (fileId) => api.delete(`/super-admin/capstone-files/${fileId
     // Trainer Leave Management (Super Admin)
     getAllTrainerLeaves: (status) => api.get(`/super-admin/trainer-leaves${status ? `?status=${status}` : ''}`),
     updateTrainerLeaveStatus: (id, data) => api.patch(`/super-admin/trainer-leaves/${id}`, data),
+
+    // IOP Curriculum Management
+    getIOPModules: () => api.get('/super-admin/iop-modules'),
+    createIOPModule: (data) => api.post('/super-admin/iop-modules', data),
+    updateIOPModule: (id, data) => api.put(`/super-admin/iop-modules/${id}`, data),
+    deleteIOPModule: (id) => api.delete(`/super-admin/iop-modules/${id}`),
+    getIOPTopics: (moduleId) => api.get(`/super-admin/iop-modules/${moduleId}/topics`),
+    createIOPTopic: (data) => api.post('/super-admin/iop-topics', data),
+    updateIOPTopic: (id, data) => api.put(`/super-admin/iop-topics/${id}`, data),
+    deleteIOPTopic: (id) => api.delete(`/super-admin/iop-topics/${id}`),
 };
 
 // Auth API (for password change, available to all logged-in users)
@@ -221,6 +231,11 @@ gradeReleaseSubmission: (submissionId, data) => api.put(`/trainer/release-submis
     // Leaves
     requestLeave: (data) => api.post('/trainer/leaves', data),
     getMyLeaves: () => api.get('/trainer/leaves'),
+
+    // IOP Curriculum (trainer as iop_trainer_id)
+    getMyIOPBatches: () => api.get('/trainer/my-iop-batches'),
+    getIOPCurriculum: (batchId) => api.get(`/trainer/batches/${batchId}/iop-curriculum`),
+    unlockIOPModule: (batchId, data) => api.post(`/trainer/batches/${batchId}/iop-unlock`, data),
 };
 
 // Student API (student portal)
@@ -261,6 +276,9 @@ submitReleaseWork: (releaseId, formData) => api.post(`/student/releases/${releas
     generateCertificate: (data) => api.post('/student/certificates/generate', data),
     getCertificates: () => api.get('/student/certificates'),
     downloadCertificate: (id) => api.get(`/student/certificates/${id}/download`, { responseType: 'blob' }),
+
+    // IOP Curriculum (IOP students only)
+    getIOPCurriculum: () => api.get('/student/iop-curriculum'),
 };
 
 // Admin API (administrative portal)
