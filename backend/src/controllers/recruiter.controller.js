@@ -7,15 +7,15 @@ exports.getRecruiterDashboard = async (req, res) => {
         const [batches] = await pool.query(`
             SELECT
                 b.id as batch_id, b.batch_name, c.name as course_name,
-                COUNT(DISTINCT bs.student_id) as total_students,
-                SUM(CASE WHEN u.program_type = 'JRP' THEN 1 ELSE 0 END) as jrp_count,
-                SUM(CASE WHEN u.program_type = 'IOP' THEN 1 ELSE 0 END) as iop_count,
-                SUM(CASE WHEN u.program_type = 'IOP' AND bs.ready_for_interview = 1 THEN 1 ELSE 0 END) as iop_ready
+                COUNT(DISTINCT CASE WHEN u.role_id = 4 AND u.status = 'active' THEN bs.student_id END) as total_students,
+                SUM(CASE WHEN u.role_id = 4 AND u.status = 'active' AND u.program_type = 'JRP' THEN 1 ELSE 0 END) as jrp_count,
+                SUM(CASE WHEN u.role_id = 4 AND u.status = 'active' AND u.program_type = 'IOP' THEN 1 ELSE 0 END) as iop_count,
+                SUM(CASE WHEN u.role_id = 4 AND u.status = 'active' AND u.program_type = 'IOP' AND bs.ready_for_interview = 1 THEN 1 ELSE 0 END) as iop_ready
             FROM Batches b
-            JOIN BatchStudents bs ON b.id = bs.batch_id
-            JOIN Users u ON bs.student_id = u.id
             JOIN Courses c ON b.course_id = c.id
-            WHERE u.role_id = 4 AND u.status = 'active'
+            LEFT JOIN BatchStudents bs ON b.id = bs.batch_id
+            LEFT JOIN Users u ON bs.student_id = u.id AND u.role_id = 4 AND u.status = 'active'
+            WHERE b.status IN ('active', 'upcoming')
             GROUP BY b.id, b.batch_name, c.name
             ORDER BY b.id DESC
         `);
