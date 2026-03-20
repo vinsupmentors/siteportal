@@ -457,60 +457,72 @@ const RecruiterStudents = () => {
                         <div className="text-xl font-bold text-secondary">No batches found</div>
                     </div>
                 ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
-                        {batchList.map(batch => {
-                            const iopCount = Number(batch.iop_count || 0);
-                            const readyCount = Number(batch.iop_ready || 0);
-                            const placedCount = Number(batch.placed_count || 0);
+                    /* Group batch cards by batch_name */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        {Object.entries(
+                            batchList.reduce((acc, b) => {
+                                if (!acc[b.batch_name]) acc[b.batch_name] = [];
+                                acc[b.batch_name].push(b);
+                                return acc;
+                            }, {})
+                        ).map(([batchName, courses]) => {
+                            const totalIop = courses.reduce((s, c) => s + Number(c.iop_count || 0), 0);
                             return (
-                                <div
-                                    key={batch.batch_id}
-                                    onClick={() => handleBatchClick(batch)}
-                                    style={{ padding: '20px', borderRadius: 14, background: '#141d2f', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', transition: 'border-color 0.15s', position: 'relative' }}
-                                    onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(59,130,246,0.4)'}
-                                    onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                                        <div>
-                                            <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>{batch.batch_name}</div>
-                                            <div style={{ fontSize: 12, color: '#5a6478', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
-                                                <BookOpen size={11} /> {batch.course_name}
-                                            </div>
-                                        </div>
-                                        <ChevronRight size={18} color="#3b82f6" />
+                                <div key={batchName}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                                        <Layers size={16} color="#3b82f6" />
+                                        <span style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>{batchName}</span>
+                                        <span style={{ fontSize: 11, color: '#5a6478', fontWeight: 600 }}>
+                                            {courses.length} course{courses.length !== 1 ? 's' : ''} · {totalIop} IOP
+                                        </span>
                                     </div>
-
-                                    {/* Stats */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 12 }}>
-                                        {[
-                                            { label: 'IOP Total', val: iopCount, color: '#3b82f6' },
-                                            { label: 'Ready', val: readyCount, color: '#10b981' },
-                                            { label: 'Placed', val: placedCount, color: '#8b5cf6' },
-                                        ].map(({ label, val, color }) => (
-                                            <div key={label} style={{ textAlign: 'center', padding: '8px 4px', borderRadius: 8, background: 'rgba(255,255,255,0.03)' }}>
-                                                <div style={{ fontSize: 18, fontWeight: 800, color }}>{val}</div>
-                                                <div style={{ fontSize: 10, color: '#5a6478', fontWeight: 600 }}>{label}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Interview funnel mini bar */}
-                                    {iopCount > 0 && (
-                                        <div style={{ marginTop: 12, display: 'flex', gap: 3, height: 6, borderRadius: 4, overflow: 'hidden' }}>
-                                            {[
-                                                { val: Number(batch.interviews_0 || 0), color: '#334155' },
-                                                { val: Number(batch.interviews_1 || 0), color: '#3b82f6' },
-                                                { val: Number(batch.interviews_2 || 0), color: '#8b5cf6' },
-                                                { val: Number(batch.interviews_3 || 0), color: '#f59e0b' },
-                                                { val: placedCount, color: '#10b981' },
-                                            ].filter(b => b.val > 0).map((b, i) => (
-                                                <div key={i} style={{ flex: b.val, background: b.color, borderRadius: 3 }} />
-                                            ))}
-                                        </div>
-                                    )}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                                        <span style={{ fontSize: 9, color: '#5a6478' }}>0 Interviews ← → Placed</span>
-                                        {iopCount === 0 && <span style={{ fontSize: 10, color: '#5a6478' }}>No IOP students</span>}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+                                        {courses.map(batch => {
+                                            const iopCount = Number(batch.iop_count || 0);
+                                            const readyCount = Number(batch.iop_ready || 0);
+                                            const placedCount = Number(batch.placed_count || 0);
+                                            return (
+                                                <div
+                                                    key={batch.batch_id}
+                                                    onClick={() => handleBatchClick(batch)}
+                                                    style={{ padding: '18px', borderRadius: 12, background: '#141d2f', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', transition: 'border-color 0.15s' }}
+                                                    onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(59,130,246,0.4)'}
+                                                    onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}
+                                                >
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#5a6478' }}>
+                                                            <BookOpen size={12} /> {batch.course_name}
+                                                        </div>
+                                                        <ChevronRight size={16} color="#3b82f6" />
+                                                    </div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                                                        {[
+                                                            { label: 'IOP', val: iopCount, color: '#3b82f6' },
+                                                            { label: 'Ready', val: readyCount, color: '#10b981' },
+                                                            { label: 'Placed', val: placedCount, color: '#8b5cf6' },
+                                                        ].map(({ label, val, color }) => (
+                                                            <div key={label} style={{ textAlign: 'center', padding: '6px 4px', borderRadius: 8, background: 'rgba(255,255,255,0.03)' }}>
+                                                                <div style={{ fontSize: 16, fontWeight: 800, color }}>{val}</div>
+                                                                <div style={{ fontSize: 9, color: '#5a6478', fontWeight: 600 }}>{label}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    {iopCount > 0 && (
+                                                        <div style={{ marginTop: 10, display: 'flex', gap: 3, height: 5, borderRadius: 4, overflow: 'hidden' }}>
+                                                            {[
+                                                                { val: Number(batch.interviews_0 || 0), color: '#334155' },
+                                                                { val: Number(batch.interviews_1 || 0), color: '#3b82f6' },
+                                                                { val: Number(batch.interviews_2 || 0), color: '#8b5cf6' },
+                                                                { val: Number(batch.interviews_3 || 0), color: '#f59e0b' },
+                                                                { val: placedCount, color: '#10b981' },
+                                                            ].filter(b => b.val > 0).map((b, i) => (
+                                                                <div key={i} style={{ flex: b.val, background: b.color, borderRadius: 3 }} />
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             );

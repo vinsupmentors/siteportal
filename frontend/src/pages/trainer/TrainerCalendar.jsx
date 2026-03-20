@@ -211,7 +211,9 @@ export const TrainerCalendar = () => {
                                         setKraForm(f => ({ ...f, batch_id: bid, session: batch ? (batch.timing.toLowerCase().includes('morning') ? 'morning' : batch.timing.toLowerCase().includes('evening') ? 'evening' : 'afternoon') : 'morning' }));
                                     }}>
                                         <option value="">Select batch</option>
-                                        {dayBatches.map(b => <option key={b.id} value={b.id}>{b.batch_name}</option>)}
+                                        {Object.entries(dayBatches.reduce((acc, b) => { if (!acc[b.batch_name]) acc[b.batch_name] = []; acc[b.batch_name].push(b); return acc; }, {})).map(([bn, cs]) => (
+                                            <optgroup key={bn} label={bn}>{cs.map(b => <option key={b.id} value={b.id}>{b.course_name}</option>)}</optgroup>
+                                        ))}
                                     </select>
                                     <select style={{ ...inputStyle, cursor: 'pointer', flex: 1 }} value={kraForm.session} onChange={e => setKraForm(f => ({ ...f, session: e.target.value }))}>
                                         <option value="morning">Morning</option>
@@ -257,7 +259,9 @@ export const TrainerCalendar = () => {
                             <FormField label="Target Batch">
                                 <select style={{ ...inputStyle, cursor: 'pointer' }} value={kraForm.batch_id} onChange={e => setKraForm(f => ({ ...f, batch_id: e.target.value }))}>
                                     <option value="">Select batch</option>
-                                    {batches.map(b => <option key={b.id} value={b.id}>{b.batch_name}</option>)}
+                                    {Object.entries(batches.reduce((acc, b) => { if (!acc[b.batch_name]) acc[b.batch_name] = []; acc[b.batch_name].push(b); return acc; }, {})).map(([bn, cs]) => (
+                                        <optgroup key={bn} label={bn}>{cs.map(b => <option key={b.id} value={b.id}>{b.course_name}</option>)}</optgroup>
+                                    ))}
                                 </select>
                             </FormField>
                             {feedbackForms.length === 0 ? (

@@ -190,7 +190,9 @@ export const AdminStudentHub = () => {
                         {!editingStudentId && (
                             <select value={studentForm.batch_id} onChange={e => setStudentForm({ ...studentForm, batch_id: e.target.value })} style={inputStyle}>
                                 <option value="">Select Initial Batch (Optional)</option>
-                                {batches.map(b => <option key={b.id} value={b.id}>{b.batch_name} — {b.course_name}</option>)}
+                                {Object.entries(batches.reduce((acc, b) => { if (!acc[b.batch_name]) acc[b.batch_name] = []; acc[b.batch_name].push(b); return acc; }, {})).map(([bn, cs]) => (
+                                    <optgroup key={bn} label={bn}>{cs.map(b => <option key={b.id} value={b.id}>{b.course_name}</option>)}</optgroup>
+                                ))}
                             </select>
                         )}
                         {editingStudentId && (
@@ -216,7 +218,9 @@ export const AdminStudentHub = () => {
                         <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{selectedStudents.length} Students Selected</span>
                         <select value={assignBatchId} onChange={e => setAssignBatchId(e.target.value)} style={{ ...inputStyle, width: '250px' }}>
                             <option value="">Select Destination Batch...</option>
-                            {batches.map(b => <option key={b.id} value={b.id}>{b.batch_name}</option>)}
+                            {Object.entries(batches.reduce((acc, b) => { if (!acc[b.batch_name]) acc[b.batch_name] = []; acc[b.batch_name].push(b); return acc; }, {})).map(([bn, cs]) => (
+                                <optgroup key={bn} label={bn}>{cs.map(b => <option key={b.id} value={b.id}>{b.course_name}</option>)}</optgroup>
+                            ))}
                         </select>
                         <button onClick={handleBulkAssign} disabled={!assignBatchId}
                             style={{ padding: '10px 20px', borderRadius: '8px', background: assignBatchId ? '#51cf66' : 'var(--bg-dark)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 600 }}>

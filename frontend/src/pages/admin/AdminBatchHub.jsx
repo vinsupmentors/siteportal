@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { superAdminAPI } from '../../services/api';
 import {
-    Plus, Pencil, Trash2, Hexagon
+    Plus, Pencil, Trash2, ChevronDown, ChevronRight, BookOpen, Users
 } from 'lucide-react';
 
 export const AdminBatchHub = () => {
@@ -10,10 +10,11 @@ export const AdminBatchHub = () => {
     const [courses, setCourses] = useState([]);
     const [trainers, setTrainers] = useState([]);
 
-    // --- BATCH STATE ---
     const [batchFilter, setBatchFilter] = useState('all');
+    const [expandedGroups, setExpandedGroups] = useState({});
     const [showBatchForm, setShowBatchForm] = useState(false);
     const [editingBatchId, setEditingBatchId] = useState(null);
+    const [prefillBatchName, setPrefillBatchName] = useState('');
     const [batchForm, setBatchForm] = useState({
         batch_name: '', course_id: '', trainer_id: '',
         schedule_type: 'weekday', timing: 'morning',
@@ -40,28 +41,54 @@ export const AdminBatchHub = () => {
 
     useEffect(() => { fetchData(); }, []);
 
+    const openNewCourse = (batchName = '') => {
+        setPrefillBatchName(batchName);
+        setEditingBatchId(null);
+        setBatchForm({
+            batch_name: batchName, course_id: '', trainer_id: '',
+            schedule_type: 'weekday', timing: 'morning',
+            start_date: '', end_date: '', meeting_link: '', status: 'active'
+        });
+        setShowBatchForm(true);
+    };
+
+    const openEdit = (b) => {
+        setPrefillBatchName('');
+        setEditingBatchId(b.id);
+        setBatchForm({ ...b, start_date: b.start_date?.split('T')[0], end_date: b.end_date?.split('T')[0] || '' });
+        setShowBatchForm(true);
+    };
+
     const handleBatchSubmit = async (e) => {
         e.preventDefault();
         try {
             if (editingBatchId) await superAdminAPI.updateBatch(editingBatchId, batchForm);
             else await superAdminAPI.createBatch(batchForm);
-            setShowBatchForm(false); setEditingBatchId(null);
-            setBatchForm({
-                batch_name: '', course_id: '', trainer_id: '',
-                schedule_type: 'weekday', timing: 'morning',
-                start_date: '', end_date: '', meeting_link: '', status: 'active'
-            });
+            setShowBatchForm(false); setEditingBatchId(null); setPrefillBatchName('');
+            setBatchForm({ batch_name: '', course_id: '', trainer_id: '', schedule_type: 'weekday', timing: 'morning', start_date: '', end_date: '', meeting_link: '', status: 'active' });
             fetchData();
         } catch (err) { alert(err.response?.data?.message || 'Error saving batch'); }
     };
 
     const handleBatchDelete = async (id) => {
-        if (!confirm('Delete this batch? All student enrollments will be removed.')) return;
+        if (!confirm('Delete this course from the batch? All student enrollments will be removed.')) return;
         try { await superAdminAPI.deleteBatch(id); fetchData(); }
         catch { alert('Error deleting batch'); }
     };
 
+    const toggleGroup = (name) => setExpandedGroups(prev => ({ ...prev, [name]: !prev[name] }));
+
     const filteredBatches = batches.filter(b => batchFilter === 'all' || b.status === batchFilter);
+
+    // Group by batch_name
+    const batchGroups = Object.entries(
+        filteredBatches.reduce((groups, batch) => {
+            const key = batch.batch_name;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(batch);
+            return groups;
+        }, {})
+    );
 
     const statusColors = { active: '#51cf66', upcoming: '#4c6ef5', completed: '#868e96' };
     const inputStyle = { padding: '10px', borderRadius: '8px', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: 'var(--text-main)', outline: 'none', width: '100%' };
@@ -75,7 +102,7 @@ export const AdminBatchHub = () => {
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Batch Hub</h2>
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Schedule management and trainer coordination</p>
                 </div>
-                <button onClick={() => { setShowBatchForm(true); setEditingBatchId(null); setBatchForm({ batch_name: '', course_id: '', trainer_id: '', schedule_type: 'weekday', timing: 'morning', start_date: '', end_date: '', meeting_link: '', status: 'active' }); }}
+                <button onClick={() => openNewCourse()}
                     style={{ padding: '10px 20px', borderRadius: '8px', background: 'var(--primary)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}>
                     <Plus size={18} /> New Batch
                 </button>
@@ -97,15 +124,17 @@ export const AdminBatchHub = () => {
 
             {showBatchForm && (
                 <div className="glass-card" style={{ padding: '1.5rem' }}>
-                    <h3 style={{ marginBottom: '1.5rem' }}>{editingBatchId ? 'Edit Batch Details' : 'Create New Academic Batch'}</h3>
+                    <h3 style={{ marginBottom: '1.5rem' }}>{editingBatchId ? 'Edit Course Details' : prefillBatchName ? `Add Course to "${prefillBatchName}"` : 'Create New Batch'}</h3>
                     <form onSubmit={handleBatchSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                        <input required placeholder="Batch Unique Name (e.g. SEP-23-WEB)" value={batchForm.batch_name} onChange={e => setBatchForm({ ...batchForm, batch_name: e.target.value })} style={inputStyle} />
+                        <input required placeholder="Batch Name (e.g. Batch 11)" value={batchForm.batch_name}
+                            onChange={e => setBatchForm({ ...batchForm, batch_name: e.target.value })}
+                            style={inputStyle} readOnly={!!prefillBatchName && !editingBatchId} />
                         <select required value={batchForm.course_id} onChange={e => setBatchForm({ ...batchForm, course_id: e.target.value })} style={inputStyle}>
-                            <option value="">Select Primary Course</option>
+                            <option value="">Select Course</option>
                             {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                         <select value={batchForm.trainer_id} onChange={e => setBatchForm({ ...batchForm, trainer_id: e.target.value })} style={inputStyle}>
-                            <option value="">Assign Chief Trainer</option>
+                            <option value="">Assign Trainer</option>
                             {trainers.map(t => <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>)}
                         </select>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -130,50 +159,101 @@ export const AdminBatchHub = () => {
                             <option value="completed">Completed</option>
                         </select>
                         <div style={{ gridColumn: 'span 2', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                            <button type="button" onClick={() => setShowBatchForm(false)} style={{ padding: '10px 20px', borderRadius: '8px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-color)', cursor: 'pointer' }}>Cancel</button>
-                            <button type="submit" style={{ padding: '10px 25px', borderRadius: '8px', background: 'var(--primary)', color: 'white', border: 'none', fontWeight: 600, cursor: 'pointer' }}>Confirm Batch</button>
+                            <button type="button" onClick={() => { setShowBatchForm(false); setPrefillBatchName(''); }} style={{ padding: '10px 20px', borderRadius: '8px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-color)', cursor: 'pointer' }}>Cancel</button>
+                            <button type="submit" style={{ padding: '10px 25px', borderRadius: '8px', background: 'var(--primary)', color: 'white', border: 'none', fontWeight: 600, cursor: 'pointer' }}>Save</button>
                         </div>
                     </form>
                 </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-                {filteredBatches.map(b => (
-                    <div key={b.id} className="glass-card" style={{ padding: '1.25rem', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: statusColors[b.status] || 'var(--primary)' }} />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                <div style={{ background: 'var(--bg-dark)', padding: '8px', borderRadius: '10px', color: 'var(--primary)' }}>
-                                    <Hexagon size={20} />
-                                </div>
-                                <div>
-                                    <h3 style={{ fontWeight: 700, fontSize: '1.1rem' }}>{b.batch_name}</h3>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{b.course_name}</p>
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <button onClick={() => { setEditingBatchId(b.id); setBatchForm({ ...b, start_date: b.start_date?.split('T')[0], end_date: b.end_date?.split('T')[0] || '' }); setShowBatchForm(true); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><Pencil size={16} /></button>
-                                <button onClick={() => handleBatchDelete(b.id)} style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer' }}><Trash2 size={16} /></button>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                            <div style={{ background: 'var(--bg-dark)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-                                <p style={{ fontSize: '1.25rem', fontWeight: 700 }}>{b.student_count}</p>
-                                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Students</p>
-                            </div>
-                            <div style={{ background: 'var(--bg-dark)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-                                <p style={{ fontSize: '0.9rem', fontWeight: 600, textTransform: 'capitalize' }}>{b.timing}</p>
-                                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Session</p>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-                            <span style={{ color: 'var(--text-muted)' }}>{b.trainer_name || 'No lead trainer'}</span>
-                            <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, background: `${statusColors[b.status]}20`, color: statusColors[b.status], textTransform: 'uppercase' }}>{b.status}</span>
-                        </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {batchGroups.length === 0 && (
+                    <div className="glass-card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        No batches found. Create your first batch above.
                     </div>
-                ))}
+                )}
+                {batchGroups.map(([batchName, courses]) => {
+                    const totalStudents = courses.reduce((sum, c) => sum + (c.student_count || 0), 0);
+                    const isExpanded = expandedGroups[batchName] !== false; // default open
+                    return (
+                        <div key={batchName} className="glass-card" style={{ overflow: 'hidden' }}>
+                            {/* Batch Group Header */}
+                            <div
+                                onClick={() => toggleGroup(batchName)}
+                                style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', background: 'var(--bg-surface)' }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    {isExpanded ? <ChevronDown size={18} color="var(--primary)" /> : <ChevronRight size={18} color="var(--text-muted)" />}
+                                    <div>
+                                        <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>{batchName}</span>
+                                        <span style={{ marginLeft: '12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                            {courses.length} course{courses.length !== 1 ? 's' : ''} · {totalStudents} student{totalStudents !== 1 ? 's' : ''}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={e => { e.stopPropagation(); openNewCourse(batchName); }}
+                                    style={{ padding: '6px 14px', borderRadius: '6px', background: 'var(--primary)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                                >
+                                    <Plus size={14} /> Add Course
+                                </button>
+                            </div>
+
+                            {/* Course Rows */}
+                            {isExpanded && (
+                                <div>
+                                    {courses.map((b, idx) => (
+                                        <div key={b.id} style={{
+                                            padding: '0.875rem 1.25rem',
+                                            display: 'flex', alignItems: 'center', gap: '12px',
+                                            borderTop: '1px solid var(--border-color)',
+                                            background: idx % 2 === 0 ? 'transparent' : 'var(--bg-dark)'
+                                        }}>
+                                            {/* Status dot */}
+                                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusColors[b.status] || '#868e96', flexShrink: 0 }} />
+
+                                            {/* Course name */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 180, flex: '1' }}>
+                                                <BookOpen size={14} color="var(--primary)" />
+                                                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{b.course_name}</span>
+                                            </div>
+
+                                            {/* Schedule */}
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'capitalize', minWidth: 130 }}>
+                                                {b.timing} · {b.schedule_type}
+                                            </span>
+
+                                            {/* Trainer */}
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', minWidth: 140 }}>
+                                                {b.trainer_name || 'No trainer'}
+                                            </span>
+
+                                            {/* Students */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 80 }}>
+                                                <Users size={13} color="var(--text-muted)" />
+                                                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{b.student_count || 0}</span>
+                                            </div>
+
+                                            {/* Status badge */}
+                                            <span style={{
+                                                padding: '3px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700,
+                                                background: `${statusColors[b.status] || '#868e96'}20`,
+                                                color: statusColors[b.status] || '#868e96', textTransform: 'uppercase',
+                                                minWidth: 80, textAlign: 'center'
+                                            }}>{b.status}</span>
+
+                                            {/* Actions */}
+                                            <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto' }}>
+                                                <button onClick={() => openEdit(b)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}><Pencil size={15} /></button>
+                                                <button onClick={() => handleBatchDelete(b.id)} style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', padding: 4 }}><Trash2 size={15} /></button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

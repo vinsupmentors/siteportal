@@ -329,6 +329,7 @@ async function runMigrations() {
 
         // ── JRP/IOP Program Type ─────────────────────────────────────────────
         await addColumnIfNotExists('Users', "program_type ENUM('JRP','IOP') DEFAULT 'JRP'");
+        await addColumnIfNotExists('Users', 'roll_number VARCHAR(50) NULL');
 
         // ── Course Completion Tracking on BatchStudents ──────────────────────
         await addColumnIfNotExists('BatchStudents', 'course_completion_date DATE NULL');

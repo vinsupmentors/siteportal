@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { superAdminAPI } from '../../services/api';
-import { Link as LinkIcon, Save, ExternalLink } from 'lucide-react';
+import { Link as LinkIcon, Save, ExternalLink, BookOpen } from 'lucide-react';
 
 export const SAMeetingLinks = () => {
     const [batches, setBatches] = useState([]);
@@ -28,6 +28,15 @@ export const SAMeetingLinks = () => {
 
     if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}><div className="spinner" /></div>;
 
+    // Group by batch_name
+    const batchGroups = Object.entries(
+        batches.reduce((acc, b) => {
+            if (!acc[b.batch_name]) acc[b.batch_name] = [];
+            acc[b.batch_name].push(b);
+            return acc;
+        }, {})
+    );
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div>
@@ -36,34 +45,54 @@ export const SAMeetingLinks = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {batches.length === 0 ? (
+                {batchGroups.length === 0 ? (
                     <div className="glass-card" style={{ textAlign: 'center', padding: '3rem' }}>
                         <p style={{ color: 'var(--text-muted)' }}>No active/upcoming batches found. Create batches first.</p>
                     </div>
-                ) : batches.map(b => (
-                    <div key={b.id} className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '1rem 1.25rem' }}>
-                        <div style={{ width: 44, height: 44, borderRadius: '10px', background: b.meeting_link ? '#51cf6620' : '#ff6b6b20', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <LinkIcon size={20} color={b.meeting_link ? '#51cf66' : '#ff6b6b'} />
+                ) : batchGroups.map(([batchName, courses]) => (
+                    <div key={batchName} className="glass-card" style={{ overflow: 'hidden' }}>
+                        {/* Batch group header */}
+                        <div style={{ padding: '0.75rem 1.25rem', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-color)' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{batchName}</span>
+                            <span style={{ marginLeft: 10, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                {courses.length} course{courses.length !== 1 ? 's' : ''}
+                                {' · '}{courses.filter(c => c.meeting_link).length} / {courses.length} linked
+                            </span>
                         </div>
-                        <div style={{ minWidth: '180px' }}>
-                            <p style={{ fontWeight: 600 }}>{b.batch_name}</p>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{b.course_name}</p>
-                        </div>
-                        <input type="text" value={b.meeting_link || ''} onChange={e => updateLink(b.id, e.target.value)}
-                            placeholder="Paste meeting link here..."
-                            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: 'var(--text-main)', outline: 'none', fontSize: '0.9rem' }} />
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                            {b.meeting_link && (
-                                <a href={b.meeting_link} target="_blank" rel="noopener noreferrer"
-                                    style={{ width: 36, height: 36, borderRadius: '8px', background: '#4c6ef520', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <ExternalLink size={16} color="#4c6ef5" />
-                                </a>
-                            )}
-                            <button onClick={() => handleSave(b)} disabled={saving === b.id}
-                                style={{ width: 36, height: 36, borderRadius: '8px', cursor: 'pointer', background: '#51cf6620', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: saving === b.id ? 0.5 : 1 }}>
-                                <Save size={16} color="#51cf66" />
-                            </button>
-                        </div>
+                        {/* Course rows */}
+                        {courses.map((b, idx) => (
+                            <div key={b.id} style={{
+                                display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.875rem 1.25rem',
+                                borderTop: idx === 0 ? 'none' : '1px solid var(--border-color)',
+                                background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)'
+                            }}>
+                                <div style={{ width: 34, height: 34, borderRadius: '8px', background: b.meeting_link ? '#51cf6620' : '#ff6b6b20', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <LinkIcon size={16} color={b.meeting_link ? '#51cf66' : '#ff6b6b'} />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 200 }}>
+                                    <BookOpen size={13} color="var(--primary)" />
+                                    <div>
+                                        <p style={{ fontWeight: 600, fontSize: '0.875rem', margin: 0 }}>{b.course_name}</p>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, textTransform: 'capitalize' }}>{b.timing} · {b.schedule_type}</p>
+                                    </div>
+                                </div>
+                                <input type="text" value={b.meeting_link || ''} onChange={e => updateLink(b.id, e.target.value)}
+                                    placeholder="Paste meeting link here..."
+                                    style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: 'var(--text-main)', outline: 'none', fontSize: '0.875rem' }} />
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                    {b.meeting_link && (
+                                        <a href={b.meeting_link} target="_blank" rel="noopener noreferrer"
+                                            style={{ width: 34, height: 34, borderRadius: '8px', background: '#4c6ef520', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <ExternalLink size={15} color="#4c6ef5" />
+                                        </a>
+                                    )}
+                                    <button onClick={() => handleSave(b)} disabled={saving === b.id}
+                                        style={{ width: 34, height: 34, borderRadius: '8px', cursor: 'pointer', background: '#51cf6620', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: saving === b.id ? 0.5 : 1 }}>
+                                        <Save size={15} color="#51cf66" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 ))}
             </div>
