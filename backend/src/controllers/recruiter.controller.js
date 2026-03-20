@@ -62,7 +62,27 @@ exports.getRecruiterDashboard = async (req, res) => {
             WHERE u.role_id = 4 AND u.status = 'active'
         `);
 
-        res.json({ batches: batchesWithFunnel, overall: overall[0] });
+        // Placement metrics: avg days from course_completion_date to placement
+        const [placementMetrics] = await pool.query(`
+            SELECT
+                ROUND(AVG(DATEDIFF(si.updated_at, bs.course_completion_date)), 0) as avg_days_to_placement
+            FROM StudentInterviews si
+            JOIN BatchStudents bs ON si.student_id = bs.student_id AND si.batch_id = bs.batch_id
+            WHERE si.status = 'placed' AND bs.course_completion_date IS NOT NULL
+        `);
+
+        const totalIop = Number(overall[0].total_iop) || 0;
+        const totalPlaced = Number(overall[0].total_placed) || 0;
+        const placementRate = totalIop > 0 ? Math.round((totalPlaced / totalIop) * 100) : 0;
+
+        res.json({
+            batches: batchesWithFunnel,
+            overall: {
+                ...overall[0],
+                placement_rate: placementRate,
+                avg_days_to_placement: placementMetrics[0]?.avg_days_to_placement || null,
+            },
+        });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching recruiter dashboard', error: error.message });
     }
@@ -76,7 +96,7 @@ exports.getIopStudents = async (req, res) => {
 
         let query = `
             SELECT
-                u.id, u.first_name, u.last_name, u.email, u.phone, u.program_type,
+                u.id, u.first_name, u.last_name, u.email, u.phone, u.roll_number, u.program_type,
                 bs.batch_id, bs.course_completion_date, bs.ready_for_interview,
                 b.batch_name, c.name as course_name,
                 COUNT(si.id) as interview_count,
@@ -127,6 +147,132 @@ exports.getIopStudents = async (req, res) => {
         res.json({ students: filtered });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching IOP students', error: error.message });
+    }
+};
+
+// ── Student Full IOP Report ───────────────────────────────────────────────────
+
+exports.getStudentIopReport = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+
+        // Basic profile + batch info
+        const [profileRows] = await pool.query(`
+            SELECT
+                u.id, u.first_name, u.last_name, u.email, u.phone, u.roll_number,
+                u.program_type, u.status, u.joining_date,
+                bs.batch_id, bs.course_completion_date, bs.ready_for_interview,
+                b.batch_name, c.name as course_name,
+                CONCAT(t.first_name, ' ', t.last_name) as trainer_name
+            FROM Users u
+            JOIN BatchStudents bs ON u.id = bs.student_id
+            JOIN Batches b ON bs.batch_id = b.id
+            JOIN Courses c ON b.course_id = c.id
+            LEFT JOIN Users t ON b.trainer_id = t.id
+            WHERE u.id = ? AND u.role_id = 4
+            LIMIT 1
+        `, [studentId]);
+
+        if (!profileRows.length) return res.status(404).json({ message: 'Student not found' });
+        const profile = profileRows[0];
+
+        // Interview pipeline (3 slots)
+        const [interviewRows] = await pool.query(
+            'SELECT * FROM StudentInterviews WHERE student_id = ? ORDER BY interview_number',
+            [studentId]
+        );
+        const interviews = [1, 2, 3].map(n => interviewRows.find(i => i.interview_number === n) || null);
+        const isPlaced = interviewRows.some(i => i.status === 'placed');
+
+        // Attendance summary
+        const [attRows] = await pool.query(`
+            SELECT
+                COUNT(*) as total_sessions,
+                SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_count,
+                SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent_count,
+                SUM(CASE WHEN status = 'leave' THEN 1 ELSE 0 END) as leave_count
+            FROM StudentAttendance
+            WHERE student_id = ? AND batch_id = ?
+        `, [studentId, profile.batch_id]);
+        const att = attRows[0];
+        const attendancePct = att.total_sessions > 0
+            ? Math.round((Number(att.present_count) / Number(att.total_sessions)) * 100) : 0;
+
+        // Portfolio
+        const [portfolioRows] = await pool.query(`
+            SELECT status, project_url, github_url, description, approved_at
+            FROM StudentPortfolios WHERE student_id = ? ORDER BY id DESC LIMIT 1
+        `, [studentId]);
+
+        // Certificates
+        const [certificates] = await pool.query(`
+            SELECT id, cert_type, program_type, generated_at, reset_by_admin
+            FROM Certificates WHERE student_id = ? ORDER BY generated_at DESC
+        `, [studentId]);
+
+        // Module project scores (try-catch — table may not exist)
+        let moduleProjects = [];
+        try {
+            const [mpRows] = await pool.query(`
+                SELECT mp.name as module_name, smp.score, smp.submitted_at, smp.status
+                FROM StudentModuleProjects smp
+                JOIN ModuleProjects mp ON smp.module_project_id = mp.id
+                WHERE smp.student_id = ? ORDER BY mp.name
+            `, [studentId]);
+            moduleProjects = mpRows;
+        } catch (e) { /* table may not exist */ }
+
+        // Capstone (try-catch)
+        let capstone = null;
+        try {
+            const [capstoneRows] = await pool.query(`
+                SELECT sc.status, sc.submitted_at, cap.title
+                FROM StudentCapstones sc
+                JOIN Capstones cap ON sc.capstone_id = cap.id
+                WHERE sc.student_id = ? ORDER BY sc.id DESC LIMIT 1
+            `, [studentId]);
+            capstone = capstoneRows[0] || null;
+        } catch (e) { /* table may not exist */ }
+
+        // Job applications
+        let jobApplications = [];
+        try {
+            const [jaRows] = await pool.query(`
+                SELECT ja.status, j.title as job_title, j.company_name
+                FROM JobApplications ja
+                JOIN Jobs j ON ja.job_id = j.id
+                WHERE ja.student_id = ? ORDER BY ja.applied_at DESC
+            `, [studentId]);
+            jobApplications = jaRows;
+        } catch (e) { /* skip */ }
+
+        // 90-day window
+        let daysRemaining = null, daysSinceCompletion = null, crossed90Days = false, within90Days = false;
+        if (profile.course_completion_date && profile.ready_for_interview) {
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const completionDate = new Date(profile.course_completion_date); completionDate.setHours(0, 0, 0, 0);
+            const deadline = new Date(completionDate); deadline.setDate(deadline.getDate() + 90);
+            const diff = Math.round((deadline - today) / (1000 * 60 * 60 * 24));
+            daysRemaining = Math.max(0, diff);
+            daysSinceCompletion = Math.round((today - completionDate) / (1000 * 60 * 60 * 24));
+            crossed90Days = diff < 0;
+            within90Days = diff >= 0;
+        }
+
+        res.json({
+            profile,
+            interviews,
+            isPlaced,
+            attendance: { ...att, percentage: attendancePct },
+            portfolio: portfolioRows[0] || null,
+            certificates,
+            moduleProjects,
+            capstone,
+            jobApplications,
+            window90: { daysRemaining, daysSinceCompletion, crossed90Days, within90Days },
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching student IOP report', error: error.message });
     }
 };
 

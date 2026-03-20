@@ -4,7 +4,7 @@ import {
     LayoutDashboard, Calendar, BookOpen, Users,
     GraduationCap, UserCog, ClipboardList, Clock,
     Briefcase, Megaphone, Link as LinkIcon, Settings,
-    BarChart3, FileText, HelpCircle, MessageSquare, Award
+    BarChart3, FileText, HelpCircle, MessageSquare, Award, Rocket, Target
 } from 'lucide-react';
 
 export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
@@ -62,6 +62,8 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
             links: [
                 { name: 'Job Requests', path: '/super-admin/job-requests', icon: Briefcase },
                 { name: 'Job Openings', path: '/super-admin/jobs', icon: Briefcase },
+                { name: 'IOP Dashboard', path: '/super-admin/iop-dashboard', icon: Target },
+                { name: 'IOP Students', path: '/super-admin/iop-students', icon: Rocket },
             ]
         },
         {

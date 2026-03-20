@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { recruiterAPI } from '../../services/api';
-import { Users, Briefcase, TrendingUp, CheckCircle, BarChart3, Rocket, Clock, AlertTriangle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Users, Briefcase, TrendingUp, CheckCircle, BarChart3, Rocket, Clock, AlertTriangle, Target, Timer } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 
 const MetricCard = ({ label, value, icon, color, sub, alert }) => (
     <div className="card p-5 flex items-center gap-4" style={{ borderTop: alert ? `3px solid ${color}` : undefined }}>
@@ -29,6 +29,12 @@ const FunnelBar = ({ label, value, max, color }) => (
 const RecruiterDashboard = () => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const location = useLocation();
+
+    // Detect base path so links work from recruiter, super-admin, or admin portals
+    const basePath = location.pathname.startsWith('/super-admin') ? '/super-admin'
+        : location.pathname.startsWith('/admin') ? '/admin'
+        : '/recruiter';
 
     useEffect(() => {
         recruiterAPI.getDashboard()
@@ -41,21 +47,23 @@ const RecruiterDashboard = () => {
     if (!data) return <div className="p-6 text-muted">Failed to load data.</div>;
 
     const { overall, batches } = data;
-    const totalIop       = Number(overall?.total_iop       || 0);
-    const totalReady     = Number(overall?.total_ready     || 0);
-    const totalPlaced    = Number(overall?.total_placed    || 0);
-    const within90Days   = Number(overall?.within_90_days  || 0);
-    const crossed90Days  = Number(overall?.crossed_90_days || 0);
+    const totalIop          = Number(overall?.total_iop            || 0);
+    const totalReady        = Number(overall?.total_ready          || 0);
+    const totalPlaced       = Number(overall?.total_placed         || 0);
+    const within90Days      = Number(overall?.within_90_days       || 0);
+    const crossed90Days     = Number(overall?.crossed_90_days      || 0);
+    const placementRate     = Number(overall?.placement_rate       || 0);
+    const avgDaysToPlacement = overall?.avg_days_to_placement;
     const interviewsStarted = batches.reduce((a, b) => a + Number(b.interviews_1 || 0) + Number(b.interviews_2 || 0) + Number(b.interviews_3 || 0), 0);
 
     return (
         <div className="p-6 flex flex-col gap-8">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-main">Placement Dashboard</h1>
-                    <p className="text-secondary text-sm mt-1">IOP student interview pipeline overview</p>
+                    <h1 className="text-3xl font-bold text-main">IOP Placement Dashboard</h1>
+                    <p className="text-secondary text-sm mt-1">Interview Opportunity Program — pipeline overview</p>
                 </div>
-                <Link to="/recruiter/students" className="btn btn-primary flex items-center gap-2 text-sm font-bold">
+                <Link to={`${basePath}/iop-students`} className="btn btn-primary flex items-center gap-2 text-sm font-bold">
                     <Users size={16} /> Manage IOP Students
                 </Link>
             </div>
@@ -87,6 +95,24 @@ const RecruiterDashboard = () => {
                 />
             </div>
 
+            {/* Placement IOP Metrics — row 3 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <MetricCard
+                    label="Placement Rate"
+                    value={`${placementRate}%`}
+                    icon={<Target size={22} />}
+                    color="#8b5cf6"
+                    sub={`${totalPlaced} of ${totalIop} IOP students placed`}
+                />
+                <MetricCard
+                    label="Avg. Days to Placement"
+                    value={avgDaysToPlacement != null ? `${avgDaysToPlacement}d` : '—'}
+                    icon={<Timer size={22} />}
+                    color="#06b6d4"
+                    sub={avgDaysToPlacement != null ? "Average from course completion to placement" : "No placements yet"}
+                />
+            </div>
+
             {/* Alert banner if any crossed */}
             {crossed90Days > 0 && (
                 <div style={{ padding: '14px 18px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -95,7 +121,7 @@ const RecruiterDashboard = () => {
                         <span style={{ fontSize: 14, fontWeight: 700, color: '#ef4444' }}>{crossed90Days} student{crossed90Days > 1 ? 's have' : ' has'} crossed the 90-day interview window.</span>
                         <span style={{ fontSize: 13, color: '#8892a4', marginLeft: 8 }}>Immediate follow-up required.</span>
                     </div>
-                    <Link to="/recruiter/students?status=crossed_90_days" style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+                    <Link to={`${basePath}/iop-students?status=crossed_90_days`} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
                         View Students →
                     </Link>
                 </div>
