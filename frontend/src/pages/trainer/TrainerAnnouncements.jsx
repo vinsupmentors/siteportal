@@ -56,7 +56,9 @@ export const TrainerAnnouncements = () => {
                             <FormField label="Target Batch">
                                 <select style={{ ...inputStyle, cursor: 'pointer' }} value={selectedBatchId} onChange={e => setSelectedBatchId(e.target.value)}>
                                     <option value="">— Select batch —</option>
-                                    {batches.map(b => <option key={b.id} value={b.id}>{b.batch_name} ({b.course_name})</option>)}
+                                    {Object.entries(batches.reduce((acc, b) => { if (!acc[b.batch_name]) acc[b.batch_name] = []; acc[b.batch_name].push(b); return acc; }, {})).map(([bn, cs]) => (
+                                        <optgroup key={bn} label={bn}>{cs.map(b => <option key={b.id} value={b.id}>{b.course_name}</option>)}</optgroup>
+                                    ))}
                                 </select>
                             </FormField>
                             <FormField label="Title">

@@ -84,7 +84,9 @@ export const SAAnnouncements = () => {
                                     style={{ padding: '6px', fontSize: '0.8rem', width: '150px' }}
                                 >
                                     <option value="">Select Batch...</option>
-                                    {batches.map(b => <option key={b.id} value={b.id}>{b.batch_name}</option>)}
+                                    {Object.entries(batches.reduce((acc, b) => { if (!acc[b.batch_name]) acc[b.batch_name] = []; acc[b.batch_name].push(b); return acc; }, {})).map(([bn, cs]) => (
+                                        <optgroup key={bn} label={bn}>{cs.map(b => <option key={b.id} value={b.id}>{b.course_name}</option>)}</optgroup>
+                                    ))}
                                 </select>
                             )}
                         </div>
