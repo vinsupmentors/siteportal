@@ -267,7 +267,8 @@ exports.getBatchReleaseSubmissions = async (req, res) => {
 
         const [submissions] = await pool.query(`
             SELECT srs.id, srs.release_id, srs.student_id, srs.batch_id,
-                srs.file_name, srs.file_mime, srs.github_link, srs.notes,
+                srs.file_name, srs.file_mime, srs.file_url,
+                srs.github_link, srs.notes,
                 srs.marks, srs.feedback, srs.graded_by, srs.status,
                 srs.submitted_at, srs.graded_at,
                 CONCAT(u.first_name, ' ', u.last_name) as student_name, u.email,

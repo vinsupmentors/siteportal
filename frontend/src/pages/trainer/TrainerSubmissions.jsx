@@ -233,6 +233,7 @@ export const TrainerSubmissions = () => {
                             <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: theme.radius.sm, marginBottom: '16px' }}>
                                 <p style={{ fontSize: '11px', fontWeight: 700, color: theme.text.label, textTransform: 'uppercase', marginBottom: '8px' }}>Submitted Work</p>
 
+                                {/* New BLOB file — download directly */}
                                 {gradingSubmission.file_name ? (
                                     <button
                                         onClick={() => handleDownloadFile(gradingSubmission.id, gradingSubmission.file_name)}
@@ -244,6 +245,7 @@ export const TrainerSubmissions = () => {
                                     </button>
                                 ) : null}
 
+                                {/* GitHub / Drive link */}
                                 {gradingSubmission.github_link ? (
                                     <a
                                         href={gradingSubmission.github_link}
@@ -252,11 +254,27 @@ export const TrainerSubmissions = () => {
                                         style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: theme.accent.blue, fontSize: '13px', fontWeight: 600, marginTop: gradingSubmission.file_name ? '8px' : 0 }}
                                     >
                                         <Link2 size={15} />
-                                        View GitHub Link
+                                        View GitHub / Drive Link
                                     </a>
                                 ) : null}
 
-                                {!gradingSubmission.file_name && !gradingSubmission.github_link ? (
+                                {/* Legacy file_url (old disk-storage submissions) */}
+                                {!gradingSubmission.file_name && !gradingSubmission.github_link && gradingSubmission.file_url ? (
+                                    <div>
+                                        <div style={{ fontSize: '12px', color: theme.text.muted, marginBottom: '4px' }}>
+                                            File was submitted but stored on an older system.
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: theme.text.label, fontStyle: 'italic', wordBreak: 'break-all' }}>
+                                            {gradingSubmission.file_url.split('/').pop()}
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: '#f87171', marginTop: '4px' }}>
+                                            ⚠ Ask student to resubmit — file may no longer be accessible.
+                                        </div>
+                                    </div>
+                                ) : null}
+
+                                {/* Nothing at all */}
+                                {!gradingSubmission.file_name && !gradingSubmission.github_link && !gradingSubmission.file_url ? (
                                     <span style={{ fontSize: '12px', color: theme.text.muted }}>No file or link submitted</span>
                                 ) : null}
 
