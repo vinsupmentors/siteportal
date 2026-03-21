@@ -121,20 +121,42 @@ exports.submitRequest = async (req, res) => {
     try {
         const studentId = req.user.id;
         const { portfolio_link, bypass_reason } = req.body;
-        const google_review_img = req.file ? req.file.filename : null;
 
-        if (!google_review_img) {
+        if (!req.file) {
             return res.status(400).json({ message: 'Google review screenshot is required.' });
         }
 
+        const google_review_img = req.file.originalname;
+        const google_review_img_data = req.file.buffer;
+        const google_review_img_mime = req.file.mimetype;
+
         await pool.query(
-            'INSERT INTO JobPortalRequests (student_id, google_review_img, portfolio_link, bypass_reason) VALUES (?, ?, ?, ?)',
-            [studentId, google_review_img, portfolio_link, bypass_reason || null]
+            'INSERT INTO JobPortalRequests (student_id, google_review_img, google_review_img_data, google_review_img_mime, portfolio_link, bypass_reason) VALUES (?, ?, ?, ?, ?, ?)',
+            [studentId, google_review_img, google_review_img_data, google_review_img_mime, portfolio_link, bypass_reason || null]
         );
 
         res.status(201).json({ message: 'Request submitted for SuperAdmin approval.' });
     } catch (error) {
         res.status(500).json({ message: 'Error submitting request', error: error.message });
+    }
+};
+
+// Serve Google Review image (SuperAdmin only)
+exports.getReviewImage = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [[row]] = await pool.query(
+            'SELECT google_review_img, google_review_img_data, google_review_img_mime FROM JobPortalRequests WHERE id = ?',
+            [id]
+        );
+        if (!row || !row.google_review_img_data) {
+            return res.status(404).json({ message: 'Image not found' });
+        }
+        res.setHeader('Content-Type', row.google_review_img_mime || 'image/jpeg');
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(row.google_review_img)}"`);
+        res.send(row.google_review_img_data);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching review image', error: error.message });
     }
 };
 

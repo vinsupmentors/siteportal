@@ -346,6 +346,7 @@ export const jobAPI = {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
     getAllRequests: () => api.get('/job-requests/all'),
+    getReviewImage: (id) => api.get(`/job-requests/${id}/review-image`, { responseType: 'blob' }),
     updateRequestStatus: (id, data) => api.put(`/job-requests/${id}/status`, data),
     bulkUpdateRequests: (data) => api.put('/job-requests/bulk', data),
     downloadCertificate: () => api.get('/job-requests/certificate', { responseType: 'blob' }),

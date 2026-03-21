@@ -241,6 +241,36 @@ exports.getStudentCalendar = async (req, res) => {
             });
         });
 
+        // 8. BatchReleases with due_dates (tests, projects, feedbacks, capstone)
+        const [releases] = await pool.query(`
+            SELECT br.id, br.release_type, br.entity_id, br.due_date,
+                   COALESCE(m.name, 'Capstone Project') as entity_name
+            FROM BatchReleases br
+            LEFT JOIN Modules m ON m.id = br.entity_id
+            WHERE br.batch_id = ? AND br.due_date IS NOT NULL
+              AND br.release_type IN ('module_test', 'module_project', 'module_feedback', 'capstone_project')
+            ORDER BY br.due_date
+        `, [batchId]);
+
+        const releaseTypeConfig = {
+            module_test:      { emoji: '📝', label: 'Test Due',          eventType: 'test'     },
+            module_project:   { emoji: '🏗️', label: 'Project Due',       eventType: 'deadline' },
+            module_feedback:  { emoji: '💬', label: 'Feedback Due',      eventType: 'feedback' },
+            capstone_project: { emoji: '🎓', label: 'Capstone Due',      eventType: 'capstone' },
+        };
+
+        releases.forEach(r => {
+            const cfg = releaseTypeConfig[r.release_type] || { emoji: '📌', label: 'Due', eventType: 'deadline' };
+            const dateStr = typeof r.due_date === 'string' ? r.due_date : new Date(r.due_date).toISOString().split('T')[0];
+            events.push({
+                id: `release-${r.id}`,
+                title: `${cfg.emoji} ${cfg.label}: ${r.entity_name}`,
+                date: dateStr,
+                type: cfg.eventType,
+                details: { release_type: r.release_type, entity_name: r.entity_name }
+            });
+        });
+
         res.json({
             events,
             batch: {
