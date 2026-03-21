@@ -13,7 +13,7 @@ exports.getMyCalendar = async (req, res) => {
             SELECT b.*, c.name as course_name
             FROM Batches b
             JOIN Courses c ON b.course_id = c.id
-            WHERE b.trainer_id = ? AND b.status IN ('active', 'upcoming')
+            WHERE b.trainer_id = ? AND b.status IN ('active', 'upcoming', 'completed')
         `, [trainerId]);
         console.log('Batches found:', batches.length);
         const [tasks] = await pool.query('SELECT * FROM TrainerTasks WHERE trainer_id = ? ORDER BY due_date ASC', [trainerId]);

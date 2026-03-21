@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { trainerAPI } from '../../services/api';
 import {
     PageHeader, Card, StatCard, FilterTabs, ActionButton, StatusBadge, EmptyState, LoadingSpinner, FormField, inputStyle, SectionTitle, theme,
 } from './TrainerComponents';
-import { User, Mail, Calendar, ClipboardList, MessageSquare, Plus, Trash2, CheckCircle, Percent, BookOpen, Award, Save } from 'lucide-react';
+import { User, Mail, Calendar, ClipboardList, MessageSquare, Plus, Trash2, CheckCircle, Percent, BookOpen, Award, Save, ArrowLeft } from 'lucide-react';
 
 const GRADES = ['A', 'B', 'C', 'D', 'F'];
 
@@ -20,6 +20,7 @@ const marksColor = (m) => m == null ? theme.text.muted : m >= 80 ? theme.accent.
 
 export const TrainerStudentProfile = () => {
     const { batchId, studentId } = useParams();
+    const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [remarks, setRemarks] = useState([]);
     const [reportModules, setReportModules] = useState([]);
@@ -121,6 +122,25 @@ export const TrainerStudentProfile = () => {
 
     return (
         <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
+            {/* Back button */}
+            <button
+                onClick={() => navigate('/trainer/batches')}
+                style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '7px',
+                    marginBottom: '18px', padding: '8px 16px',
+                    background: 'transparent',
+                    border: `1.5px solid ${theme.border.subtle}`,
+                    borderRadius: theme.radius.full,
+                    color: theme.text.secondary, fontSize: '13px', fontWeight: 600,
+                    cursor: 'pointer', transition: 'all 0.18s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent.purple; e.currentTarget.style.color = theme.accent.purple; e.currentTarget.style.background = `${theme.accent.purple}08`; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border.subtle; e.currentTarget.style.color = theme.text.secondary; e.currentTarget.style.background = 'transparent'; }}
+            >
+                <ArrowLeft size={14} />
+                Back to My Batches
+            </button>
+
             <PageHeader
                 title={`${data.student.first_name} ${data.student.last_name}`}
                 subtitle="Student Performance Dashboard & Remarks"
