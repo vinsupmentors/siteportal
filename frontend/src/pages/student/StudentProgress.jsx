@@ -194,9 +194,7 @@ export const StudentProgress = () => {
     const [certificates, setCertificates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeSection, setActiveSection] = useState('marks');
-    const [generatingCert, setGeneratingCert] = useState(null);
     const [markingReady, setMarkingReady] = useState(false);
-    const [certMsg, setCertMsg] = useState('');
     const [iopModules, setIopModules] = useState([]);
     const [iopTypeFilter, setIopTypeFilter] = useState('soft_skills');
 
@@ -231,33 +229,6 @@ export const StudentProgress = () => {
         };
         fetchData();
     }, []);
-
-    const handleGenerateCert = async (cert_type) => {
-        setGeneratingCert(cert_type);
-        setCertMsg('');
-        try {
-            const res = await studentAPI.generateCertificate({ cert_type });
-            setCertMsg(`Certificate generated! Opening preview...`);
-            // Open the HTML cert in a new window
-            const w = window.open('', '_blank');
-            if (w) w.document.write(res.data.html);
-            await fetchCareerData();
-        } catch (err) {
-            setCertMsg(err.response?.data?.message || 'Failed to generate certificate');
-        } finally {
-            setGeneratingCert(null);
-        }
-    };
-
-    const handleDownloadCert = async (certId, certType) => {
-        try {
-            const res = await studentAPI.downloadCertificate(certId);
-            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/html' }));
-            const a = document.createElement('a');
-            a.href = url; a.download = `${certType}_certificate.html`;
-            document.body.appendChild(a); a.click(); a.remove();
-        } catch { setCertMsg('Download failed'); }
-    };
 
     const handleMarkReady = async () => {
         setMarkingReady(true);
@@ -732,12 +703,6 @@ export const StudentProgress = () => {
                         </div>
                     )}
 
-                    {certMsg && (
-                        <div style={{ padding: '12px 16px', borderRadius: theme.radius.md, background: `${theme.accent.blue}10`, border: `1px solid ${theme.accent.blue}30`, color: theme.accent.blue, fontSize: '13px' }}>
-                            {certMsg}
-                        </div>
-                    )}
-
                     {/* Eligibility Criteria */}
                     {careerData?.criteria && (
                         <Card>
@@ -776,69 +741,6 @@ export const StudentProgress = () => {
                             </div>
                         </Card>
                     )}
-
-                    {/* Certificates */}
-                    <Card>
-                        <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.text.label, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <GraduationCap size={14} /> Certificates
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-                            {[
-                                {
-                                    type: 'completion',
-                                    label: 'Course Completion Certificate',
-                                    desc: 'Requires 75% attendance',
-                                    eligible: careerData?.completionEligible,
-                                    color: theme.accent.blue,
-                                },
-                                {
-                                    type: 'internship',
-                                    label: 'Internship Certificate',
-                                    desc: 'Requires all criteria met',
-                                    eligible: careerData?.internshipEligible,
-                                    color: theme.accent.green,
-                                },
-                            ].map(cert => {
-                                const existing = certificates.find(c => c.cert_type === cert.type && !c.reset_by_admin);
-                                return (
-                                    <div key={cert.type} style={{
-                                        padding: '20px', borderRadius: theme.radius.md,
-                                        background: theme.bg.input, border: `1px solid ${cert.color}25`,
-                                        borderTop: `3px solid ${cert.color}`,
-                                    }}>
-                                        <div style={{ fontSize: '13px', fontWeight: 700, color: theme.text.primary, marginBottom: '6px' }}>{cert.label}</div>
-                                        <div style={{ fontSize: '11px', color: theme.text.muted, marginBottom: '16px' }}>{cert.desc}</div>
-                                        {existing ? (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                <div style={{ fontSize: '11px', color: theme.accent.green, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    <CheckCircle size={13} /> Generated on {fmtDate(existing.generated_at)}
-                                                </div>
-                                                <button
-                                                    onClick={() => handleDownloadCert(existing.id, cert.type)}
-                                                    style={{ padding: '8px 14px', borderRadius: theme.radius.sm, background: `${cert.color}15`, color: cert.color, border: `1px solid ${cert.color}30`, cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    <Download size={13} /> Download
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => cert.eligible && handleGenerateCert(cert.type)}
-                                                disabled={!cert.eligible || generatingCert === cert.type}
-                                                style={{
-                                                    width: '100%', padding: '10px', borderRadius: theme.radius.sm, fontSize: '12px', fontWeight: 700,
-                                                    cursor: cert.eligible ? 'pointer' : 'not-allowed',
-                                                    background: cert.eligible ? cert.color : 'transparent',
-                                                    color: cert.eligible ? '#fff' : theme.text.muted,
-                                                    border: `1px solid ${cert.eligible ? cert.color : theme.border.subtle}`,
-                                                    opacity: generatingCert === cert.type ? 0.6 : 1,
-                                                }}>
-                                                {generatingCert === cert.type ? 'Generating...' : cert.eligible ? 'Generate Certificate' : 'Not Yet Eligible'}
-                                            </button>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </Card>
 
                     {/* IOP: Ready for Interview */}
                     {careerData?.program_type === 'IOP' && (
