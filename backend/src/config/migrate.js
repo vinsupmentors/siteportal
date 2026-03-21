@@ -340,13 +340,16 @@ async function runMigrations() {
             CREATE TABLE IF NOT EXISTS Certificates (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 student_id INT NOT NULL,
+                course_id INT NULL,
+                type ENUM('course_completion','internship') DEFAULT 'course_completion',
+                issued_date DATE NULL,
+                issued_by INT NULL,
                 cert_type ENUM('completion','internship') DEFAULT 'completion',
                 program_type ENUM('JRP','IOP') DEFAULT 'JRP',
                 generated_at DATETIME NULL,
                 reset_by_admin TINYINT(1) DEFAULT 0,
                 cert_data LONGBLOB NULL,
-                type ENUM('course_completion','internship') DEFAULT 'course_completion',
-                issued_by INT NULL
+                certificate_url VARCHAR(500) NULL
             )
         `);
         await addColumnIfNotExists('Certificates', "cert_type ENUM('completion','internship') DEFAULT 'completion'");
@@ -354,6 +357,9 @@ async function runMigrations() {
         await addColumnIfNotExists('Certificates', 'reset_by_admin TINYINT(1) DEFAULT 0');
         await addColumnIfNotExists('Certificates', "program_type ENUM('JRP','IOP') DEFAULT 'JRP'");
         await addColumnIfNotExists('Certificates', 'cert_data LONGBLOB NULL');
+        await addColumnIfNotExists('Certificates', 'course_id INT NULL');
+        await addColumnIfNotExists('Certificates', 'issued_date DATE NULL');
+        await addColumnIfNotExists('Certificates', 'certificate_url VARCHAR(500) NULL');
 
         // ── IOP Curriculum ───────────────────────────────────────────────────
         // Global soft skills + aptitude modules (created once by SA, shared across all batches)
