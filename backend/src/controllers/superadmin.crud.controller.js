@@ -1255,6 +1255,29 @@ exports.broadcastAnnouncement = async (req, res) => {
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
             [req.user.id, 'BROADCAST', 'Announcements', result.insertId]);
 
+        // Send email to recipients (fire-and-forget)
+        try {
+            const emailService = require('../utils/email.service');
+            let recipients = [];
+            if (targetRole === 'batch' && targetBatchId) {
+                const [rows] = await pool.query(
+                    'SELECT u.email, CONCAT(u.first_name, \' \', u.last_name) as name FROM Users u JOIN BatchStudents bs ON u.id = bs.student_id WHERE bs.batch_id = ? AND u.status = ?',
+                    [targetBatchId, 'active']
+                );
+                recipients = rows;
+            } else if (targetRole === '3') {
+                const [rows] = await pool.query('SELECT email, CONCAT(first_name, \' \', last_name) as name FROM Users WHERE role_id = 3 AND status = ?', ['active']);
+                recipients = rows;
+            } else if (targetRole === '4') {
+                const [rows] = await pool.query('SELECT email, CONCAT(first_name, \' \', last_name) as name FROM Users WHERE role_id = 4 AND status = ?', ['active']);
+                recipients = rows;
+            } else {
+                const [rows] = await pool.query('SELECT email, CONCAT(first_name, \' \', last_name) as name FROM Users WHERE role_id IN (3, 4) AND status = ?', ['active']);
+                recipients = rows;
+            }
+            emailService.sendAnnouncementEmail(recipients, title, message, 'Vinsup Admin');
+        } catch (_) {}
+
         res.status(201).json({ message: 'Announcement broadcast successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Broadcast error', error: error.message });

@@ -324,6 +324,11 @@ async function runMigrations() {
                 FOREIGN KEY (graded_by) REFERENCES Users(id) ON DELETE SET NULL
             )
         `);
+        // ── StudentReleaseSubmissions: BLOB file storage (replaces disk) ────
+        await addColumnIfNotExists('StudentReleaseSubmissions', 'file_data MEDIUMBLOB NULL');
+        await addColumnIfNotExists('StudentReleaseSubmissions', 'file_mime VARCHAR(100) NULL');
+        await addColumnIfNotExists('StudentReleaseSubmissions', 'file_name VARCHAR(255) NULL');
+
         // ── ContentFiles: add binary storage column ─────────────────────────
         await addColumnIfNotExists('ContentFiles', 'file_data LONGBLOB');
 

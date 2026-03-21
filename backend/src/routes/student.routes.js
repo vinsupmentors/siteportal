@@ -46,6 +46,7 @@ router.post('/releases/:releaseId/submit',
     releaseCtrl.uploadSubmission,
     releaseCtrl.submitReleaseWork
 );
+router.get('/releases/submission/:submissionId/file', releaseCtrl.getSubmissionFile);
 
 // ── IOP Curriculum (IOP students only) ───────────────────────────────────────
 const iopCtrl = require('../controllers/iop.controller');

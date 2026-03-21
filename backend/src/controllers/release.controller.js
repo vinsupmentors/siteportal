@@ -1,35 +1,9 @@
 const pool = require('../config/db');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 
-// ── File upload config ─────────────────────────────────────────────────────
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = path.join(__dirname, '../../uploads/submissions');
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-        const safe = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-        cb(null, `${Date.now()}_${safe}`);
-    }
-});
-
-const capstoneStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = path.join(__dirname, '../../uploads/content');
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-        const safe = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-        cb(null, `capstone_${Date.now()}_${safe}`);
-    }
-});
-
-exports.uploadSubmission = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } }).single('file');
-exports.uploadCapstoneFiles = multer({ storage: capstoneStorage, limits: { fileSize: 100 * 1024 * 1024 } }).array('files', 10);
+// ── Memory storage — no disk writes, files stored as BLOB in DB ────────────
+exports.uploadSubmission = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } }).single('file');
+exports.uploadCapstoneFiles = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } }).array('files', 10);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TRAINER: GET FULL RELEASE STATUS FOR A BATCH
@@ -354,12 +328,14 @@ exports.getStudentReleases = async (req, res) => {
                 CONCAT(u.first_name, ' ', u.last_name) as released_by_name,
                 (SELECT id FROM StudentReleaseSubmissions WHERE release_id = br.id AND student_id = ?) as submission_id,
                 (SELECT status FROM StudentReleaseSubmissions WHERE release_id = br.id AND student_id = ?) as submission_status,
-                (SELECT marks FROM StudentReleaseSubmissions WHERE release_id = br.id AND student_id = ?) as submission_marks
+                (SELECT marks FROM StudentReleaseSubmissions WHERE release_id = br.id AND student_id = ?) as submission_marks,
+                (SELECT feedback FROM StudentReleaseSubmissions WHERE release_id = br.id AND student_id = ?) as submission_feedback,
+                (SELECT file_name FROM StudentReleaseSubmissions WHERE release_id = br.id AND student_id = ?) as submission_file_name
             FROM BatchReleases br
             JOIN Users u ON br.released_by = u.id
             WHERE br.batch_id = ?
             ORDER BY br.released_at DESC
-        `, [studentId, studentId, studentId, batch.id]);
+        `, [studentId, studentId, studentId, studentId, studentId, batch.id]);
 
         const enriched = await Promise.all(releases.map(async r => {
             let name = '';
@@ -457,7 +433,9 @@ exports.submitReleaseWork = async (req, res) => {
         );
         if (!releaseCheck.length) return res.status(404).json({ message: 'Release not found' });
 
-        const file_url = req.file ? `/uploads/submissions/${req.file.filename}` : null;
+        const fileData = req.file ? req.file.buffer : null;
+        const fileMime = req.file ? req.file.mimetype : null;
+        const fileName = req.file ? req.file.originalname : null;
 
         const [existing] = await pool.query(
             'SELECT id FROM StudentReleaseSubmissions WHERE release_id = ? AND student_id = ?',
@@ -465,23 +443,42 @@ exports.submitReleaseWork = async (req, res) => {
         );
 
         if (existing.length > 0) {
-            await pool.query(`
-                UPDATE StudentReleaseSubmissions
-                SET file_url = IFNULL(?, file_url), github_link = ?, notes = ?,
-                    status = 'submitted', submitted_at = NOW()
-                WHERE id = ?
-            `, [file_url, github_link || null, notes || null, existing[0].id]);
+            await pool.query(
+                'UPDATE StudentReleaseSubmissions SET file_data = IFNULL(?, file_data), file_mime = IFNULL(?, file_mime), file_name = IFNULL(?, file_name), github_link = ?, notes = ?, status = ?, submitted_at = NOW() WHERE id = ?',
+                [fileData, fileMime, fileName, github_link || null, notes || null, 'submitted', existing[0].id]
+            );
         } else {
-            await pool.query(`
-                INSERT INTO StudentReleaseSubmissions
-                    (release_id, student_id, batch_id, file_url, github_link, notes)
-                VALUES (?, ?, ?, ?, ?, ?)
-            `, [releaseId, studentId, batchId, file_url, github_link || null, notes || null]);
+            await pool.query(
+                'INSERT INTO StudentReleaseSubmissions (release_id, student_id, batch_id, file_data, file_mime, file_name, github_link, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [releaseId, studentId, batchId, fileData, fileMime, fileName, github_link || null, notes || null]
+            );
         }
 
         res.status(201).json({ message: 'Submitted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error submitting work', error: error.message });
+    }
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DOWNLOAD SUBMISSION FILE (student or trainer)
+// ══════════════════════════════════════════════════════════════════════════════
+exports.getSubmissionFile = async (req, res) => {
+    try {
+        const { submissionId } = req.params;
+        const [rows] = await pool.query(
+            'SELECT file_data, file_mime, file_name FROM StudentReleaseSubmissions WHERE id = ?',
+            [submissionId]
+        );
+        if (!rows.length || !rows[0].file_data) {
+            return res.status(404).json({ message: 'No file found for this submission' });
+        }
+        const { file_data, file_mime, file_name } = rows[0];
+        res.setHeader('Content-Type', file_mime || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${file_name || 'submission'}"`);
+        res.send(file_data);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching submission file', error: error.message });
     }
 };
 

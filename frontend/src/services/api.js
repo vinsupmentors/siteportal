@@ -231,6 +231,10 @@ gradeReleaseSubmission: (submissionId, data) => api.put(`/trainer/release-submis
     updateStudentStatus: (studentId, data) => api.put(`/trainer/students/${studentId}/status`, data),
     deleteStudentRemark: (remarkId) => api.delete(`/trainer/remarks/${remarkId}`),
 
+    // Announcements
+    getAnnouncements: () => api.get('/trainer/announcements'),
+    broadcastAnnouncement: (data) => api.post('/trainer/announcements', data),
+
     // Leaves
     requestLeave: (data) => api.post('/trainer/leaves', data),
     getMyLeaves: () => api.get('/trainer/leaves'),

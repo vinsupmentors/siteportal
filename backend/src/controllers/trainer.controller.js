@@ -129,6 +129,18 @@ exports.broadcastAnnouncement = async (req, res) => {
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
             [req.user.id, 'TRAINER_BROADCAST', 'Announcements', result.insertId]);
 
+        // Send email to all active students in the batch (fire-and-forget)
+        try {
+            const emailService = require('../utils/email.service');
+            const [trainer] = await pool.query('SELECT first_name, last_name FROM Users WHERE id = ?', [req.user.id]);
+            const senderName = trainer.length ? `${trainer[0].first_name} ${trainer[0].last_name}` : 'Your Trainer';
+            const [students] = await pool.query(
+                'SELECT u.email, CONCAT(u.first_name, \' \', u.last_name) as name FROM Users u JOIN BatchStudents bs ON u.id = bs.student_id WHERE bs.batch_id = ? AND u.status = ?',
+                [batch_id, 'active']
+            );
+            emailService.sendAnnouncementEmail(students, title, message, senderName);
+        } catch (_) {}
+
         res.status(201).json({ message: 'Announcement broadcast successfully to your batch' });
     } catch (error) {
         res.status(500).json({ message: 'Broadcast error', error: error.message });
