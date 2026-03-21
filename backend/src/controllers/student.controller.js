@@ -1266,7 +1266,7 @@ exports.generateCertificate = async (req, res) => {
         // Get student + batch info
         const [infoRows] = await pool.query(`
             SELECT u.first_name, u.last_name, u.program_type, b.id as batch_id,
-                   b.batch_name, c.name as course_name
+                   b.batch_name, b.course_id, c.name as course_name
             FROM Users u
             JOIN BatchStudents bs ON u.id = bs.student_id
             JOIN Batches b ON bs.batch_id = b.id
@@ -1306,11 +1306,15 @@ exports.generateCertificate = async (req, res) => {
         const studentName = `${info.first_name} ${info.last_name}`;
         const html = generateCertificateHTML(cert_type, studentName, info.course_name, info.batch_name, new Date(), studentId);
 
-        // Store as HTML in cert_data (base64)
+        // Store as HTML in cert_data — include original schema columns to satisfy NOT NULL constraints
         const htmlBuffer = Buffer.from(html);
+        const legacyType = cert_type === 'internship' ? 'internship' : 'course_completion';
+        const today = new Date().toISOString().split('T')[0];
         const [result] = await pool.query(
-            'INSERT INTO Certificates (student_id, cert_type, program_type, generated_at, cert_data) VALUES (?, ?, ?, NOW(), ?)',
-            [studentId, cert_type, info.program_type, htmlBuffer]
+            `INSERT INTO Certificates
+                (student_id, course_id, type, issued_date, issued_by, cert_type, program_type, generated_at, cert_data)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
+            [studentId, info.course_id, legacyType, today, studentId, cert_type, info.program_type || 'JRP', htmlBuffer]
         );
 
         res.json({ message: 'Certificate generated', certificate_id: result.insertId, html });
