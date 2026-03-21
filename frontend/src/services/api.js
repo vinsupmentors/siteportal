@@ -207,6 +207,7 @@ releaseItem: (batchId, data) => api.post(`/trainer/batches/${batchId}/release/it
 unreleaseItem: (batchId, releaseId) => api.delete(`/trainer/batches/${batchId}/release/${releaseId}`),
 getBatchReleaseSubmissions: (batchId) => api.get(`/trainer/batches/${batchId}/release-submissions`),
 gradeReleaseSubmission: (submissionId, data) => api.put(`/trainer/release-submissions/${submissionId}/grade`, data),
+downloadReleaseSubmissionFile: (submissionId) => api.get(`/trainer/release-submissions/${submissionId}/file`, { responseType: 'blob' }),
     // Student Doubts
     getStudentDoubts: (params) => api.get('/trainer/doubts', { params }),
     resolveDoubt: (doubtId, data) => api.patch(`/trainer/doubts/${doubtId}/resolve`, data),
