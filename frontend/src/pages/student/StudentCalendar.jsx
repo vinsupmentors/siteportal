@@ -34,57 +34,60 @@ const StudentCalendar = () => {
 
     const fetchCalendar = async () => {
         setLoading(true);
+
+        // ── 1. Fetch base calendar events (class sessions, attendance, leaves) ──
+        let calEvents = [];
         try {
-            // Fetch calendar events using studentAPI (uses VITE_API_URL correctly)
             const calRes = await studentAPI.getCalendar();
-            const calData = calRes.data;
-            const calEvents = calData?.events || calData?.data?.events || [];
-
-            // Fetch releases to get due dates
-            let releaseEvents = [];
-            try {
-                const relRes = await studentAPI.getReleases();
-                const releases = relRes.data?.releases || [];
-
-                const TYPE_LABELS = {
-                    module_project:             { label: 'Project Due',          type: 'deadline' },
-                    module_test:                { label: 'Test Due',             type: 'test'     },
-                    module_feedback:            { label: 'Feedback Due',         type: 'feedback' },
-                    module_study_material:      { label: 'Study Material',       type: 'material' },
-                    module_interview_questions: { label: 'Interview Q&A',        type: 'material' },
-                    capstone_project:           { label: 'Capstone Project Due', type: 'capstone' },
-                };
-
-                releaseEvents = releases
-                    .filter(r => r.due_date)
-                    .map(r => {
-                        const meta = TYPE_LABELS[r.release_type] || { label: 'Due', type: 'deadline' };
-                        const dateStr = new Date(r.due_date).toISOString().split('T')[0];
-                        return {
-                            date: dateStr,
-                            title: `${meta.label}: ${r.name}`,
-                            type: meta.type,
-                            submitted: !!r.submission_id,
-                            description: r.submission_id
-                                ? '✓ Already submitted'
-                                : new Date(r.due_date) < new Date()
-                                    ? '⚠ Overdue — submit now'
-                                    : null,
-                        };
-                    });
-            } catch (_) {}
-
-            // Prefer rich releaseEvents (have submission status); strip the basic
-            // release-* events from calEvents to avoid duplicates on same day.
-            const filteredCalEvents = releaseEvents.length > 0
-                ? calEvents.filter(e => !String(e.id || '').startsWith('release-'))
-                : calEvents;
-            setEvents([...filteredCalEvents, ...releaseEvents]);
+            calEvents = calRes.data?.events || calRes.data?.data?.events || [];
         } catch (err) {
             console.error('Calendar fetch error:', err);
-        } finally {
-            setLoading(false);
         }
+
+        // ── 2. Fetch release due-dates (tests, projects, feedbacks) ────────────
+        // This ALWAYS runs even if the calendar endpoint fails above.
+        let releaseEvents = [];
+        try {
+            const relRes = await studentAPI.getReleases();
+            const releases = relRes.data?.releases || [];
+
+            const TYPE_LABELS = {
+                module_project:             { label: 'Project Due',          type: 'deadline' },
+                module_test:                { label: 'Test Due',             type: 'test'     },
+                module_feedback:            { label: 'Feedback Due',         type: 'feedback' },
+                module_study_material:      { label: 'Study Material',       type: 'material' },
+                module_interview_questions: { label: 'Interview Q&A',        type: 'material' },
+                capstone_project:           { label: 'Capstone Project Due', type: 'capstone' },
+            };
+
+            releaseEvents = releases
+                .filter(r => r.due_date)
+                .map(r => {
+                    const meta = TYPE_LABELS[r.release_type] || { label: 'Due', type: 'deadline' };
+                    const dateStr = new Date(r.due_date).toISOString().split('T')[0];
+                    return {
+                        date: dateStr,
+                        title: `${meta.label}: ${r.name}`,
+                        type: meta.type,
+                        submitted: !!r.submission_id,
+                        description: r.submission_id
+                            ? '✓ Already submitted'
+                            : new Date(r.due_date) < new Date()
+                                ? '⚠ Overdue — submit now'
+                                : null,
+                    };
+                });
+        } catch (_) {}
+
+        // ── 3. Merge — prefer rich releaseEvents; strip backend duplicates ──────
+        // calEvents may include basic release-* events (backend fallback).
+        // releaseEvents (from getReleases) are richer — include submission status.
+        const filteredCalEvents = releaseEvents.length > 0
+            ? calEvents.filter(e => !String(e.id || '').startsWith('release-'))
+            : calEvents;
+
+        setEvents([...filteredCalEvents, ...releaseEvents]);
+        setLoading(false);
     };
 
     const nav = (dir) => {
