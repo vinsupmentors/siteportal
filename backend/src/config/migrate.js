@@ -335,7 +335,20 @@ async function runMigrations() {
         await addColumnIfNotExists('BatchStudents', 'course_completion_date DATE NULL');
         await addColumnIfNotExists('BatchStudents', 'ready_for_interview TINYINT(1) DEFAULT 0');
 
-        // ── Certificate Enhancements ─────────────────────────────────────────
+        // ── Certificates table (create if not exists, then add any missing columns) ──
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS Certificates (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id INT NOT NULL,
+                cert_type ENUM('completion','internship') DEFAULT 'completion',
+                program_type ENUM('JRP','IOP') DEFAULT 'JRP',
+                generated_at DATETIME NULL,
+                reset_by_admin TINYINT(1) DEFAULT 0,
+                cert_data LONGBLOB NULL,
+                type ENUM('course_completion','internship') DEFAULT 'course_completion',
+                issued_by INT NULL
+            )
+        `);
         await addColumnIfNotExists('Certificates', "cert_type ENUM('completion','internship') DEFAULT 'completion'");
         await addColumnIfNotExists('Certificates', 'generated_at DATETIME NULL');
         await addColumnIfNotExists('Certificates', 'reset_by_admin TINYINT(1) DEFAULT 0');
