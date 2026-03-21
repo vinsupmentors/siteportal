@@ -19,6 +19,7 @@ import { StudentPortfolioForm } from './pages/student/StudentPortfolioForm';
 import { StudentFeedback } from './pages/student/StudentFeedback';
 import { StudentNotifications } from './pages/student/StudentNotifications';
 import StudentJobPortal from './pages/student/StudentJobPortal';
+import { StudentCertificates } from './pages/student/StudentCertificates';
 
 // Super Admin Pages
 import { SADashboard } from './pages/superadmin/SADashboard';
@@ -151,6 +152,7 @@ const AppRoutes = () => {
         <Route path="progress" element={<StudentProgress />} />
         <Route path="portfolio" element={<StudentPortfolioForm />} />
         <Route path="job-portal" element={<StudentJobPortal />} />
+        <Route path="certificates" element={<StudentCertificates />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 
