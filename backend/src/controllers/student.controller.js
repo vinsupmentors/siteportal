@@ -602,28 +602,31 @@ exports.getStudentTests = async (req, res) => {
         const moduleIds = modules.map(m => m.id);
         const placeholders = moduleIds.map(() => '?').join(',');
 
-        // Get unlock state for this batch (now including release flags)
-        const [unlocks] = await pool.query(
-            `SELECT module_id, is_test_released FROM BatchUnlocks WHERE batch_id = ? AND module_id IN (${placeholders})`,
+        // ── Check which tests are released via BatchReleases (new system) ──────
+        const [releasedTests] = await pool.query(
+            `SELECT entity_id as module_id FROM BatchReleases
+             WHERE batch_id = ? AND release_type = 'module_test' AND entity_id IN (${placeholders})`,
             [batch_id, ...moduleIds]
         );
-        const unlockedSet = new Set(unlocks.filter(u => u.is_test_released).map(u => u.module_id));
+        const unlockedSet = new Set(releasedTests.map(r => Number(r.module_id)));
 
-        // Get all module_test submissions for this student
-        const [submissions] = await pool.query(`
-            SELECT module_id, marks, submitted_at,
-                   ROW_NUMBER() OVER (PARTITION BY module_id ORDER BY submitted_at DESC) as attempt_rank,
-                   COUNT(*) OVER (PARTITION BY module_id) as total_attempts
-            FROM Submissions
-            WHERE student_id = ? AND submission_type = 'module_test' AND module_id IN (${placeholders})
-        `, [studentId, ...moduleIds]);
+        // ── Get submissions from StudentReleaseSubmissions (new system) ─────────
+        const [newSubs] = await pool.query(`
+            SELECT br.entity_id as module_id, srs.marks, srs.submitted_at,
+                   ROW_NUMBER() OVER (PARTITION BY br.entity_id ORDER BY srs.submitted_at DESC) as attempt_rank,
+                   COUNT(*) OVER (PARTITION BY br.entity_id) as total_attempts
+            FROM StudentReleaseSubmissions srs
+            JOIN BatchReleases br ON srs.release_id = br.id
+            WHERE srs.student_id = ? AND srs.batch_id = ?
+              AND br.release_type = 'module_test' AND br.entity_id IN (${placeholders})
+        `, [studentId, batch_id, ...moduleIds]);
 
-        // Build a map: module_id -> { attempts, latest_marks, submitted_at }
+        // Build a map: module_id -> { attempts, marks, submitted_at }
         const submissionMap = {};
-        submissions.forEach(s => {
+        newSubs.forEach(s => {
             if (!submissionMap[s.module_id] || s.attempt_rank === 1) {
                 submissionMap[s.module_id] = {
-                    attempts: s.total_attempts,
+                    attempts: parseInt(s.total_attempts),
                     marks: s.marks,
                     submitted_at: s.submitted_at
                 };

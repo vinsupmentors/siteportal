@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { BrandLogo } from '../icons/BrandLogo';
 import {
-    LayoutDashboard, Calendar, FileText, Download,
+    LayoutDashboard, Calendar, FileText, Layers,
     BookOpen, CalendarOff, MessageSquare, Star,
     HelpCircle, Bell, TrendingUp, Briefcase, Settings
 } from 'lucide-react';
@@ -15,7 +15,7 @@ export const StudentSidebar = ({ isOpen, setIsOpen }) => {
         { name: 'Settings', path: '/student/settings', icon: Settings },
         { name: 'My Calendar', path: '/student/calendar', icon: Calendar },
         { name: 'Tests', path: '/student/tests', icon: FileText },
-        { name: 'Worksheets', path: '/student/worksheets', icon: Download },
+        { name: 'Soft Skills & Aptitude', path: '/student/worksheets', icon: Layers },
         { name: 'Course Materials', path: '/student/materials', icon: BookOpen },
         { name: 'Leave Requests', path: '/student/leaves', icon: CalendarOff },
         { name: 'Doubts/Queries', path: '/student/doubts', icon: MessageSquare },

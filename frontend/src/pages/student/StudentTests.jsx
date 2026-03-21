@@ -26,7 +26,8 @@ export const StudentTests = () => {
     const stats = {
         total: tests.length,
         completed: tests.filter(t => t.status === 'completed').length,
-        pending: tests.filter(t => t.status === 'pending' || t.status === 'active').length,
+        active: tests.filter(t => t.status === 'active').length,
+        pending: tests.filter(t => t.status === 'pending_review').length,
         avgScore: tests.filter(t => t.score != null).length
             ? Math.round(tests.filter(t => t.score != null).reduce((a, t) => a + (t.score || 0), 0) / tests.filter(t => t.score != null).length)
             : null,
@@ -37,7 +38,7 @@ export const StudentTests = () => {
     const getStatusConfig = (status) => {
         switch (status) {
             case 'completed': return { icon: CheckCircle, color: theme.accent.green, label: 'Completed' };
-            case 'pending': return { icon: Clock, color: theme.accent.yellow, label: 'Pending' };
+            case 'pending_review': return { icon: Clock, color: theme.accent.yellow, label: 'Pending Review' };
             case 'active': return { icon: TrendingUp, color: theme.accent.blue, label: 'Active' };
             case 'locked': return { icon: Lock, color: theme.text.muted, label: 'Locked' };
             default: return { icon: FileText, color: theme.text.muted, label: status };
@@ -58,8 +59,9 @@ export const StudentTests = () => {
             {/* Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '24px' }}>
                 <StatCard icon={<FileText size={22} />} label="Total Tests" value={stats.total} accentColor={theme.accent.cyan} />
+                <StatCard icon={<TrendingUp size={22} />} label="Active" value={stats.active} accentColor={theme.accent.blue} />
                 <StatCard icon={<CheckCircle size={22} />} label="Completed" value={stats.completed} accentColor={theme.accent.green} />
-                <StatCard icon={<Clock size={22} />} label="Pending" value={stats.pending} accentColor={theme.accent.yellow} />
+                <StatCard icon={<Clock size={22} />} label="Pending Review" value={stats.pending} accentColor={theme.accent.yellow} />
                 <StatCard icon={<BarChart3 size={22} />} label="Avg Score"
                     value={stats.avgScore != null ? `${stats.avgScore}%` : '—'} accentColor={theme.accent.purple} />
             </div>
@@ -71,7 +73,7 @@ export const StudentTests = () => {
                     filters={[
                         { key: 'all', label: 'All' },
                         { key: 'active', label: 'Active' },
-                        { key: 'pending', label: 'Pending' },
+                        { key: 'pending_review', label: 'Pending Review' },
                         { key: 'completed', label: 'Completed' },
                         { key: 'locked', label: 'Locked' },
                     ]}
@@ -147,6 +149,13 @@ export const StudentTests = () => {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Awaiting Review Notice */}
+                                    {test.status === 'pending_review' && (
+                                        <div style={{ marginTop: '14px', padding: '10px 16px', borderRadius: theme.radius.md, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', color: theme.accent.yellow, fontSize: '12px', fontWeight: 600, textAlign: 'center' }}>
+                                            ⏳ Submitted — Awaiting grading by trainer
+                                        </div>
+                                    )}
 
                                     {/* Take Test Button */}
                                     {test.status === 'active' && test.test_url && (

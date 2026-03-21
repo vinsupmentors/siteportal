@@ -10,6 +10,7 @@ import { StudentDashboard } from './pages/student/StudentDashboard';
 import { StudentCalendar } from './pages/student/StudentCalendar';
 import { StudentTests } from './pages/student/StudentTests';
 import { StudentMaterials } from './pages/student/StudentMaterials';
+import { StudentIOPContent } from './pages/student/StudentIOPContent';
 import { StudentLeaves } from './pages/student/StudentLeaves';
 import { StudentProgress } from './pages/student/StudentProgress';
 import { StudentDoubts } from './pages/student/StudentDoubts';
@@ -140,7 +141,7 @@ const AppRoutes = () => {
         <Route path="dashboard" element={<StudentDashboard />} />
         <Route path="calendar" element={<StudentCalendar />} />
         <Route path="tests" element={<StudentTests />} />
-        <Route path="worksheets" element={<StudentMaterials />} />
+        <Route path="worksheets" element={<StudentIOPContent />} />
         <Route path="materials" element={<StudentMaterials />} />
         <Route path="leaves" element={<StudentLeaves />} />
         <Route path="doubts" element={<StudentDoubts />} />
