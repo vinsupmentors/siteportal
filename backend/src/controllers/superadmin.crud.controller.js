@@ -2145,3 +2145,120 @@ exports.getStudentsWithProgramType = async (req, res) => {
         res.status(500).json({ message: 'Error fetching program overview', error: error.message });
     }
 };
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SA: SEND PERSONALIZED PROGRESS REPORT EMAILS TO STUDENTS
+// ══════════════════════════════════════════════════════════════════════════════
+exports.sendProgressEmails = async (req, res) => {
+    const emailService = require('../utils/email.service');
+    try {
+        const { target, batchId, programType, customMessage } = req.body;
+        // target: 'all' | 'batch' | 'program'
+
+        // 1. Resolve target students
+        let studentsQuery = `
+            SELECT u.id, u.first_name, u.last_name, u.email, u.program_type, u.student_status,
+                   b.id as batch_id, b.batch_name, c.name as course_name,
+                   CONCAT(t.first_name, ' ', t.last_name) as trainer_name
+            FROM Users u
+            JOIN BatchStudents bs ON u.id = bs.student_id
+            JOIN Batches b ON bs.batch_id = b.id
+            JOIN Courses c ON b.course_id = c.id
+            LEFT JOIN Users t ON b.trainer_id = t.id
+            WHERE u.role_id = 4 AND u.status = 'active' AND b.status = 'active'
+        `;
+        const params = [];
+        if (target === 'batch' && batchId) {
+            studentsQuery += ' AND b.id = ?';
+            params.push(batchId);
+        } else if (target === 'program' && programType) {
+            studentsQuery += ' AND u.program_type = ?';
+            params.push(programType);
+        }
+
+        const [students] = await pool.query(studentsQuery, params);
+        if (!students.length) return res.json({ sent: 0, failed: 0, message: 'No matching students found' });
+
+        let sent = 0, failed = 0;
+
+        // 2. For each student compile performance data then email (fire-and-forget per student)
+        const emailPromises = students.map(async (student) => {
+            try {
+                // Attendance
+                const [[att]] = await pool.query(`
+                    SELECT
+                        COUNT(*) as total,
+                        SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_days,
+                        SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent_days,
+                        SUM(CASE WHEN status = 'leave' THEN 1 ELSE 0 END) as leave_days
+                    FROM StudentAttendance
+                    WHERE student_id = ? AND batch_id = ?
+                `, [student.id, student.batch_id]);
+
+                const attPct = att.total > 0 ? Math.round((att.present_days / att.total) * 100) : 0;
+
+                // Module marks from release submissions
+                const [submissions] = await pool.query(`
+                    SELECT srs.marks, srs.status, br.release_type, br.entity_id, br.module_id,
+                           m.name as module_name
+                    FROM StudentReleaseSubmissions srs
+                    JOIN BatchReleases br ON srs.release_id = br.id
+                    LEFT JOIN Modules m ON (br.release_type = 'module_test' AND m.id = br.entity_id)
+                                       OR (br.release_type IN ('module_project','module_study_material','module_interview_questions') AND m.id = br.module_id)
+                    WHERE srs.student_id = ? AND srs.batch_id = ?
+                    ORDER BY br.release_type, br.entity_id
+                `, [student.id, student.batch_id]);
+
+                // Pending submissions (released but not submitted)
+                const [[pendingRow]] = await pool.query(`
+                    SELECT COUNT(*) as pending_count
+                    FROM BatchReleases br
+                    WHERE br.batch_id = ?
+                      AND br.release_type IN ('module_test','module_project','capstone_project')
+                      AND NOT EXISTS (
+                          SELECT 1 FROM StudentReleaseSubmissions srs
+                          WHERE srs.release_id = br.id AND srs.student_id = ?
+                      )
+                `, [student.batch_id, student.id]);
+
+                // Positive remarks
+                const [positiveRemarks] = await pool.query(`
+                    SELECT remark_text FROM StudentRemarks
+                    WHERE student_id = ? AND batch_id = ? AND remark_type = 'positive'
+                    ORDER BY created_at DESC LIMIT 3
+                `, [student.id, student.batch_id]);
+
+                // Module reviews (trainer-written)
+                const [moduleReviews] = await pool.query(`
+                    SELECT smr.overall_marks, smr.grade, smr.strengths, smr.improvements, m.name as module_name
+                    FROM StudentModuleReviews smr
+                    JOIN Modules m ON smr.module_id = m.id
+                    WHERE smr.student_id = ? AND smr.batch_id = ?
+                    ORDER BY m.sequence_order
+                `, [student.id, student.batch_id]);
+
+                const performanceData = {
+                    attPct, att,
+                    submissions,
+                    pendingCount: pendingRow.pending_count,
+                    positiveRemarks,
+                    moduleReviews,
+                    customMessage: customMessage || '',
+                };
+
+                await emailService.sendStudentProgressReport(student, performanceData);
+                sent++;
+            } catch (err) {
+                console.error(`[ProgressEmail] Failed for ${student.email}:`, err.message);
+                failed++;
+            }
+        });
+
+        // Wait for all (we want a count)
+        await Promise.allSettled(emailPromises);
+
+        res.json({ sent, failed, total: students.length, message: `Progress emails sent to ${sent} student(s)` });
+    } catch (error) {
+        res.status(500).json({ message: 'Error sending progress emails', error: error.message });
+    }
+};

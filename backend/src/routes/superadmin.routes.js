@@ -195,4 +195,7 @@ router.delete('/iop-topics/:id',            requireRole([1]), iopCtrl.deleteIOPT
 router.post('/iop-modules/:moduleId/files', requireRole([1]), uploadHandling.single('file'), iopCtrl.uploadIOPModuleFile);
 router.delete('/iop-module-files/:fileId',  requireRole([1]), iopCtrl.deleteIOPModuleFile);
 
+// Progress Report Emails (SA sends personalized emails to active students)
+router.post('/reports/send-progress-emails', requireRole([1, 2]), crudController.sendProgressEmails);
+
 module.exports = router;

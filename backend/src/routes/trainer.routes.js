@@ -55,6 +55,10 @@ router.post('/batches/:batchId/students/:studentId/remarks', trainerController.a
 router.put('/students/:studentId/status', trainerController.updateStudentStatus);
 router.delete('/remarks/:remarkId', trainerController.deleteStudentRemark);
 
+// Report Card (module-wise review)
+router.get('/batches/:batchId/students/:studentId/report-card', trainerController.getStudentReportCard);
+router.post('/batches/:batchId/students/:studentId/report-card', trainerController.upsertModuleReview);
+
 // Trainer Leaves
 router.post('/leaves', trainerController.requestLeave);
 router.get('/leaves', trainerController.getMyLeaves);

@@ -445,6 +445,29 @@ async function runMigrations() {
         await addColumnIfNotExists('JobPortalRequests', 'google_review_img_data MEDIUMBLOB NULL');
         await addColumnIfNotExists('JobPortalRequests', 'google_review_img_mime VARCHAR(100) NULL');
 
+        // ── StudentModuleReviews — trainer writes module-wise report card ────
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS StudentModuleReviews (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id INT NOT NULL,
+                batch_id INT NOT NULL,
+                module_id INT NOT NULL,
+                trainer_id INT NOT NULL,
+                overall_marks DECIMAL(5,2) NULL,
+                grade ENUM('A','B','C','D','F') NULL,
+                strengths TEXT NULL,
+                improvements TEXT NULL,
+                overall_comment TEXT NULL,
+                reviewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_student_batch_module (student_id, batch_id, module_id),
+                FOREIGN KEY (student_id) REFERENCES Users(id) ON DELETE CASCADE,
+                FOREIGN KEY (batch_id) REFERENCES Batches(id) ON DELETE CASCADE,
+                FOREIGN KEY (module_id) REFERENCES Modules(id) ON DELETE CASCADE,
+                FOREIGN KEY (trainer_id) REFERENCES Users(id) ON DELETE CASCADE
+            )
+        `);
+
         console.log('[Migration] All migrations applied successfully.');
     } catch (err) {
         console.error('[Migration] Error:', err.message);

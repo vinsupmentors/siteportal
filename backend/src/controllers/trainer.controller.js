@@ -866,13 +866,117 @@ exports.getMyLeaves = async (req, res) => {
     try {
         const trainerId = req.user.id;
         const [leaves] = await pool.query(`
-            SELECT * FROM TrainerLeaves 
-            WHERE trainer_id = ? 
+            SELECT * FROM TrainerLeaves
+            WHERE trainer_id = ?
             ORDER BY created_at DESC
         `, [trainerId]);
 
         res.json(leaves);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching leave history', error: error.message });
+    }
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TRAINER: GET STUDENT REPORT CARD (module-wise marks + trainer review)
+// ══════════════════════════════════════════════════════════════════════════════
+exports.getStudentReportCard = async (req, res) => {
+    try {
+        const { batchId, studentId } = req.params;
+        const trainerId = req.user.id;
+
+        // Verify trainer owns this batch
+        const [batchCheck] = await pool.query(
+            'SELECT b.id, b.course_id FROM Batches b WHERE b.id = ? AND b.trainer_id = ?',
+            [batchId, trainerId]
+        );
+        if (!batchCheck.length) return res.status(403).json({ message: 'Unauthorized' });
+
+        const courseId = batchCheck[0].course_id;
+
+        // All modules for this course
+        const [modules] = await pool.query(
+            'SELECT id, name, sequence_order FROM Modules WHERE course_id = ? ORDER BY sequence_order',
+            [courseId]
+        );
+
+        if (!modules.length) return res.json({ modules: [] });
+
+        // All release submissions (graded) for this student in this batch
+        const [submissions] = await pool.query(`
+            SELECT srs.marks, srs.feedback, srs.status, br.release_type, br.entity_id, br.module_id
+            FROM StudentReleaseSubmissions srs
+            JOIN BatchReleases br ON srs.release_id = br.id
+            WHERE srs.student_id = ? AND srs.batch_id = ? AND srs.marks IS NOT NULL
+        `, [studentId, batchId]);
+
+        // All existing module reviews written by this trainer for this student
+        const [reviews] = await pool.query(
+            'SELECT * FROM StudentModuleReviews WHERE student_id = ? AND batch_id = ?',
+            [studentId, batchId]
+        );
+        const reviewMap = {};
+        reviews.forEach(r => { reviewMap[r.module_id] = r; });
+
+        // Build per-module data
+        const moduleData = modules.map(m => {
+            // Test marks: release_type='module_test', entity_id = module.id
+            const testSub = submissions.find(s => s.release_type === 'module_test' && s.entity_id === m.id);
+            // Project marks: release_type='module_project', module_id = module.id (may have multiple)
+            const projectSubs = submissions.filter(s => s.release_type === 'module_project' && s.module_id === m.id);
+            const avgProjectMarks = projectSubs.length
+                ? Math.round(projectSubs.reduce((acc, s) => acc + parseFloat(s.marks || 0), 0) / projectSubs.length)
+                : null;
+
+            return {
+                ...m,
+                test_marks: testSub ? parseFloat(testSub.marks) : null,
+                project_marks: avgProjectMarks,
+                project_count: projectSubs.length,
+                review: reviewMap[m.id] || null,
+            };
+        });
+
+        res.json({ modules: moduleData });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching report card', error: error.message });
+    }
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TRAINER: UPSERT MODULE REVIEW (report card entry)
+// ══════════════════════════════════════════════════════════════════════════════
+exports.upsertModuleReview = async (req, res) => {
+    try {
+        const { batchId, studentId } = req.params;
+        const trainerId = req.user.id;
+        const { module_id, overall_marks, grade, strengths, improvements, overall_comment } = req.body;
+
+        // Verify trainer owns this batch
+        const [batchCheck] = await pool.query(
+            'SELECT id FROM Batches WHERE id = ? AND trainer_id = ?',
+            [batchId, trainerId]
+        );
+        if (!batchCheck.length) return res.status(403).json({ message: 'Unauthorized' });
+
+        await pool.query(`
+            INSERT INTO StudentModuleReviews
+                (student_id, batch_id, module_id, trainer_id, overall_marks, grade, strengths, improvements, overall_comment)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                trainer_id = VALUES(trainer_id),
+                overall_marks = VALUES(overall_marks),
+                grade = VALUES(grade),
+                strengths = VALUES(strengths),
+                improvements = VALUES(improvements),
+                overall_comment = VALUES(overall_comment),
+                updated_at = NOW()
+        `, [studentId, batchId, module_id, trainerId,
+            overall_marks || null, grade || null,
+            strengths || null, improvements || null, overall_comment || null]);
+
+        res.json({ message: 'Module review saved' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error saving module review', error: error.message });
     }
 };

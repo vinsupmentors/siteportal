@@ -171,6 +171,9 @@ deleteCapstoneFile: (fileId) => api.delete(`/super-admin/capstone-files/${fileId
     // IOP Module Files (BLOB stored in Aiven MySQL)
     uploadIOPModuleFile: (moduleId, formData) => api.post(`/super-admin/iop-modules/${moduleId}/files`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
     deleteIOPModuleFile: (fileId) => api.delete(`/super-admin/iop-module-files/${fileId}`),
+
+    // Progress Report Emails
+    sendProgressEmails: (data) => api.post('/super-admin/reports/send-progress-emails', data),
 };
 
 // Auth API (for password change, available to all logged-in users)
@@ -231,6 +234,10 @@ downloadReleaseSubmissionFile: (submissionId) => api.get(`/trainer/release-submi
     addStudentRemark: (batchId, studentId, data) => api.post(`/trainer/batches/${batchId}/students/${studentId}/remarks`, data),
     updateStudentStatus: (studentId, data) => api.put(`/trainer/students/${studentId}/status`, data),
     deleteStudentRemark: (remarkId) => api.delete(`/trainer/remarks/${remarkId}`),
+
+    // Report Card (module-wise review)
+    getStudentReportCard: (batchId, studentId) => api.get(`/trainer/batches/${batchId}/students/${studentId}/report-card`),
+    upsertModuleReview: (batchId, studentId, data) => api.post(`/trainer/batches/${batchId}/students/${studentId}/report-card`, data),
 
     // Announcements
     getAnnouncements: () => api.get('/trainer/announcements'),
