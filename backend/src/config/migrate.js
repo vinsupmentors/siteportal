@@ -417,6 +417,10 @@ async function runMigrations() {
             )
         `);
 
+        // ── JobPortalRequests: store review image as BLOB ────────────────────
+        await addColumnIfNotExists('JobPortalRequests', 'google_review_img_data MEDIUMBLOB NULL');
+        await addColumnIfNotExists('JobPortalRequests', 'google_review_img_mime VARCHAR(100) NULL');
+
         console.log('[Migration] All migrations applied successfully.');
     } catch (err) {
         console.error('[Migration] Error:', err.message);

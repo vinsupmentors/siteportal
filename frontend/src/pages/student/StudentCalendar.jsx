@@ -74,7 +74,12 @@ const StudentCalendar = () => {
                     });
             } catch (_) {}
 
-            setEvents([...calEvents, ...releaseEvents]);
+            // Prefer rich releaseEvents (have submission status); strip the basic
+            // release-* events from calEvents to avoid duplicates on same day.
+            const filteredCalEvents = releaseEvents.length > 0
+                ? calEvents.filter(e => !String(e.id || '').startsWith('release-'))
+                : calEvents;
+            setEvents([...filteredCalEvents, ...releaseEvents]);
         } catch (err) {
             console.error('Calendar fetch error:', err);
         } finally {

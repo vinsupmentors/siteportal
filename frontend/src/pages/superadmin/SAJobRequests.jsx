@@ -8,10 +8,27 @@ const SAJobRequests = () => {
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
+    const [reviewImageUrl, setReviewImageUrl] = useState(null);
 
     useEffect(() => {
         fetchRequests();
     }, []);
+
+    // Fetch review image as blob when a request is selected
+    useEffect(() => {
+        let objectUrl = null;
+        if (selectedRequest) {
+            jobAPI.getReviewImage(selectedRequest.id)
+                .then(res => {
+                    objectUrl = URL.createObjectURL(new Blob([res.data], { type: res.headers['content-type'] || 'image/jpeg' }));
+                    setReviewImageUrl(objectUrl);
+                })
+                .catch(() => setReviewImageUrl(null));
+        } else {
+            setReviewImageUrl(null);
+        }
+        return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    }, [selectedRequest]);
 
     const fetchRequests = async () => {
         try {
@@ -163,11 +180,15 @@ const SAJobRequests = () => {
                             <div>
                                 <h3 className="text-sm uppercase tracking-widest text-muted font-bold mb-3">Google Review Proof</h3>
                                 <div className="border border-subtle rounded-lg overflow-hidden bg-black/20 flex items-center justify-center h-80">
-                                    <img
-                                        src={`${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000'}/uploads/job_requests/${selectedRequest.google_review_img}`}
-                                        alt="Google Review"
-                                        className="max-h-full object-contain"
-                                    />
+                                    {reviewImageUrl ? (
+                                        <img
+                                            src={reviewImageUrl}
+                                            alt="Google Review"
+                                            className="max-h-full object-contain"
+                                        />
+                                    ) : (
+                                        <span className="text-muted text-sm">Loading image…</span>
+                                    )}
                                 </div>
                             </div>
                             <div className="space-y-6">
