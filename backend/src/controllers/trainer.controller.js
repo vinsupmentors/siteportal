@@ -365,7 +365,7 @@ exports.getBatchStudents = async (req, res) => {
         }
 
         const [students] = await pool.query(`
-            SELECT u.id, u.first_name, u.last_name, u.email
+            SELECT u.id, u.first_name, u.last_name, u.email, u.student_status
             FROM Users u
             JOIN BatchStudents bs ON u.id = bs.student_id
             WHERE bs.batch_id = ? AND u.status = 'active'
