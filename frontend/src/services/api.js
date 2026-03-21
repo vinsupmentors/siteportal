@@ -243,9 +243,13 @@ downloadReleaseSubmissionFile: (submissionId) => api.get(`/trainer/release-submi
     getAnnouncements: () => api.get('/trainer/announcements'),
     broadcastAnnouncement: (data) => api.post('/trainer/announcements', data),
 
-    // Leaves
+    // Leaves (trainer's own)
     requestLeave: (data) => api.post('/trainer/leaves', data),
     getMyLeaves: () => api.get('/trainer/leaves'),
+
+    // Student Leave Requests (trainer manages)
+    getStudentLeaves: () => api.get('/trainer/student-leaves'),
+    updateStudentLeaveStatus: (leaveId, data) => api.patch(`/trainer/student-leaves/${leaveId}`, data),
 
     // IOP Curriculum (trainer as iop_trainer_id)
     getMyIOPBatches: () => api.get('/trainer/my-iop-batches'),

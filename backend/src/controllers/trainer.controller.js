@@ -877,6 +877,60 @@ exports.getMyLeaves = async (req, res) => {
     }
 };
 
+// ── Student Leave Requests (trainer view) ────────────────────────────────────
+
+// GET /trainer/student-leaves — all leave requests from students in trainer's batches
+exports.getStudentLeaves = async (req, res) => {
+    try {
+        const trainerId = req.user.id;
+        const [leaves] = await pool.query(`
+            SELECT sl.*,
+                CONCAT(u.first_name, ' ', u.last_name) AS student_name,
+                u.email AS student_email,
+                b.batch_name
+            FROM StudentLeaves sl
+            JOIN Users u ON sl.student_id = u.id
+            JOIN Batches b ON sl.batch_id = b.id
+            WHERE b.trainer_id = ?
+            ORDER BY sl.created_at DESC
+        `, [trainerId]);
+        res.json(leaves);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching student leaves', error: error.message });
+    }
+};
+
+// PATCH /trainer/student-leaves/:leaveId — approve or reject a student leave
+exports.updateStudentLeaveStatus = async (req, res) => {
+    try {
+        const trainerId = req.user.id;
+        const { leaveId } = req.params;
+        const { status, trainer_note } = req.body;
+
+        if (!['approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ message: 'Status must be approved or rejected' });
+        }
+
+        const [rows] = await pool.query(`
+            SELECT sl.id FROM StudentLeaves sl
+            JOIN Batches b ON sl.batch_id = b.id
+            WHERE sl.id = ? AND b.trainer_id = ?
+        `, [leaveId, trainerId]);
+
+        if (!rows.length) {
+            return res.status(403).json({ message: 'Not authorised to update this leave' });
+        }
+
+        await pool.query(
+            'UPDATE StudentLeaves SET status = ?, trainer_note = ? WHERE id = ?',
+            [status, trainer_note || null, leaveId]
+        );
+        res.json({ message: `Leave ${status} successfully` });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating leave status', error: error.message });
+    }
+};
+
 // ══════════════════════════════════════════════════════════════════════════════
 // TRAINER: GET STUDENT REPORT CARD (module-wise marks + trainer review)
 // ══════════════════════════════════════════════════════════════════════════════

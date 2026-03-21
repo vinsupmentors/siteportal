@@ -468,6 +468,24 @@ async function runMigrations() {
             )
         `);
 
+        // ── StudentLeaves — student leave requests visible to trainer ────────
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS StudentLeaves (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id INT NOT NULL,
+                batch_id INT NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                reason TEXT NOT NULL,
+                status ENUM('pending','approved','rejected') DEFAULT 'pending',
+                trainer_note TEXT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (student_id) REFERENCES Users(id) ON DELETE CASCADE,
+                FOREIGN KEY (batch_id) REFERENCES Batches(id) ON DELETE CASCADE
+            )
+        `);
+
         console.log('[Migration] All migrations applied successfully.');
     } catch (err) {
         console.error('[Migration] Error:', err.message);

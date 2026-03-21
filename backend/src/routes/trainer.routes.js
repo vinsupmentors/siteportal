@@ -62,6 +62,10 @@ router.post('/batches/:batchId/students/:studentId/report-card', trainerControll
 // Trainer Leaves
 router.post('/leaves', trainerController.requestLeave);
 router.get('/leaves', trainerController.getMyLeaves);
+
+// Student Leave Requests (trainer manages)
+router.get('/student-leaves', trainerController.getStudentLeaves);
+router.patch('/student-leaves/:leaveId', trainerController.updateStudentLeaveStatus);
 // ── Release Manager ──────────────────────────────────────────────────────────
 router.get('/batches/:batchId/release-status', releaseCtrl.getReleaseStatus);
 router.post('/batches/:batchId/release/day', releaseCtrl.releaseDay);
