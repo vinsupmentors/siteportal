@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Frontend (Vite / React)",
+      "runtimeExecutable": "C:\\Users\\ASUS\\Downloads\\Anti-portal\\.claude\\worktrees\\sharp-boyd\\frontend\\node_modules\\.bin\\vite.cmd",
+      "runtimeArgs": [],
+      "cwd": "frontend",
+      "port": 5173
+    },
+    {
+      "name": "Backend (Express / Nodemon)",
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": ["/c", "npm", "--prefix", "backend", "run", "dev"],
+      "port": 5000
+    }
+  ]
+}
