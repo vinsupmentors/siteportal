@@ -1582,27 +1582,63 @@ exports.getAttendanceAnalytics = async (req, res) => {
 exports.triggerAbsenceEmails = async () => {
     const emailService = require('../utils/email.service');
     try {
+        // Students with 2+ absences in the last 7 days — include batch, course, trainer info + overall att%
         const [targets] = await pool.query(`
-            SELECT u.id, u.first_name, u.last_name, u.email, COUNT(*) as gaps
+            SELECT
+                u.id, u.first_name, u.last_name, u.email, u.phone,
+                COUNT(DISTINCT sa.attendance_date) AS gaps,
+                b.batch_name, c.name AS course_name,
+                CONCAT(t.first_name, ' ', t.last_name) AS trainer_name,
+                ROUND(
+                    (SELECT COUNT(*) FROM StudentAttendance sa2 WHERE sa2.student_id = u.id AND sa2.status = 'present') * 100.0 /
+                    NULLIF((SELECT COUNT(*) FROM StudentAttendance sa3 WHERE sa3.student_id = u.id), 0)
+                , 1) AS att_pct
             FROM StudentAttendance sa
             JOIN Users u ON sa.student_id = u.id
-            WHERE sa.status = 'absent' AND sa.attendance_date >= DATE_SUB(CURDATE(), INTERVAL 5 DAY)
-            GROUP BY u.id
-            HAVING gaps IN (2, 3)
+            JOIN Batches b ON sa.batch_id = b.id
+            JOIN Courses c ON b.course_id = c.id
+            LEFT JOIN Users t ON b.trainer_id = t.id
+            WHERE sa.status = 'absent'
+              AND sa.attendance_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+              AND u.status = 'active'
+            GROUP BY u.id, u.first_name, u.last_name, u.email, u.phone,
+                     b.batch_name, c.name, trainer_name, att_pct
+            HAVING gaps >= 2
         `);
 
+        // Fetch all active admin + superadmin emails (replaces hardcoded address)
+        const [mgmtRows] = await pool.query(
+            "SELECT email FROM Users WHERE role_id IN (1, 2) AND status = 'active'"
+        );
+        const managementEmails = mgmtRows.map(r => r.email);
+
+        let count = 0;
         for (const t of targets) {
             const name = `${t.first_name} ${t.last_name}`;
-            if (t.gaps === 2) {
-                await emailService.sendAbsenceEmail(t.email, name, 2);
-            } else if (t.gaps === 3) {
-                await emailService.sendAbsenceEmail(t.email, name, 3);
-                await emailService.sendAbsenceEmail('management@vinsup.com', name, 3, true);
+            const studentData = {
+                batch_name:   t.batch_name   || '',
+                course_name:  t.course_name  || '',
+                trainer_name: t.trainer_name || '',
+                email:        t.email        || '',
+                phone:        t.phone        || '',
+                attPct:       t.att_pct      || 0,
+            };
+
+            // Always email the student (2 or 3+ days)
+            await emailService.sendAbsenceEmail(t.email, name, t.gaps, false, studentData);
+            count++;
+
+            // 3+ consecutive days → also alert all management
+            if (t.gaps >= 3) {
+                for (const mgmtEmail of managementEmails) {
+                    await emailService.sendAbsenceEmail(mgmtEmail, name, t.gaps, true, studentData);
+                }
             }
         }
-        return { success: true, count: targets.length };
+        return { success: true, count };
     } catch (err) {
         console.error('Absence Email Trigger Error:', err.message);
+        return { success: false, count: 0 };
     }
 };
 
