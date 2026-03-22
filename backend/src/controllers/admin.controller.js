@@ -63,4 +63,20 @@ exports.getTrainerPerformance = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: 'Server fault retrieving performance metrics.', error: error.message });
     }
+}
+
+// ── Sidebar notification counts ───────────────────────────────────────────────
+exports.getNotificationCounts = async (req, res) => {
+    try {
+        const [[{ pendingTrainerLeaves }]] = await pool.query(
+            "SELECT COUNT(*) AS pendingTrainerLeaves FROM TrainerLeaves WHERE status = 'pending'");
+        const [[{ openDoubts }]] = await pool.query(
+            "SELECT COUNT(*) AS openDoubts FROM StudentDoubts WHERE status != 'resolved'");
+        const [[{ openIssues }]] = await pool.query(
+            "SELECT COUNT(*) AS openIssues FROM StudentIssues WHERE status != 'resolved'");
+        res.json({ pendingTrainerLeaves, openDoubts, openIssues });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching notification counts', error: error.message });
+    }
+};
 };

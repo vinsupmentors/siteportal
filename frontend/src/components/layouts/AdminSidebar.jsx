@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { BrandLogo } from '../icons/BrandLogo';
 import {
@@ -5,9 +6,35 @@ import {
     ClipboardList, Megaphone, Link as LinkIcon,
     BarChart3, HelpCircle, MessageSquare, Hexagon, Calendar, Briefcase, Settings, Target, Rocket
 } from 'lucide-react';
+import { adminAPI } from '../../services/api';
+
+const Badge = ({ count }) => (
+    <span style={{
+        marginLeft: 'auto',
+        minWidth: '18px', height: '18px',
+        borderRadius: '9px',
+        background: 'rgba(239,68,68,0.18)',
+        color: '#f87171',
+        fontSize: '10px', fontWeight: 800,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        padding: '0 5px', lineHeight: 1, flexShrink: 0,
+    }}>
+        {count > 99 ? '99+' : count}
+    </span>
+);
 
 export const AdminSidebar = ({ isOpen, setIsOpen }) => {
     const location = useLocation();
+    const [counts, setCounts] = useState({});
+
+    useEffect(() => {
+        const fetch = () => adminAPI.getNotificationCounts()
+            .then(r => setCounts(r.data))
+            .catch(() => {});
+        fetch();
+        const timer = setInterval(fetch, 60_000);
+        return () => clearInterval(timer);
+    }, []);
 
     const navGroups = [
         {
@@ -19,38 +46,38 @@ export const AdminSidebar = ({ isOpen, setIsOpen }) => {
         {
             label: 'Management',
             links: [
-                { name: 'Student Hub', path: '/admin/student-hub', icon: Users },
-                { name: 'Settings', path: '/admin/settings', icon: Settings },
-                { name: 'Trainer Leaves', path: '/admin/trainer-leaves', icon: Calendar },
+                { name: 'Student Hub',     path: '/admin/student-hub',    icon: Users },
+                { name: 'Settings',        path: '/admin/settings',        icon: Settings },
+                { name: 'Trainer Leaves',  path: '/admin/trainer-leaves',  icon: Calendar, badgeKey: 'pendingTrainerLeaves' },
             ]
         },
         {
             label: 'Communications',
             links: [
-                { name: 'Announcements', path: '/admin/announcements', icon: Megaphone },
-                { name: 'Meeting Links', path: '/admin/meeting-links', icon: LinkIcon },
+                { name: 'Announcements', path: '/admin/announcements',  icon: Megaphone },
+                { name: 'Meeting Links', path: '/admin/meeting-links',  icon: LinkIcon },
             ]
         },
         {
             label: 'Support Desk',
             links: [
-                { name: 'Student Helpdesk', path: '/admin/student-issues', icon: HelpCircle },
-                { name: 'Doubts Monitor', path: '/admin/student-doubts', icon: MessageSquare },
+                { name: 'Student Helpdesk', path: '/admin/student-issues', icon: HelpCircle,    badgeKey: 'openIssues' },
+                { name: 'Doubts Monitor',   path: '/admin/student-doubts', icon: MessageSquare, badgeKey: 'openDoubts' },
             ]
         },
         {
             label: 'Placements',
             links: [
-                { name: 'Job Openings', path: '/admin/jobs', icon: Briefcase },
+                { name: 'Job Openings',  path: '/admin/jobs',         icon: Briefcase },
                 { name: 'IOP Dashboard', path: '/admin/iop-dashboard', icon: Target },
-                { name: 'IOP Students', path: '/admin/iop-students', icon: Rocket },
+                { name: 'IOP Students',  path: '/admin/iop-students',  icon: Rocket },
             ]
         },
         {
             label: 'Analytics',
             links: [
-                { name: 'Reports Hub', path: '/admin/reports', icon: BarChart3 },
-                { name: 'Audit Logs', path: '/admin/audit-logs', icon: ClipboardList },
+                { name: 'Reports Hub', path: '/admin/reports',     icon: BarChart3 },
+                { name: 'Audit Logs',  path: '/admin/audit-logs',  icon: ClipboardList },
             ]
         }
     ];
@@ -77,6 +104,7 @@ export const AdminSidebar = ({ isOpen, setIsOpen }) => {
                         {group.links.map((link) => {
                             const Icon = link.icon;
                             const isActive = location.pathname === link.path;
+                            const badgeCount = link.badgeKey ? (counts[link.badgeKey] || 0) : 0;
                             return (
                                 <Link
                                     to={link.path}
@@ -86,6 +114,7 @@ export const AdminSidebar = ({ isOpen, setIsOpen }) => {
                                 >
                                     <Icon size={18} />
                                     <span>{link.name}</span>
+                                    {badgeCount > 0 && <Badge count={badgeCount} />}
                                 </Link>
                             );
                         })}

@@ -12,5 +12,6 @@ router.use(requireRole([2]));
 router.get('/overview', adminController.getSystemOverview);
 router.get('/audit-logs', adminController.getAuditLogs);
 router.get('/trainer-performance', adminController.getTrainerPerformance);
+router.get('/notification-counts', adminController.getNotificationCounts);
 
 module.exports = router;

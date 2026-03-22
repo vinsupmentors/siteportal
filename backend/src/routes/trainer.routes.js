@@ -10,6 +10,7 @@ router.use(requireRole([3]));
 // Dashboard
 router.get('/dashboard', trainerController.getTrainerDashboard);
 router.get('/calendar', trainerController.getMyCalendar);
+router.get('/notification-counts', trainerController.getNotificationCounts);
 
 // Batches & Students
 router.get('/batches/:id/students', trainerController.getBatchStudents);

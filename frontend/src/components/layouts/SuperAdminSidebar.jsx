@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { BrandLogo } from '../icons/BrandLogo';
 import {
@@ -6,42 +7,68 @@ import {
     Briefcase, Megaphone, Link as LinkIcon, Settings,
     BarChart3, FileText, HelpCircle, MessageSquare, Award, Rocket, Target, Layers
 } from 'lucide-react';
+import { superAdminAPI } from '../../services/api';
+
+const Badge = ({ count }) => (
+    <span style={{
+        marginLeft: 'auto',
+        minWidth: '18px', height: '18px',
+        borderRadius: '9px',
+        background: 'rgba(239,68,68,0.18)',
+        color: '#f87171',
+        fontSize: '10px', fontWeight: 800,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        padding: '0 5px', lineHeight: 1, flexShrink: 0,
+    }}>
+        {count > 99 ? '99+' : count}
+    </span>
+);
 
 export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
     const location = useLocation();
+    const [counts, setCounts] = useState({});
+
+    useEffect(() => {
+        const fetch = () => superAdminAPI.getNotificationCounts()
+            .then(r => setCounts(r.data))
+            .catch(() => {});
+        fetch();
+        const timer = setInterval(fetch, 60_000);
+        return () => clearInterval(timer);
+    }, []);
 
     const navGroups = [
         {
             label: 'Overview',
             links: [
                 { name: 'Dashboard', path: '/super-admin/dashboard', icon: LayoutDashboard },
-                { name: 'Settings', path: '/super-admin/settings', icon: Settings },
+                { name: 'Settings',  path: '/super-admin/settings',  icon: Settings },
             ]
         },
         {
             label: 'Curriculum',
             links: [
-                { name: 'Manage Courses', path: '/super-admin/courses', icon: BookOpen },
-                { name: 'IOP Curriculum', path: '/super-admin/iop-curriculum', icon: Layers },
-                { name: 'Student & Batch Hub', path: '/super-admin/student-batch-hub', icon: Users },
-                { name: 'Feedback Builder', path: '/super-admin/feedback-builder', icon: ClipboardList },
-                { name: 'Certificates & Internships', path: '/super-admin/certificates', icon: Award },
+                { name: 'Manage Courses',             path: '/super-admin/courses',           icon: BookOpen },
+                { name: 'IOP Curriculum',             path: '/super-admin/iop-curriculum',    icon: Layers },
+                { name: 'Student & Batch Hub',        path: '/super-admin/student-batch-hub', icon: Users },
+                { name: 'Feedback Builder',           path: '/super-admin/feedback-builder',  icon: ClipboardList },
+                { name: 'Certificates & Internships', path: '/super-admin/certificates',      icon: Award },
             ]
         },
         {
             label: 'People',
             links: [
-                { name: 'Manage Trainers', path: '/super-admin/trainers', icon: UserCog },
-                { name: 'Trainer Leaves', path: '/super-admin/trainer-leaves', icon: Clock },
+                { name: 'Manage Trainers', path: '/super-admin/trainers',       icon: UserCog },
+                { name: 'Trainer Leaves',  path: '/super-admin/trainer-leaves', icon: Clock, badgeKey: 'pendingTrainerLeaves' },
             ]
         },
         {
             label: 'Operations',
             links: [
-                { name: 'Trainer Tasks', path: '/super-admin/trainer-tasks', icon: ClipboardList },
-                { name: 'Trainers KRA', path: '/super-admin/trainers-kra', icon: FileText },
-                { name: 'Trainer Attendance', path: '/super-admin/trainer-attendance', icon: Clock },
-                { name: 'Portfolio Approvals', path: '/super-admin/portfolios', icon: Briefcase },
+                { name: 'Trainer Tasks',       path: '/super-admin/trainer-tasks',      icon: ClipboardList, badgeKey: 'pendingTasks' },
+                { name: 'Trainers KRA',        path: '/super-admin/trainers-kra',       icon: FileText },
+                { name: 'Trainer Attendance',  path: '/super-admin/trainer-attendance', icon: Clock },
+                { name: 'Portfolio Approvals', path: '/super-admin/portfolios',         icon: Briefcase,     badgeKey: 'pendingPortfolios' },
             ]
         },
         {
@@ -54,17 +81,17 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
         {
             label: 'Queries & Escalations',
             links: [
-                { name: 'Student Helpdesk', path: '/super-admin/student-issues', icon: HelpCircle },
-                { name: 'Doubts Monitor', path: '/super-admin/student-doubts', icon: MessageSquare },
+                { name: 'Student Helpdesk', path: '/super-admin/student-issues', icon: HelpCircle,    badgeKey: 'unresolvedIssues' },
+                { name: 'Doubts Monitor',   path: '/super-admin/student-doubts', icon: MessageSquare, badgeKey: 'unresolvedDoubts' },
             ]
         },
         {
             label: 'Placements',
             links: [
-                { name: 'Job Requests', path: '/super-admin/job-requests', icon: Briefcase },
-                { name: 'Job Openings', path: '/super-admin/jobs', icon: Briefcase },
+                { name: 'Job Requests',  path: '/super-admin/job-requests',  icon: Briefcase, badgeKey: 'pendingJobRequests' },
+                { name: 'Job Openings',  path: '/super-admin/jobs',          icon: Briefcase },
                 { name: 'IOP Dashboard', path: '/super-admin/iop-dashboard', icon: Target },
-                { name: 'IOP Students', path: '/super-admin/iop-students', icon: Rocket },
+                { name: 'IOP Students',  path: '/super-admin/iop-students',  icon: Rocket },
             ]
         },
         {
@@ -97,6 +124,7 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
                         {group.links.map((link) => {
                             const Icon = link.icon;
                             const isActive = location.pathname === link.path;
+                            const badgeCount = link.badgeKey ? (counts[link.badgeKey] || 0) : 0;
                             return (
                                 <Link
                                     to={link.path}
@@ -106,6 +134,7 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
                                 >
                                     <Icon size={18} />
                                     <span>{link.name}</span>
+                                    {badgeCount > 0 && <Badge count={badgeCount} />}
                                 </Link>
                             );
                         })}

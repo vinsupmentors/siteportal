@@ -2261,4 +2261,26 @@ exports.sendProgressEmails = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: 'Error sending progress emails', error: error.message });
     }
+}
+
+// ── Sidebar notification counts ───────────────────────────────────────────────
+exports.getNotificationCounts = async (req, res) => {
+    try {
+        const [[{ pendingTrainerLeaves }]] = await pool.query(
+            "SELECT COUNT(*) AS pendingTrainerLeaves FROM TrainerLeaves WHERE status = 'pending'");
+        const [[{ pendingTasks }]] = await pool.query(
+            "SELECT COUNT(*) AS pendingTasks FROM TrainerTasks WHERE status IN ('assigned','review')");
+        const [[{ pendingPortfolios }]] = await pool.query(
+            "SELECT COUNT(*) AS pendingPortfolios FROM PortfolioRequests WHERE status = 'pending'");
+        const [[{ unresolvedIssues }]] = await pool.query(
+            "SELECT COUNT(*) AS unresolvedIssues FROM StudentIssues WHERE status != 'resolved'");
+        const [[{ unresolvedDoubts }]] = await pool.query(
+            "SELECT COUNT(*) AS unresolvedDoubts FROM StudentDoubts WHERE status != 'resolved'");
+        const [[{ pendingJobRequests }]] = await pool.query(
+            "SELECT COUNT(*) AS pendingJobRequests FROM JobPortalRequests WHERE status = 'pending'");
+        res.json({ pendingTrainerLeaves, pendingTasks, pendingPortfolios, unresolvedIssues, unresolvedDoubts, pendingJobRequests });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching notification counts', error: error.message });
+    }
+};
 };

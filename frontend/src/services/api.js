@@ -33,6 +33,7 @@ api.interceptors.response.use(
 export const superAdminAPI = {
     // Dashboard
     getDashboardStats: () => api.get('/super-admin/dashboard-stats'),
+    getNotificationCounts: () => api.get('/super-admin/notification-counts'),
 getCourseCapstones: (courseId) => api.get(`/super-admin/courses/${courseId}/capstones`),
 createCapstone: (courseId, data) => api.post(`/super-admin/courses/${courseId}/capstones`, data),
 updateCapstone: (id, data) => api.put(`/super-admin/capstones/${id}`, data),
@@ -186,6 +187,7 @@ export const authAPI = {
 // Trainer API (trainer portal)
 export const trainerAPI = {
     getDashboardStats: () => api.get('/trainer/dashboard'),
+    getNotificationCounts: () => api.get('/trainer/notification-counts'),
     getMyCalendar: (month, year) => {
         const params = new URLSearchParams();
         if (month) params.append('month', month);
@@ -261,6 +263,7 @@ downloadReleaseSubmissionFile: (submissionId) => api.get(`/trainer/release-submi
 // Student API (student portal)
 export const studentAPI = {
     getDashboardStats: () => api.get('/student/dashboard'),
+    getNotificationCounts: () => api.get('/student/notification-counts'),
     getCalendar: () => api.get('/student/calendar'),
     getCurriculum: () => api.get('/student/curriculum'),
     getTests: () => api.get('/student/tests'),
@@ -305,6 +308,7 @@ submitReleaseWork: (releaseId, formData) => api.post(`/student/releases/${releas
 // Admin API (administrative portal)
 export const adminAPI = {
     getOverview: () => api.get('/admin/overview'),
+    getNotificationCounts: () => api.get('/admin/notification-counts'),
     getAuditLogs: (limit) => api.get(`/admin/audit-logs${limit ? `?limit=${limit}` : ''}`),
     getTrainerPerformance: () => api.get('/admin/trainer-performance'),
 

@@ -1355,3 +1355,19 @@ exports.downloadCertificate = async (req, res) => {
         res.status(500).json({ message: 'Error downloading certificate', error: error.message });
     }
 };
+
+// ── Sidebar notification counts ───────────────────────────────────────────────
+exports.getNotificationCounts = async (req, res) => {
+    try {
+        const id = req.user.id;
+        const [[{ pendingLeaves }]] = await pool.query(
+            "SELECT COUNT(*) AS pendingLeaves FROM StudentLeaves WHERE student_id = ? AND status = 'pending'", [id]);
+        const [[{ unresolvedDoubts }]] = await pool.query(
+            "SELECT COUNT(*) AS unresolvedDoubts FROM StudentDoubts WHERE student_id = ? AND status != 'resolved'", [id]);
+        const [[{ openIssues }]] = await pool.query(
+            "SELECT COUNT(*) AS openIssues FROM StudentIssues WHERE student_id = ? AND status != 'resolved'", [id]);
+        res.json({ pendingLeaves, unresolvedDoubts, openIssues });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching notification counts', error: error.message });
+    }
+};

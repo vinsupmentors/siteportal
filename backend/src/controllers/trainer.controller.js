@@ -1034,3 +1034,24 @@ exports.upsertModuleReview = async (req, res) => {
         res.status(500).json({ message: 'Error saving module review', error: error.message });
     }
 };
+
+// ── Sidebar notification counts ───────────────────────────────────────────────
+exports.getNotificationCounts = async (req, res) => {
+    try {
+        const id = req.user.id;
+        const [[{ pendingDoubts }]] = await pool.query(
+            "SELECT COUNT(*) AS pendingDoubts FROM StudentDoubts WHERE trainer_id = ? AND status = 'pending'", [id]);
+        const [[{ pendingStudentLeaves }]] = await pool.query(`
+            SELECT COUNT(*) AS pendingStudentLeaves FROM StudentLeaves sl
+            JOIN Batches b ON sl.batch_id = b.id WHERE b.trainer_id = ? AND sl.status = 'pending'`, [id]);
+        const [[{ ungradedSubmissions }]] = await pool.query(`
+            SELECT COUNT(*) AS ungradedSubmissions FROM StudentReleaseSubmissions srs
+            JOIN Batches b ON srs.batch_id = b.id
+            WHERE b.trainer_id = ? AND srs.marks IS NULL AND srs.status = 'submitted'`, [id]);
+        const [[{ pendingTasks }]] = await pool.query(
+            "SELECT COUNT(*) AS pendingTasks FROM TrainerTasks WHERE trainer_id = ? AND status = 'assigned'", [id]);
+        res.json({ pendingDoubts, pendingStudentLeaves, ungradedSubmissions, pendingTasks });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching notification counts', error: error.message });
+    }
+};

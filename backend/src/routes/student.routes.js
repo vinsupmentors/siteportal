@@ -13,6 +13,7 @@ router.use(requireRole([4]));
 
 // General Endpoints
 router.get('/dashboard', studentController.getStudentDashboard);
+router.get('/notification-counts', studentController.getNotificationCounts);
 router.get('/progress', studentController.getStudentProgress);
 router.get('/calendar', studentController.getStudentCalendar);
 router.get('/curriculum', studentController.getStudentCurriculum);

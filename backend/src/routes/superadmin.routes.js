@@ -19,6 +19,7 @@ router.use(verifyToken);
 // DASHBOARD & OVERVIEW (Roles 1 & 2)
 // ==========================================
 router.get('/dashboard-stats', requireRole([1, 2]), crudController.getDashboardStats);
+router.get('/notification-counts', requireRole([1, 2]), crudController.getNotificationCounts);
 
 // ==========================================
 // COURSES
