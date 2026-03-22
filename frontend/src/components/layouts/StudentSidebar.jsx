@@ -4,7 +4,7 @@ import { BrandLogo } from '../icons/BrandLogo';
 import {
     LayoutDashboard, Calendar, FileText, Layers,
     BookOpen, CalendarOff, MessageSquare, Star,
-    HelpCircle, Bell, TrendingUp, Briefcase, Settings, GraduationCap
+    HelpCircle, Bell, TrendingUp, Briefcase, Settings, GraduationCap, Globe
 } from 'lucide-react';
 import { studentAPI } from '../../services/api';
 
@@ -50,7 +50,7 @@ export const StudentSidebar = ({ isOpen, setIsOpen }) => {
         { name: 'Notifications',         path: '/student/notifications', icon: Bell },
         { name: 'My Progress',           path: '/student/progress',     icon: TrendingUp },
         { name: 'Certificates',          path: '/student/certificates', icon: GraduationCap },
-        { name: 'Portfolio Gen',         path: '/student/portfolio',    icon: Briefcase },
+        { name: 'Portfolio Gen',         path: '/student/portfolio',    icon: Globe },
         { name: 'Job Portal',            path: '/student/job-portal',   icon: Briefcase },
     ];
 

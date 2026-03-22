@@ -4,7 +4,7 @@ import { BrandLogo } from '../icons/BrandLogo';
 import {
     LayoutDashboard, Users,
     ClipboardList, Megaphone, Link as LinkIcon,
-    BarChart3, HelpCircle, MessageSquare, Hexagon, Calendar, Briefcase, Settings, Target, Rocket
+    BarChart3, HelpCircle, MessageSquare, CalendarOff, Briefcase, Settings, Target, Rocket
 } from 'lucide-react';
 import { adminAPI } from '../../services/api';
 
@@ -48,7 +48,7 @@ export const AdminSidebar = ({ isOpen, setIsOpen }) => {
             links: [
                 { name: 'Student Hub',     path: '/admin/student-hub',    icon: Users },
                 { name: 'Settings',        path: '/admin/settings',        icon: Settings },
-                { name: 'Trainer Leaves',  path: '/admin/trainer-leaves',  icon: Calendar, badgeKey: 'pendingTrainerLeaves' },
+                { name: 'Trainer Leaves',  path: '/admin/trainer-leaves',  icon: CalendarOff, badgeKey: 'pendingTrainerLeaves' },
             ]
         },
         {

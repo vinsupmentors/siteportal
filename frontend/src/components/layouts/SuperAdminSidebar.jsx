@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { BrandLogo } from '../icons/BrandLogo';
 import {
-    LayoutDashboard, Calendar, BookOpen, Users,
-    GraduationCap, UserCog, ClipboardList, Clock,
+    LayoutDashboard, BookOpen, Users,
+    UserCog, Clock, Star,
     Briefcase, Megaphone, Link as LinkIcon, Settings,
-    BarChart3, FileText, HelpCircle, MessageSquare, Award, Rocket, Target, Layers
+    BarChart3, FileText, HelpCircle, MessageSquare, Award, Rocket, Target, Layers,
+    CheckSquare, UserCheck, FileCheck, Send
 } from 'lucide-react';
 import { superAdminAPI } from '../../services/api';
 
@@ -51,7 +52,7 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
                 { name: 'Manage Courses',             path: '/super-admin/courses',           icon: BookOpen },
                 { name: 'IOP Curriculum',             path: '/super-admin/iop-curriculum',    icon: Layers },
                 { name: 'Student & Batch Hub',        path: '/super-admin/student-batch-hub', icon: Users },
-                { name: 'Feedback Builder',           path: '/super-admin/feedback-builder',  icon: ClipboardList },
+                { name: 'Feedback Builder',           path: '/super-admin/feedback-builder',  icon: Star },
                 { name: 'Certificates & Internships', path: '/super-admin/certificates',      icon: Award },
             ]
         },
@@ -65,10 +66,10 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
         {
             label: 'Operations',
             links: [
-                { name: 'Trainer Tasks',       path: '/super-admin/trainer-tasks',      icon: ClipboardList, badgeKey: 'pendingTasks' },
+                { name: 'Trainer Tasks',       path: '/super-admin/trainer-tasks',      icon: CheckSquare,   badgeKey: 'pendingTasks' },
                 { name: 'Trainers KRA',        path: '/super-admin/trainers-kra',       icon: FileText },
-                { name: 'Trainer Attendance',  path: '/super-admin/trainer-attendance', icon: Clock },
-                { name: 'Portfolio Approvals', path: '/super-admin/portfolios',         icon: Briefcase,     badgeKey: 'pendingPortfolios' },
+                { name: 'Trainer Attendance',  path: '/super-admin/trainer-attendance', icon: UserCheck },
+                { name: 'Portfolio Approvals', path: '/super-admin/portfolios',         icon: FileCheck,     badgeKey: 'pendingPortfolios' },
             ]
         },
         {
@@ -88,7 +89,7 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
         {
             label: 'Placements',
             links: [
-                { name: 'Job Requests',  path: '/super-admin/job-requests',  icon: Briefcase, badgeKey: 'pendingJobRequests' },
+                { name: 'Job Requests',  path: '/super-admin/job-requests',  icon: Send,      badgeKey: 'pendingJobRequests' },
                 { name: 'Job Openings',  path: '/super-admin/jobs',          icon: Briefcase },
                 { name: 'IOP Dashboard', path: '/super-admin/iop-dashboard', icon: Target },
                 { name: 'IOP Students',  path: '/super-admin/iop-students',  icon: Rocket },

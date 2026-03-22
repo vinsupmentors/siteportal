@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { BrandLogo } from '../icons/BrandLogo';
 import {
-    LayoutDashboard, Calendar, Users, MessageSquare, Megaphone, BookOpen, BookOpenCheck, Clock, Settings
+    LayoutDashboard, Calendar, Users, MessageSquare, Megaphone, Clock, Settings,
+    FolderOpen, ClipboardCheck, CheckSquare
 } from 'lucide-react';
 import { trainerAPI } from '../../services/api';
 
@@ -38,10 +39,10 @@ export const TrainerSidebar = ({ isOpen, setIsOpen }) => {
         { name: 'Dashboard',       path: '/trainer/dashboard',     icon: LayoutDashboard },
         { name: 'Settings',        path: '/trainer/settings',      icon: Settings },
         { name: 'My Batches',      path: '/trainer/batches',       icon: Users },
-        { name: 'Content Manager', path: '/trainer/content-manager', icon: BookOpenCheck },
-        { name: 'Student Work',    path: '/trainer/submissions',   icon: BookOpenCheck, badgeKey: 'ungradedSubmissions' },
+        { name: 'Content Manager', path: '/trainer/content-manager', icon: FolderOpen },
+        { name: 'Student Work',    path: '/trainer/submissions',   icon: ClipboardCheck, badgeKey: 'ungradedSubmissions' },
         { name: 'My Calendar',     path: '/trainer/calendar',      icon: Calendar },
-        { name: 'My Tasks',        path: '/trainer/tasks',         icon: BookOpen,      badgeKey: 'pendingTasks' },
+        { name: 'My Tasks',        path: '/trainer/tasks',         icon: CheckSquare,   badgeKey: 'pendingTasks' },
         { name: 'Announcements',   path: '/trainer/announcements', icon: Megaphone },
         { name: 'Student Doubts',  path: '/trainer/doubts',        icon: MessageSquare, badgeKey: 'pendingDoubts' },
         { name: 'Leave Requests',  path: '/trainer/leaves',        icon: Clock,         badgeKey: 'pendingStudentLeaves' },
