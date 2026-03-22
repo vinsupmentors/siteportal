@@ -2319,4 +2319,3 @@ exports.getNotificationCounts = async (req, res) => {
         res.status(500).json({ message: 'Error fetching notification counts', error: error.message });
     }
 };
-};
