@@ -491,6 +491,14 @@ exports.getBatchCurriculum = async (req, res) => {
         const unlockMap = {};
         unlocks.forEach(u => { unlockMap[u.module_id] = u; });
 
+        // Get feedback forms for modules
+        const [feedbackForms] = await pool.query(
+            `SELECT id, module_id, title FROM FeedbackForms WHERE module_id IN (${placeholders})`,
+            moduleIds
+        );
+        const feedbackFormMap = {};
+        feedbackForms.forEach(f => { feedbackFormMap[f.module_id] = f; });
+
         // Get Module Projects
         const [projects] = await pool.query(
             `SELECT * FROM ModuleProjects WHERE module_id IN (${placeholders})`,
@@ -535,6 +543,7 @@ exports.getBatchCurriculum = async (req, res) => {
                 unlocked_up_to_day: isUnlocked ? unlockedUpToDay : 0,
                 projects: modProjects,
                 files: modFiles,
+                feedback_form: feedbackFormMap[mod.id] || null,
                 // Granular flags
                 is_projects_released: !!(unlockData?.is_projects_released),
                 is_test_released: !!(unlockData?.is_test_released),
