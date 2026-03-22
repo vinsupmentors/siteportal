@@ -387,4 +387,19 @@ export const recruiterAPI = {
     updateInterview: (id, data) => api.put(`/recruiter/interviews/${id}`, data),
 };
 
+export const chatAPI = {
+    getContacts: (userId, role) => api.get(`/chat/contacts/${userId}?role=${role}`),
+    getHistory: (userId, otherUserId) => api.get(`/chat/history/${userId}/${otherUserId}`)
+};
+
+export const forumAPI = {
+    getTopics: (courseId) => api.get(`/forum/courses/${courseId}`),
+    getTopicDetails: (topicId) => api.get(`/forum/topics/${topicId}`),
+    createTopic: (data) => api.post('/forum/topics', data),
+    upvoteTopic: (topicId) => api.post(`/forum/topics/${topicId}/upvote`),
+    createReply: (data) => api.post('/forum/replies', data),
+    upvoteReply: (replyId) => api.post(`/forum/replies/${replyId}/upvote`),
+    acceptReply: (replyId) => api.post(`/forum/replies/${replyId}/accept`)
+};
+
 export default api;

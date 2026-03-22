@@ -4,6 +4,9 @@ import { AppLayout } from './components/layouts/AppLayout';
 import { LoginView } from './pages/LoginView';
 import { PlaceholderDashboard } from './pages/PlaceholderDashboard';
 import { Settings } from './pages/shared/Settings';
+import { ChatWindow } from './pages/shared/ChatWindow';
+import { ForumList } from './pages/shared/ForumList';
+import { ForumTopicDetail } from './pages/shared/ForumTopicDetail';
 
 // Student Pages
 import { StudentDashboard } from './pages/student/StudentDashboard';
@@ -154,6 +157,9 @@ const AppRoutes = () => {
         <Route path="job-portal" element={<StudentJobPortal />} />
         <Route path="certificates" element={<StudentCertificates />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="chat" element={<ChatWindow />} />
+        <Route path="courses/:courseId/forum" element={<ForumList />} />
+        <Route path="forum/topic/:topicId" element={<ForumTopicDetail />} />
       </Route>
 
       {/* Trainer Portal */}
@@ -174,6 +180,9 @@ const AppRoutes = () => {
         <Route path="student-profile/:batchId/:studentId" element={<TrainerStudentProfile />} />
         <Route path="leaves" element={<TrainerLeaves />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="chat" element={<ChatWindow />} />
+        <Route path="courses/:courseId/forum" element={<ForumList />} />
+        <Route path="forum/topic/:topicId" element={<ForumTopicDetail />} />
       </Route>
 
       {/* Recruiter Portal */}

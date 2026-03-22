@@ -2,9 +2,28 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const cron = require('node-cron');
+const http = require('http');
+const { Server } = require('socket.io');
 const runMigrations = require('./config/migrate');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: function (origin, callback) {
+            const allowed = (process.env.FRONTEND_URL || '').split(',').map(o => o.trim()).filter(Boolean);
+            if (!allowed.length || !origin || allowed.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error('CORS: origin not allowed'));
+            }
+        },
+        credentials: true
+    }
+});
+
+// Initialize socket handlers
+require('./sockets/chat.socket')(io);
 app.use(cors({
     origin: function (origin, callback) {
         const allowed = (process.env.FRONTEND_URL || '').split(',').map(o => o.trim()).filter(Boolean);
@@ -31,6 +50,8 @@ const jobRoutes = require('./routes/job.routes');
 const jobRequestRoutes = require('./routes/job_request.routes');
 const userRoutes = require('./routes/user.routes');
 const recruiterRoutes = require('./routes/recruiter.routes');
+const chatRoutes = require('./routes/chat.routes');
+const forumRoutes = require('./routes/forum.routes');
 const path = require('path');
 
 // Serve uploaded content files statically
@@ -69,6 +90,8 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/job-requests', jobRequestRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/recruiter', recruiterRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/forum', forumRoutes);
 
 
 // ==========================================
@@ -99,7 +122,7 @@ cron.schedule('0 0 1 * *', async () => {
 
 const PORT = process.env.PORT || 5000;
 runMigrations().then(() => {
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
         console.log(`Enterprise LMS server operating safely on port ${PORT}`);
     });
 });

@@ -143,7 +143,7 @@ export const SAFeedbackBuilder = () => {
                                 <div className="flex items-center justify-between pt-6 border-t border-gray-800">
                                     <div className="flex items-center gap-2">
                                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                        <span className="text-xs font-bold text-gray-400 uppercase">{JSON.parse(form.form_json).fields.length} Questions</span>
+                                        <span className="text-xs font-bold text-gray-400 uppercase">{(typeof form.form_json === 'string' ? JSON.parse(form.form_json) : form.form_json).fields.length} Questions</span>
                                     </div>
                                     <span className="text-xs text-gray-600 font-mono">{new Date(form.created_at).toLocaleDateString()}</span>
                                 </div>

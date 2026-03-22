@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { BrandLogo } from '../icons/BrandLogo';
 import {
     LayoutDashboard, Calendar, Users, MessageSquare, Megaphone, Clock, Settings,
-    FolderOpen, ClipboardCheck, CheckSquare
+    FolderOpen, ClipboardCheck, CheckSquare, MessageCircle
 } from 'lucide-react';
 import { trainerAPI } from '../../services/api';
 
@@ -41,6 +41,7 @@ export const TrainerSidebar = ({ isOpen, setIsOpen }) => {
         { name: 'My Batches',      path: '/trainer/batches',       icon: Users },
         { name: 'Content Manager', path: '/trainer/content-manager', icon: FolderOpen },
         { name: 'Student Work',    path: '/trainer/submissions',   icon: ClipboardCheck, badgeKey: 'ungradedSubmissions' },
+        { name: 'Chat',            path: '/trainer/chat',          icon: MessageCircle },
         { name: 'My Calendar',     path: '/trainer/calendar',      icon: Calendar },
         { name: 'My Tasks',        path: '/trainer/tasks',         icon: CheckSquare,   badgeKey: 'pendingTasks' },
         { name: 'Announcements',   path: '/trainer/announcements', icon: Megaphone },
