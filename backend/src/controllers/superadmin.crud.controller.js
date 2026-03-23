@@ -2129,7 +2129,7 @@ exports.getFeedbackReports = async (req, res) => {
                 u.first_name, u.last_name, u.email,
                 b.batch_name,
                 c.id AS course_id, c.name AS course_name,
-                m.id AS module_id_ref, m.name AS module_name, m.order_index AS module_order,
+                m.id AS module_id_ref, m.name AS module_name, m.sequence_order AS module_order,
                 ff.title AS form_title, ff.form_json
             FROM StudentFeedbackResponses sfr
             JOIN Users u ON sfr.student_id = u.id
@@ -2138,7 +2138,7 @@ exports.getFeedbackReports = async (req, res) => {
             LEFT JOIN FeedbackForms ff ON sfr.form_id = ff.id
             LEFT JOIN Modules m ON ff.module_id = m.id
             ${where}
-            ORDER BY b.batch_name, c.name, m.order_index, sfr.submitted_at DESC
+            ORDER BY b.batch_name, c.name, m.sequence_order, sfr.submitted_at DESC
         `, params);
 
         // Batches that have at least one response (for filter dropdown)
