@@ -26,7 +26,25 @@
       "Bash(find \"C:\\\\Users\\\\ASUS\\\\Downloads\\\\Anti-portal\\\\backend\\\\database\" -type f -name \"*.sql\" 2>/dev/null | head -20)",
       "Bash(cd \"C:\\\\Users\\\\ASUS\\\\Downloads\\\\Anti-portal\\\\backend\" && timeout 90 bash -c 'until node test_render.js 2>&1 | grep -q \"Login OK\"; do echo \"Waiting for Render redeploy...\"; sleep 10; done' && node test_render.js 2>&1)",
       "Read(//c/Users/ASUS/**)",
-      "Read(//c/Users/ASUS/OneDrive/Desktop/**)"
+      "Read(//c/Users/ASUS/OneDrive/Desktop/**)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where npm:*)",
+      "Bash(findstr /s /i /n chat C:UsersASUSDownloadsAnti-portal.claudeworktreesquizzical-rhodesfrontendsrc*.jsx C:UsersASUSDownloadsAnti-portal.claudeworktreesquizzical-rhodesfrontendsrc***.jsx)",
+      "Bash(Get-ChildItem -Recurse \"C:\\\\Users\\\\ASUS\\\\Downloads\\\\Anti-portal\\\\.claude\\\\worktrees\\\\quizzical-rhodes\\\\frontend\\\\src\" -Include \"*.jsx\",\"*.js\")",
+      "Bash(Select-String -Pattern \"chat\" -CaseSensitive:$false)",
+      "Bash(Select-Object -First 20)",
+      "Bash(curl -s -X POST https://edutech-backend-9gff.onrender.com/api/auth/login -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"admin@test.com\"\",\"\"password\"\":\"\"963\"\"}\")",
+      "Bash(curl -s -X POST https://edutech-backend-9gff.onrender.com/api/auth/login -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"admin@test.com\"\",\"\"password\"\":\"\"password123\"\"}\")",
+      "Bash(curl -s https://edutech-backend-9gff.onrender.com/api/auth/login 2)",
+      "Bash(1 curl:*)",
+      "Bash(curl -s https://edutech-backend-9gff.onrender.com/health)",
+      "Bash(curl -s https://edutech-backend-9gff.onrender.com/api/health)",
+      "Bash(curl -s -X POST https://edutech-backend-9gff.onrender.com/api/auth/login -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"v7037vinsup@gmail.com\"\",\"\"password\"\":\"\"963\"\"}\")",
+      "Bash(curl -s -X POST https://edutech-backend-9gff.onrender.com/api/auth/login -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"v7037vinsup@gmail.com\"\",\"\"password\"\":\"\"963963\"\"}\")",
+      "Bash(curl -s -X POST https://edutech-backend-9gff.onrender.com/api/auth/login -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"report@test.com\"\",\"\"password\"\":\"\"963\"\"}\")",
+      "Bash(curl -s -X POST https://edutech-backend-9gff.onrender.com/api/auth/login -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"admin@test.com\"\",\"\"password\"\":\"\"963.\"\"}\")",
+      "Bash(\"C:\\\\Users\\\\ASUS\\\\Downloads\\\\Anti-portal\\\\.claude\\\\worktrees\\\\quizzical-rhodes\\\\backend\\\\src\\\\controllers\\\\superadmin.crud.controller.js\")",
+      "Bash(if not:*)"
     ]
   }
 }

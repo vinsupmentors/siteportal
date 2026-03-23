@@ -158,7 +158,7 @@ exports.getStudentCalendar = async (req, res) => {
 
         // 4. Submitted worksheets (to show submission events)
         const [submissions] = await pool.query(`
-            SELECT s.day_id, s.created_at, s.submission_type
+            SELECT s.day_id, s.submission_type
             FROM Submissions s
             WHERE s.student_id = ? AND s.submission_type = 'worksheet' AND s.day_id IS NOT NULL
         `, [studentId]);
@@ -890,19 +890,39 @@ exports.getReleasedFeedback = async (req, res) => {
     try {
         const studentId = req.user.id;
         const [released] = await pool.query(`
-            SELECT ff.*, bfs.batch_id, bfs.module_id 
-            FROM BatchFeedbackStatus bfs
-            JOIN FeedbackForms ff ON bfs.form_id = ff.id
-            JOIN BatchStudents bs ON bfs.batch_id = bs.batch_id
-            JOIN BatchUnlocks bu ON bfs.batch_id = bu.batch_id AND bfs.module_id = bu.module_id
-            WHERE bs.student_id = ? AND bfs.is_released = TRUE AND bu.is_feedback_released = TRUE
-            AND NOT EXISTS (
-                SELECT 1 FROM StudentFeedbackResponses sfr 
-                WHERE sfr.student_id = ? AND sfr.form_id = ff.id AND sfr.batch_id = bfs.batch_id
-            )
+            SELECT ff.id, ff.title, ff.form_json, br.id as release_id, br.batch_id, br.module_id, br.due_date,
+                   CONCAT(u.first_name, ' ', u.last_name) as trainer_name,
+                   EXISTS(
+                       SELECT 1 FROM StudentFeedbackResponses sfr
+                       WHERE sfr.student_id = ? AND sfr.form_id = ff.id AND sfr.batch_id = br.batch_id
+                   ) as already_submitted
+            FROM BatchReleases br
+            JOIN FeedbackForms ff ON br.entity_id = ff.id
+            JOIN BatchStudents bs ON br.batch_id = bs.batch_id AND bs.student_id = ?
+            JOIN Batches b ON br.batch_id = b.id
+            LEFT JOIN Users u ON b.trainer_id = u.id
+            WHERE br.release_type = 'module_feedback'
         `, [studentId, studentId]);
 
-        res.json({ feedbackForms: released });
+        // Parse form_json and map fields → questions for frontend
+        const forms = released.map(row => {
+            const formJson = typeof row.form_json === 'string'
+                ? JSON.parse(row.form_json)
+                : (row.form_json || {});
+            return {
+                id: row.id,
+                title: row.title,
+                release_id: row.release_id,
+                batch_id: row.batch_id,
+                module_id: row.module_id,
+                due_date: row.due_date,
+                trainer_name: row.trainer_name,
+                already_submitted: !!row.already_submitted,
+                questions: formJson.fields || [],
+            };
+        });
+
+        res.json(forms);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching released feedback', error: error.message });
     }
@@ -911,15 +931,21 @@ exports.getReleasedFeedback = async (req, res) => {
 exports.submitFeedback = async (req, res) => {
     try {
         const studentId = req.user.id;
-        const { batch_id, module_id, form_id, response_json } = req.body;
+        const { feedback_form_id, release_id, responses } = req.body;
+
+        // Resolve batch_id and module_id from the BatchReleases record
+        const [[release]] = await pool.query(
+            'SELECT batch_id, module_id FROM BatchReleases WHERE id = ?', [release_id]
+        );
+        if (!release) return res.status(404).json({ message: 'Release not found' });
 
         await pool.query(
             'INSERT INTO StudentFeedbackResponses (student_id, batch_id, module_id, form_id, response_json) VALUES (?, ?, ?, ?, ?)',
-            [studentId, batch_id, module_id, form_id, JSON.stringify(response_json)]
+            [studentId, release.batch_id, release.module_id, feedback_form_id, JSON.stringify(responses)]
         );
 
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
-            [studentId, 'FEEDBACK_SUBMITTED', 'StudentFeedbackResponses', form_id]);
+            [studentId, 'FEEDBACK_SUBMITTED', 'StudentFeedbackResponses', feedback_form_id]);
 
         res.status(201).json({ message: 'Feedback submitted successfully' });
     } catch (error) {

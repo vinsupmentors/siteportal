@@ -87,12 +87,18 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
             ]
         },
         {
+            label: 'IOP Program',
+            links: [
+                { name: 'IOP Groups',    path: '/super-admin/iop-groups',    icon: Layers },
+                { name: 'IOP Dashboard', path: '/super-admin/iop-dashboard', icon: Target },
+                { name: 'IOP Students',  path: '/super-admin/iop-students',  icon: Rocket },
+            ]
+        },
+        {
             label: 'Placements',
             links: [
                 { name: 'Job Requests',  path: '/super-admin/job-requests',  icon: Send,      badgeKey: 'pendingJobRequests' },
                 { name: 'Job Openings',  path: '/super-admin/jobs',          icon: Briefcase },
-                { name: 'IOP Dashboard', path: '/super-admin/iop-dashboard', icon: Target },
-                { name: 'IOP Students',  path: '/super-admin/iop-students',  icon: Rocket },
             ]
         },
         {

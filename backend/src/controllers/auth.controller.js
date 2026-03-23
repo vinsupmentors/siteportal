@@ -32,7 +32,8 @@ exports.login = async (req, res) => {
             2: '/admin/dashboard',
             3: '/trainer/dashboard',
             4: '/student/dashboard',
-            5: '/recruiter/dashboard'
+            5: '/recruiter/dashboard',
+            6: '/iop-trainer/dashboard'
         };
 
         res.status(200).json({

@@ -228,7 +228,7 @@ export const AdminDashboard = () => {
                                         background: 'var(--bg-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 700, flexShrink: 0
                                     }}>
-                                        {a.first_name[0]}
+                                        {(a.first_name || '?')[0]}
                                     </div>
                                     <div style={{ flex: 1 }}>
                                         <p style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>

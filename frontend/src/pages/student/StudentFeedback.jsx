@@ -20,7 +20,10 @@ export const StudentFeedback = () => {
             try {
                 const res = await studentAPI.getReleasedFeedback();
                 const d = res.data;
-                const list = Array.isArray(d) ? d : Array.isArray(d?.forms) ? d.forms : Array.isArray(d?.data) ? d.data : [];
+                const list = Array.isArray(d) ? d
+                    : Array.isArray(d?.feedbackForms) ? d.feedbackForms
+                    : Array.isArray(d?.forms) ? d.forms
+                    : Array.isArray(d?.data) ? d.data : [];
                 setForms(list);
             }
             catch { } finally { setLoading(false); }

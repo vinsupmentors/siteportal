@@ -175,6 +175,14 @@ deleteCapstoneFile: (fileId) => api.delete(`/super-admin/capstone-files/${fileId
 
     // Progress Report Emails
     sendProgressEmails: (data) => api.post('/super-admin/reports/send-progress-emails', data),
+
+    // IOP Groups Management
+    getIOPTrainers: () => api.get('/super-admin/iop-trainers'),
+    createIOPTrainer: (data) => api.post('/super-admin/iop-trainers', data),
+    getIOPGroups: () => api.get('/super-admin/iop-groups'),
+    createIOPGroup: (data) => api.post('/super-admin/iop-groups', data),
+    updateIOPGroup: (id, data) => api.put(`/super-admin/iop-groups/${id}`, data),
+    deleteIOPGroup: (id) => api.delete(`/super-admin/iop-groups/${id}`),
 };
 
 // Auth API (for password change, available to all logged-in users)
@@ -375,6 +383,17 @@ export const jobAPI = {
 export const userAPI = {
     getProfile: () => api.get('/user/profile'),
     updateProfile: (data) => api.put('/user/profile', data)
+};
+
+// IOP Trainer API (dedicated IOP trainer portal)
+export const iopTrainerAPI = {
+    getDashboard: () => api.get('/iop-trainer/dashboard'),
+    getMyGroups: () => api.get('/iop-trainer/groups'),
+    getGroupCurriculum: (groupId) => api.get(`/iop-trainer/groups/${groupId}/curriculum`),
+    unlockGroupModule: (groupId, data) => api.post(`/iop-trainer/groups/${groupId}/unlock`, data),
+    getGroupStudents: (groupId) => api.get(`/iop-trainer/groups/${groupId}/students`),
+    getGroupAttendance: (groupId, date) => api.get(`/iop-trainer/groups/${groupId}/attendance`, { params: { date } }),
+    markGroupAttendance: (groupId, data) => api.post(`/iop-trainer/groups/${groupId}/attendance`, data),
 };
 
 // Recruiter API (Placement Officer)

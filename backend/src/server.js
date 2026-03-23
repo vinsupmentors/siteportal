@@ -52,6 +52,7 @@ const userRoutes = require('./routes/user.routes');
 const recruiterRoutes = require('./routes/recruiter.routes');
 const chatRoutes = require('./routes/chat.routes');
 const forumRoutes = require('./routes/forum.routes');
+const iopTrainerRoutes = require('./routes/iop_trainer.routes');
 const path = require('path');
 
 // Serve uploaded content files statically
@@ -92,6 +93,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/recruiter', recruiterRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/forum', forumRoutes);
+app.use('/api/iop-trainer', iopTrainerRoutes);
 
 
 // ==========================================
