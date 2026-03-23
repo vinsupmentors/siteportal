@@ -6,6 +6,7 @@ import { SuperAdminSidebar } from './SuperAdminSidebar';
 import { TrainerSidebar } from './TrainerSidebar';
 import { AdminSidebar } from './AdminSidebar';
 import { RecruiterSidebar } from './RecruiterSidebar';
+import { IOPTrainerSidebar } from './IOPTrainerSidebar';
 import { AnnouncementPopup } from '../shared/AnnouncementPopup';
 import { userAPI } from '../../services/api';
 
@@ -49,6 +50,7 @@ export const AppLayout = ({ role }) => {
             {role === 'admin' && <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />}
             {role === 'trainer' && <TrainerSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />}
             {role === 'recruiter' && <RecruiterSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />}
+            {role === 'ioptrainer' && <IOPTrainerSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />}
 
             <main className="main-content">
                 <header className="top-header">

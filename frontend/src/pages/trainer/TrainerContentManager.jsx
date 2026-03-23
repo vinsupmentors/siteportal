@@ -13,12 +13,19 @@ import {
 } from 'lucide-react';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-const fmtDate = (d) =>
-    d ? new Date(d + 'T00:00:00').toLocaleDateString('en-IN', {
+const fmtDate = (d) => {
+    if (!d) return null;
+    const datePart = String(d).split('T')[0].split(' ')[0]; // strip time if present
+    return new Date(datePart + 'T00:00:00').toLocaleDateString('en-IN', {
         day: 'numeric', month: 'short', year: 'numeric',
-    }) : null;
+    });
+};
 
-const isOverdue = (d) => d && new Date(d) < new Date();
+const isOverdue = (d) => {
+    if (!d) return false;
+    const datePart = String(d).split('T')[0].split(' ')[0];
+    return new Date(datePart + 'T23:59:59') < new Date();
+};
 
 // ─── Resource type config ──────────────────────────────────────────────────────
 const RESOURCE_CONFIG = {

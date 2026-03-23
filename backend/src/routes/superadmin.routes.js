@@ -199,4 +199,12 @@ router.delete('/iop-module-files/:fileId',  requireRole([1]), iopCtrl.deleteIOPM
 // Progress Report Emails (SA sends personalized emails to active students)
 router.post('/reports/send-progress-emails', requireRole([1, 2]), crudController.sendProgressEmails);
 
+// ── IOP Groups (SA creates/manages merged batch groups for IOP trainer) ────────
+router.get('/iop-trainers', requireRole([1]), crudController.getIOPTrainers);
+router.post('/iop-trainers', requireRole([1]), crudController.createIOPTrainer);
+router.get('/iop-groups', requireRole([1, 2]), crudController.getIOPGroups);
+router.post('/iop-groups', requireRole([1]), crudController.createIOPGroup);
+router.put('/iop-groups/:id', requireRole([1]), crudController.updateIOPGroup);
+router.delete('/iop-groups/:id', requireRole([1]), crudController.deleteIOPGroup);
+
 module.exports = router;

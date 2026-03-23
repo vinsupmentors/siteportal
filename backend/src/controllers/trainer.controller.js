@@ -514,6 +514,14 @@ exports.getBatchCurriculum = async (req, res) => {
             projectFiles = pFiles;
         }
 
+        // Get Feedback Forms linked to these modules
+        const [feedbackForms] = await pool.query(
+            `SELECT id, module_id, title FROM FeedbackForms WHERE module_id IN (${placeholders})`,
+            moduleIds
+        );
+        const feedbackFormMap = {};
+        feedbackForms.forEach(f => { feedbackFormMap[f.module_id] = f; });
+
         const modulesWithState = modules.map(mod => {
             const modDays = days.filter(d => d.module_id === mod.id);
             const totalDays = modDays.length;
@@ -535,6 +543,8 @@ exports.getBatchCurriculum = async (req, res) => {
                 unlocked_up_to_day: isUnlocked ? unlockedUpToDay : 0,
                 projects: modProjects,
                 files: modFiles,
+                // Feedback form for this module (if any)
+                feedback: feedbackFormMap[mod.id] || null,
                 // Granular flags
                 is_projects_released: !!(unlockData?.is_projects_released),
                 is_test_released: !!(unlockData?.is_test_released),

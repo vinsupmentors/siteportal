@@ -68,6 +68,13 @@ import RecruiterDashboard from './pages/recruiter/RecruiterDashboard';
 import RecruiterJobs from './pages/recruiter/RecruiterJobs';
 import RecruiterStudents from './pages/recruiter/RecruiterStudents';
 
+// IOP Trainer Pages
+import { IOPTrainerDashboard } from './pages/iop-trainer/IOPTrainerDashboard';
+import { IOPTrainerGroups } from './pages/iop-trainer/IOPTrainerGroups';
+
+// Super Admin — IOP Groups Manager
+import SAIOPGroups from './pages/superadmin/SAIOPGroups';
+
 const ProtectedRoute = ({ children, requiredRole }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -107,6 +114,7 @@ const AppRoutes = () => {
         <Route path="trainer-leaves" element={<SATrainerLeaves />} />
         <Route path="job-requests" element={<SAJobRequests />} />
         <Route path="jobs" element={<RecruiterJobs />} />
+        <Route path="iop-groups" element={<SAIOPGroups />} />
         <Route path="iop-dashboard" element={<RecruiterDashboard />} />
         <Route path="iop-students" element={<RecruiterStudents />} />
         <Route path="settings" element={<Settings />} />
@@ -173,6 +181,17 @@ const AppRoutes = () => {
         <Route path="submissions" element={<TrainerSubmissions />} />
         <Route path="student-profile/:batchId/:studentId" element={<TrainerStudentProfile />} />
         <Route path="leaves" element={<TrainerLeaves />} />
+        <Route path="settings" element={<Settings />} />
+      </Route>
+
+      {/* IOP Trainer Portal */}
+      <Route path="/iop-trainer" element={
+        <ProtectedRoute requiredRole="ioptrainer">
+          <AppLayout role="ioptrainer" />
+        </ProtectedRoute>
+      }>
+        <Route path="dashboard" element={<IOPTrainerDashboard />} />
+        <Route path="groups" element={<IOPTrainerGroups />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 

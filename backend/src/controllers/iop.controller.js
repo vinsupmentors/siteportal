@@ -331,6 +331,7 @@ exports.deleteIOPModuleFile = async (req, res) => {
 };
 
 // ── Student: Get IOP curriculum ───────────────────────────────────────────────
+// Checks IOPGroupUnlocks (new group-based system) first, falls back to IOPBatchUnlocks (legacy)
 
 exports.getStudentIOPCurriculum = async (req, res) => {
     try {
@@ -356,6 +357,15 @@ exports.getStudentIOPCurriculum = async (req, res) => {
 
         if (!bs) return res.json({ modules: [] });
 
+        // Check if the student's batch belongs to an IOP Group
+        const [[groupRow]] = await pool.query(`
+            SELECT igb.iop_group_id
+            FROM IOPGroupBatches igb
+            JOIN IOPGroups g ON igb.iop_group_id = g.id
+            WHERE igb.batch_id = ?
+            LIMIT 1
+        `, [bs.batch_id]);
+
         // Fetch all IOP modules and topics
         const [modules] = await pool.query(
             'SELECT * FROM IOPModules ORDER BY type, sequence_order'
@@ -364,11 +374,19 @@ exports.getStudentIOPCurriculum = async (req, res) => {
             'SELECT * FROM IOPTopics ORDER BY module_id, day_number'
         );
 
-        // Get unlock state for this batch
-        const [unlocks] = await pool.query(
-            'SELECT module_id, unlocked_up_to_day FROM IOPBatchUnlocks WHERE batch_id = ?',
-            [bs.batch_id]
-        );
+        // Build unlock map from IOPGroupUnlocks (new) or IOPBatchUnlocks (legacy)
+        let unlocks = [];
+        if (groupRow) {
+            [unlocks] = await pool.query(
+                'SELECT module_id, unlocked_up_to_day FROM IOPGroupUnlocks WHERE iop_group_id = ?',
+                [groupRow.iop_group_id]
+            );
+        } else {
+            [unlocks] = await pool.query(
+                'SELECT module_id, unlocked_up_to_day FROM IOPBatchUnlocks WHERE batch_id = ?',
+                [bs.batch_id]
+            );
+        }
         const unlockMap = {};
         unlocks.forEach(u => { unlockMap[u.module_id] = u.unlocked_up_to_day; });
 

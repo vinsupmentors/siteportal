@@ -406,6 +406,67 @@ async function runMigrations() {
         // IOP trainer assigned per batch (separate from the technical trainer_id)
         await addColumnIfNotExists('Batches', 'iop_trainer_id INT NULL');
 
+        // ── IOP Groups (merged batches for IOP sessions) ─────────────────────
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS IOPGroups (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                iop_trainer_id INT NOT NULL,
+                start_date DATE NULL,
+                end_date DATE NULL,
+                timing VARCHAR(100) NULL,
+                status ENUM('upcoming','active','completed') DEFAULT 'upcoming',
+                created_by INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (iop_trainer_id) REFERENCES Users(id) ON DELETE CASCADE,
+                FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE SET NULL
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS IOPGroupBatches (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                iop_group_id INT NOT NULL,
+                batch_id INT NOT NULL,
+                UNIQUE KEY uq_iop_group_batch (iop_group_id, batch_id),
+                FOREIGN KEY (iop_group_id) REFERENCES IOPGroups(id) ON DELETE CASCADE,
+                FOREIGN KEY (batch_id) REFERENCES Batches(id) ON DELETE CASCADE
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS IOPGroupUnlocks (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                iop_group_id INT NOT NULL,
+                module_id INT NOT NULL,
+                unlocked_up_to_day INT DEFAULT 0,
+                unlocked_by INT,
+                unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_iop_group_module (iop_group_id, module_id),
+                FOREIGN KEY (iop_group_id) REFERENCES IOPGroups(id) ON DELETE CASCADE,
+                FOREIGN KEY (module_id) REFERENCES IOPModules(id) ON DELETE CASCADE
+            )
+        `);
+
+        // ── IOPAttendance (IOP group attendance, separate from batch attendance) ───
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS IOPAttendance (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                iop_group_id INT NOT NULL,
+                student_id INT NOT NULL,
+                batch_id INT NOT NULL,
+                attendance_date DATE NOT NULL,
+                status ENUM('present','absent','late') DEFAULT 'present',
+                notes TEXT,
+                marked_by INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_iop_attend (iop_group_id, student_id, attendance_date),
+                FOREIGN KEY (iop_group_id) REFERENCES IOPGroups(id) ON DELETE CASCADE,
+                FOREIGN KEY (student_id) REFERENCES Users(id) ON DELETE CASCADE,
+                FOREIGN KEY (batch_id) REFERENCES Batches(id) ON DELETE CASCADE
+            )
+        `);
+
         // ── IOPModuleFiles (3 files per module: concepts, sample_problems, worksheet) ──
         await pool.query(`
             CREATE TABLE IF NOT EXISTS IOPModuleFiles (

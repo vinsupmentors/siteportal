@@ -13,7 +13,7 @@ exports.getDashboardStats = async (req, res) => {
 
         // 1. Core Entities
         const [activeStudents] = await pool.query(`SELECT COUNT(*) as count FROM Users WHERE role_id = 4 AND status = 'active'`);
-        const [totalTrainers] = await pool.query('SELECT COUNT(*) as count FROM Users WHERE role_id = 3');
+        const [totalTrainers] = await pool.query(`SELECT COUNT(*) as count FROM Users WHERE role_id = 3 AND status = 'active'`);
         const [activeCourses] = await pool.query('SELECT COUNT(*) as count FROM Courses');
         const [activeBatches] = await pool.query(`SELECT COUNT(*) as count FROM Batches WHERE status = 'active'`);
         const [upcomingBatches] = await pool.query(`SELECT COUNT(*) as count FROM Batches WHERE status = 'upcoming'`);
@@ -35,6 +35,8 @@ exports.getDashboardStats = async (req, res) => {
         const [globalPendingTasks] = await pool.query(`SELECT COUNT(*) as count FROM TrainerTasks WHERE status IN ('pending', 'review')`);
         const [globalOverdueTasks] = await pool.query(`SELECT COUNT(*) as count FROM TrainerTasks WHERE status NOT IN ('completed') AND due_date < ?`, [todayStr]);
         const [totalPortfolios] = await pool.query(`SELECT COUNT(*) as count FROM PortfolioRequests WHERE status = 'approved'`);
+        const [pendingPortfolios] = await pool.query(`SELECT COUNT(*) as count FROM PortfolioRequests WHERE status = 'pending'`);
+        const [zeroProjectStudents] = await pool.query(`SELECT COUNT(*) as count FROM Users u WHERE u.role_id = 4 AND u.status = 'active' AND (SELECT COUNT(*) FROM Submissions s WHERE s.student_id = u.id AND s.submission_type = 'module_project') = 0`);
 
         // 4. Quality & Engagement
         const [avgTestScore] = await pool.query(`SELECT AVG(marks) as avg FROM Submissions WHERE submission_type = 'module_test'`);
@@ -93,7 +95,7 @@ exports.getDashboardStats = async (req, res) => {
             },
             pipeline,
             actionCenter: {
-                pendingPortfolios: unresolvedIssues[0].count, // Approximation if no direct column
+                pendingPortfolios: pendingPortfolios[0].count,
                 reviewTasks: reviewTasks[0].count
             },
             health: {
@@ -102,7 +104,7 @@ exports.getDashboardStats = async (req, res) => {
                 latestAnnouncement: latestAnnouncement[0] || null
             },
             deliverables: {
-                zeroProjects: 0, // Placeholder
+                zeroProjects: zeroProjectStudents[0].count,
                 readyPortfolios: totalPortfolios[0].count
             },
             attendance: {
@@ -2299,6 +2301,136 @@ exports.sendProgressEmails = async (req, res) => {
     }
 }
 
+// ==========================================
+// IOP GROUPS MANAGEMENT (Super Admin)
+// ==========================================
+
+exports.getIOPTrainers = async (req, res) => {
+    try {
+        const [trainers] = await pool.query(`
+            SELECT id, first_name, last_name, email
+            FROM Users WHERE role_id = 6 AND status = 'active'
+            ORDER BY first_name
+        `);
+        res.json({ trainers });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching IOP trainers', error: error.message });
+    }
+};
+
+exports.createIOPTrainer = async (req, res) => {
+    try {
+        const { first_name, last_name, email, password, phone } = req.body;
+        if (!first_name || !last_name || !email || !password) {
+            return res.status(400).json({ message: 'first_name, last_name, email, password are required' });
+        }
+        const [exists] = await pool.query('SELECT id FROM Users WHERE email = ?', [email]);
+        if (exists.length > 0) return res.status(409).json({ message: 'Email already registered' });
+
+        const [result] = await pool.query(
+            'INSERT INTO Users (first_name, last_name, email, password, phone, role_id, status) VALUES (?, ?, ?, ?, ?, 6, ?)',
+            [first_name, last_name, email, password, phone || null, 'active']
+        );
+        res.json({ message: 'IOP Trainer created', id: result.insertId });
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating IOP trainer', error: error.message });
+    }
+};
+
+exports.getIOPGroups = async (req, res) => {
+    try {
+        const [groups] = await pool.query(`
+            SELECT g.*,
+                   CONCAT(u.first_name, ' ', u.last_name) as trainer_name,
+                   (SELECT COUNT(DISTINCT bs.student_id)
+                    FROM IOPGroupBatches igb
+                    JOIN BatchStudents bs ON igb.batch_id = bs.batch_id
+                    WHERE igb.iop_group_id = g.id) as student_count,
+                   (SELECT COUNT(*) FROM IOPGroupBatches WHERE iop_group_id = g.id) as batch_count
+            FROM IOPGroups g
+            JOIN Users u ON g.iop_trainer_id = u.id
+            ORDER BY g.created_at DESC
+        `);
+
+        for (const group of groups) {
+            const [batches] = await pool.query(`
+                SELECT b.id, b.batch_name, c.name as course_name
+                FROM IOPGroupBatches igb
+                JOIN Batches b ON igb.batch_id = b.id
+                JOIN Courses c ON b.course_id = c.id
+                WHERE igb.iop_group_id = ?
+            `, [group.id]);
+            group.batches = batches;
+        }
+
+        res.json({ groups });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching IOP groups', error: error.message });
+    }
+};
+
+exports.createIOPGroup = async (req, res) => {
+    try {
+        const { name, iop_trainer_id, batch_ids, start_date, end_date, timing } = req.body;
+        if (!name || !iop_trainer_id || !Array.isArray(batch_ids) || batch_ids.length === 0) {
+            return res.status(400).json({ message: 'name, iop_trainer_id, and batch_ids[] are required' });
+        }
+
+        const [result] = await pool.query(
+            'INSERT INTO IOPGroups (name, iop_trainer_id, start_date, end_date, timing, created_by) VALUES (?, ?, ?, ?, ?, ?)',
+            [name, iop_trainer_id, start_date || null, end_date || null, timing || null, req.user.id]
+        );
+        const groupId = result.insertId;
+
+        for (const batchId of batch_ids) {
+            await pool.query(
+                'INSERT IGNORE INTO IOPGroupBatches (iop_group_id, batch_id) VALUES (?, ?)',
+                [groupId, batchId]
+            );
+        }
+
+        res.json({ message: 'IOP Group created', id: groupId });
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating IOP group', error: error.message });
+    }
+};
+
+exports.updateIOPGroup = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, iop_trainer_id, batch_ids, start_date, end_date, timing, status } = req.body;
+
+        await pool.query(
+            'UPDATE IOPGroups SET name = ?, iop_trainer_id = ?, start_date = ?, end_date = ?, timing = ?, status = ? WHERE id = ?',
+            [name, iop_trainer_id, start_date || null, end_date || null, timing || null, status || 'upcoming', id]
+        );
+
+        if (Array.isArray(batch_ids)) {
+            await pool.query('DELETE FROM IOPGroupBatches WHERE iop_group_id = ?', [id]);
+            for (const batchId of batch_ids) {
+                await pool.query(
+                    'INSERT IGNORE INTO IOPGroupBatches (iop_group_id, batch_id) VALUES (?, ?)',
+                    [id, batchId]
+                );
+            }
+        }
+
+        res.json({ message: 'IOP Group updated' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating IOP group', error: error.message });
+    }
+};
+
+exports.deleteIOPGroup = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM IOPGroups WHERE id = ?', [id]);
+        res.json({ message: 'IOP Group deleted' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting IOP group', error: error.message });
+    }
+};
+
 // ── Sidebar notification counts ───────────────────────────────────────────────
 exports.getNotificationCounts = async (req, res) => {
     try {
@@ -2319,3 +2451,4 @@ exports.getNotificationCounts = async (req, res) => {
         res.status(500).json({ message: 'Error fetching notification counts', error: error.message });
     }
 };
+

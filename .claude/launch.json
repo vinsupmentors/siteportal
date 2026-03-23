@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "Frontend (Vite / React)",
-      "runtimeExecutable": "C:\\Users\\ASUS\\Downloads\\Anti-portal\\.claude\\worktrees\\sharp-boyd\\frontend\\node_modules\\.bin\\vite.cmd",
-      "runtimeArgs": [],
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": ["/c", "npm", "run", "dev"],
       "cwd": "frontend",
       "port": 5173
     },
