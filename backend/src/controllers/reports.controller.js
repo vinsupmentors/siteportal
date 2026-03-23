@@ -55,7 +55,7 @@ exports.getCertificateReport = async (req, res) => {
                 c.id AS course_id, c.name AS course_name,
                 u.id AS student_id,
                 CONCAT(u.first_name, ' ', u.last_name) AS student_name,
-                u.email, bs.roll_number, u.student_status
+                u.email, u.roll_number, u.student_status
             FROM Batches b
             JOIN Courses c ON b.course_id = c.id
             JOIN BatchStudents bs ON b.id = bs.batch_id
@@ -295,7 +295,7 @@ exports.getStudentWorkReport = async (req, res) => {
                    c.id AS course_id, c.name AS course_name,
                    u.id AS student_id,
                    CONCAT(u.first_name, ' ', u.last_name) AS student_name,
-                   u.email, bs.roll_number
+                   u.email, u.roll_number
             FROM Batches b
             JOIN Courses c ON b.course_id = c.id
             JOIN BatchStudents bs ON b.id = bs.batch_id
