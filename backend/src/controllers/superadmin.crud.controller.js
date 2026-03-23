@@ -2128,22 +2128,25 @@ exports.getFeedbackReports = async (req, res) => {
                 sfr.response_json, sfr.submitted_at,
                 u.first_name, u.last_name, u.email,
                 b.batch_name,
-                m.name AS module_name,
+                c.id AS course_id, c.name AS course_name,
+                m.id AS module_id_ref, m.name AS module_name, m.order_index AS module_order,
                 ff.title AS form_title, ff.form_json
             FROM StudentFeedbackResponses sfr
             JOIN Users u ON sfr.student_id = u.id
             JOIN Batches b ON sfr.batch_id = b.id
-            LEFT JOIN Modules m ON sfr.module_id = m.id
-            JOIN FeedbackForms ff ON sfr.form_id = ff.id
+            LEFT JOIN Courses c ON b.course_id = c.id
+            LEFT JOIN FeedbackForms ff ON sfr.form_id = ff.id
+            LEFT JOIN Modules m ON ff.module_id = m.id
             ${where}
-            ORDER BY sfr.submitted_at DESC
+            ORDER BY b.batch_name, c.name, m.order_index, sfr.submitted_at DESC
         `, params);
 
         // Batches that have at least one response (for filter dropdown)
         const [batches] = await pool.query(`
-            SELECT DISTINCT b.id, b.batch_name
+            SELECT DISTINCT b.id, b.batch_name, c.name AS course_name
             FROM StudentFeedbackResponses sfr
             JOIN Batches b ON sfr.batch_id = b.id
+            LEFT JOIN Courses c ON b.course_id = c.id
             ORDER BY b.batch_name
         `);
 
