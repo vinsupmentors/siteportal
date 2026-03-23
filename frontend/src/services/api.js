@@ -176,6 +176,9 @@ deleteCapstoneFile: (fileId) => api.delete(`/super-admin/capstone-files/${fileId
     // Progress Report Emails
     sendProgressEmails: (data) => api.post('/super-admin/reports/send-progress-emails', data),
 
+    // Manual Absence Email Trigger
+    triggerAbsenceEmails: () => api.post('/super-admin/trigger-absence-emails'),
+
     // IOP Groups Management
     getIOPTrainers: () => api.get('/super-admin/iop-trainers'),
     createIOPTrainer: (data) => api.post('/super-admin/iop-trainers', data),

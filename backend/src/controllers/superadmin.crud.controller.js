@@ -1608,11 +1608,11 @@ exports.triggerAbsenceEmails = async () => {
             HAVING gaps >= 2
         `);
 
-        // Fetch all active admin + superadmin emails (replaces hardcoded address)
-        const [mgmtRows] = await pool.query(
-            "SELECT email FROM Users WHERE role_id IN (1, 2) AND status = 'active'"
-        );
-        const managementEmails = mgmtRows.map(r => r.email);
+        // Fixed management email recipients (test: 2 addresses — add others after confirming delivery)
+        const managementEmails = [
+            'v7032vinsup@gmail.com',
+            'productionvinsup@gmail.com',
+        ];
 
         let count = 0;
         for (const t of targets) {
@@ -1641,6 +1641,20 @@ exports.triggerAbsenceEmails = async () => {
     } catch (err) {
         console.error('Absence Email Trigger Error:', err.message);
         return { success: false, count: 0 };
+    }
+};
+
+// HTTP wrapper so SA/Admin can trigger absence emails on-demand from the portal
+exports.triggerAbsenceEmailsHTTP = async (req, res) => {
+    try {
+        const result = await exports.triggerAbsenceEmails();
+        if (result.success) {
+            res.json({ success: true, message: `Absence alert emails sent to ${result.count} student(s) and management notified for 3+ day absences.`, count: result.count });
+        } else {
+            res.status(500).json({ success: false, message: 'Failed to send absence emails. Check server logs.' });
+        }
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
 };
 

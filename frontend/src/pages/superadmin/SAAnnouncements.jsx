@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { superAdminAPI } from '../../services/api';
-import { Send, Megaphone, BarChart2, Users, CheckCircle, AlertCircle } from 'lucide-react';
+import { Send, Megaphone, BarChart2, Users, CheckCircle, AlertCircle, BellRing } from 'lucide-react';
 
 const tabStyle = (active) => ({
     padding: '8px 20px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600,
@@ -22,6 +22,10 @@ export const SAAnnouncements = () => {
     const [sending, setSending] = useState(false);
     const [batches, setBatches] = useState([]);
     const [selectedBatchId, setSelectedBatchId] = useState('');
+
+    // ── Absence alert state ──────────────────────────────────────────────────
+    const [triggeringAbsence, setTriggeringAbsence] = useState(false);
+    const [absenceResult, setAbsenceResult] = useState(null);
 
     // ── Progress emails state ────────────────────────────────────────────────
     const [emailTarget, setEmailTarget] = useState('all');
@@ -62,6 +66,17 @@ export const SAAnnouncements = () => {
         finally { setSending(false); }
     };
 
+    const handleTriggerAbsenceEmails = async () => {
+        setAbsenceResult(null);
+        setTriggeringAbsence(true);
+        try {
+            const res = await superAdminAPI.triggerAbsenceEmails();
+            setAbsenceResult({ success: true, message: res.data.message, count: res.data.count });
+        } catch (err) {
+            setAbsenceResult({ success: false, message: err.response?.data?.message || 'Failed to trigger absence emails' });
+        } finally { setTriggeringAbsence(false); }
+    };
+
     const handleSendProgressEmails = async () => {
         setEmailResult(null);
         setSendingEmail(true);
@@ -88,6 +103,9 @@ export const SAAnnouncements = () => {
                     </button>
                     <button style={tabStyle(activeTab === 'progress')} onClick={() => setActiveTab('progress')}>
                         <BarChart2 size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />Progress Reports
+                    </button>
+                    <button style={tabStyle(activeTab === 'absence')} onClick={() => setActiveTab('absence')}>
+                        <BellRing size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />Absence Alerts
                     </button>
                 </div>
             </div>
@@ -260,6 +278,64 @@ export const SAAnnouncements = () => {
                                         <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--primary)' }}>{step}</span>
                                     </div>
                                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>{text}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* ════════════════════════════════════════════════════════════════ */}
+            {/* TAB 3 — ABSENCE ALERTS                                          */}
+            {/* ════════════════════════════════════════════════════════════════ */}
+            {activeTab === 'absence' && (
+                <>
+                    <div className="glass-card">
+                        <h3 style={{ color: 'var(--text-accent)', fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <BellRing size={18} /> Manual Absence Alert Trigger
+                        </h3>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                            This runs the same job that fires automatically every day at 6:00 PM. Students with 2+ absences in the last 7 days receive a warning email. Students with 3+ consecutive absences also alert management.
+                        </p>
+
+                        <div style={{ padding: '16px', borderRadius: '8px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', marginBottom: '1.5rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                            <strong style={{ color: '#ef4444' }}>Who gets emailed:</strong>
+                            <ul style={{ margin: '8px 0 0', paddingLeft: '18px', lineHeight: 1.8 }}>
+                                <li><strong>2+ absences in last 7 days</strong> — student receives a yellow warning email</li>
+                                <li><strong>3+ consecutive absences</strong> — student gets a red critical alert + management notified at <code>v7032vinsup@gmail.com</code> &amp; <code>productionvinsup@gmail.com</code></li>
+                            </ul>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button onClick={handleTriggerAbsenceEmails} disabled={triggeringAbsence}
+                                style={{ padding: '10px 28px', borderRadius: '8px', cursor: triggeringAbsence ? 'not-allowed' : 'pointer', opacity: triggeringAbsence ? 0.6 : 1, background: '#ef4444', color: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.95rem' }}>
+                                <BellRing size={16} /> {triggeringAbsence ? 'Sending Alerts...' : 'Send Absence Alerts Now'}
+                            </button>
+                        </div>
+
+                        {absenceResult && (
+                            <div style={{ marginTop: '1rem', padding: '14px 16px', borderRadius: '8px', background: absenceResult.success ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${absenceResult.success ? '#10b981' : '#ef4444'}`, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {absenceResult.success
+                                    ? <CheckCircle size={18} color="#10b981" />
+                                    : <AlertCircle size={18} color="#ef4444" />}
+                                <span style={{ fontSize: '0.9rem', color: absenceResult.success ? '#10b981' : '#ef4444' }}>{absenceResult.message}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="glass-card">
+                        <h3 style={{ color: 'var(--text-accent)', fontSize: '1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Users size={18} /> Automatic Schedule
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {[
+                                { label: 'Daily at 6:00 PM', desc: 'Absence alerts run automatically every evening — no action needed.' },
+                                { label: 'Manual trigger above', desc: 'Use this button any time to send alerts immediately without waiting for the cron.' },
+                                { label: 'Management emails', desc: 'Only 3+ consecutive day absences alert management. 2-day warnings go to the student only.' },
+                            ].map(({ label, desc }) => (
+                                <div key={label} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', marginTop: '5px', flexShrink: 0 }} />
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}><strong style={{ color: 'var(--text-main)' }}>{label}:</strong> {desc}</p>
                                 </div>
                             ))}
                         </div>

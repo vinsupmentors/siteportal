@@ -199,6 +199,9 @@ router.delete('/iop-module-files/:fileId',  requireRole([1]), iopCtrl.deleteIOPM
 // Progress Report Emails (SA sends personalized emails to active students)
 router.post('/reports/send-progress-emails', requireRole([1, 2]), crudController.sendProgressEmails);
 
+// Manual Absence Email Trigger (SA/Admin fires the daily cron job on demand)
+router.post('/trigger-absence-emails', requireRole([1, 2]), crudController.triggerAbsenceEmailsHTTP);
+
 // ── IOP Groups (SA creates/manages merged batch groups for IOP trainer) ────────
 router.get('/iop-trainers', requireRole([1]), crudController.getIOPTrainers);
 router.post('/iop-trainers', requireRole([1]), crudController.createIOPTrainer);
