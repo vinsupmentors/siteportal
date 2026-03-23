@@ -13,14 +13,20 @@ exports.getBatchesForReport = async (req, res) => {
         let extraWhere = '';
         if (isTrainer) { extraWhere = 'WHERE b.trainer_id = ?'; params = [userId]; }
 
-        const [rows] = await pool.query(`
-            SELECT b.id, b.batch_name, b.status, c.name AS course_name
+        const [batches] = await pool.query(`
+            SELECT b.id, b.batch_name, b.status, c.id AS course_id, c.name AS course_name
             FROM Batches b
             JOIN Courses c ON b.course_id = c.id
             ${extraWhere}
-            ORDER BY b.id DESC
+            ORDER BY c.name ASC, b.batch_name ASC
         `, params);
-        res.json({ batches: rows });
+
+        // distinct courses for the course filter dropdown
+        const courseMap = {};
+        batches.forEach(b => { courseMap[b.course_id] = b.course_name; });
+        const courses = Object.entries(courseMap).map(([id, name]) => ({ id: parseInt(id), name }));
+
+        res.json({ batches, courses });
     } catch (error) {
         console.error('[getBatchesForReport]', error.message);
         res.status(500).json({ message: 'Error fetching batches', error: error.message });
@@ -33,7 +39,7 @@ exports.getBatchesForReport = async (req, res) => {
 exports.getCertificateReport = async (req, res) => {
     try {
         const { role_id, id: userId } = req.user;
-        const { batch_id } = req.query;
+        const { batch_id, course_id } = req.query;
         const isTrainer = role_id === 3;
 
         // 1. Get all students in relevant batches
@@ -41,7 +47,7 @@ exports.getCertificateReport = async (req, res) => {
         const params = [];
         if (isTrainer) { conditions.push('b.trainer_id = ?'); params.push(userId); }
         if (batch_id)  { conditions.push('b.id = ?');          params.push(batch_id); }
-        const WHERE = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
+        if (course_id) { conditions.push('c.id = ?');          params.push(course_id); }
 
         const [students] = await pool.query(`
             SELECT
@@ -49,14 +55,14 @@ exports.getCertificateReport = async (req, res) => {
                 c.id AS course_id, c.name AS course_name,
                 u.id AS student_id,
                 CONCAT(u.first_name, ' ', u.last_name) AS student_name,
-                u.email, u.roll_number, u.student_status
+                u.email, bs.roll_number, u.student_status
             FROM Batches b
             JOIN Courses c ON b.course_id = c.id
             JOIN BatchStudents bs ON b.id = bs.batch_id
             JOIN Users u ON bs.student_id = u.id
             WHERE u.status = 'active'
             ${conditions.length ? 'AND ' + conditions.join(' AND ') : ''}
-            ORDER BY b.id, u.first_name, u.last_name
+            ORDER BY b.status DESC, b.id, u.first_name, u.last_name
         `, params);
 
         if (!students.length) {
@@ -274,13 +280,14 @@ exports.getCertificateReport = async (req, res) => {
 exports.getStudentWorkReport = async (req, res) => {
     try {
         const { role_id, id: userId } = req.user;
-        const { batch_id } = req.query;
+        const { batch_id, course_id } = req.query;
         const isTrainer = role_id === 3;
 
         const conditions = [];
         const params = [];
         if (isTrainer) { conditions.push('b.trainer_id = ?'); params.push(userId); }
         if (batch_id)  { conditions.push('b.id = ?');          params.push(batch_id); }
+        if (course_id) { conditions.push('c.id = ?');          params.push(course_id); }
 
         // 1. Students
         const [students] = await pool.query(`
@@ -288,14 +295,14 @@ exports.getStudentWorkReport = async (req, res) => {
                    c.id AS course_id, c.name AS course_name,
                    u.id AS student_id,
                    CONCAT(u.first_name, ' ', u.last_name) AS student_name,
-                   u.email, u.roll_number
+                   u.email, bs.roll_number
             FROM Batches b
             JOIN Courses c ON b.course_id = c.id
             JOIN BatchStudents bs ON b.id = bs.batch_id
             JOIN Users u ON bs.student_id = u.id
             WHERE u.status = 'active'
             ${conditions.length ? 'AND ' + conditions.join(' AND ') : ''}
-            ORDER BY b.id, u.first_name, u.last_name
+            ORDER BY b.status DESC, b.id, u.first_name, u.last_name
         `, params);
 
         if (!students.length) {
