@@ -220,6 +220,9 @@ async function runMigrations() {
                 FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE SET NULL
             )
         `);
+        // Guard: add missing columns if FeedbackForms existed before form_json was added
+        await addColumnIfNotExists('FeedbackForms', 'form_json JSON');
+        await addColumnIfNotExists('FeedbackForms', 'created_by INT');
 
         // ── BatchFeedbackStatus ─────────────────────────────────────────
         await pool.query(`

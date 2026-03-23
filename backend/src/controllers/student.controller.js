@@ -182,6 +182,7 @@ exports.getStudentCalendar = async (req, res) => {
                 currentDate.setDate(currentDate.getDate() + 1);
                 skipCount++;
             }
+            
             if (--dayLimit <= 0) return; // safety break
 
             const dateStr = currentDate.toISOString().split('T')[0];
