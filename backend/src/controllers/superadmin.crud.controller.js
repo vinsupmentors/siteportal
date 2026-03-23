@@ -2113,21 +2113,64 @@ exports.getFeedbackForms = async (req, res) => {
 
 exports.getFeedbackReports = async (req, res) => {
     try {
+        const { batch_id, form_id } = req.query;
+
+        // Build WHERE clause
+        const conditions = [];
+        const params = [];
+        if (batch_id) { conditions.push('sfr.batch_id = ?'); params.push(batch_id); }
+        if (form_id)  { conditions.push('sfr.form_id = ?');  params.push(form_id); }
+        const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
         const [reports] = await pool.query(`
-            SELECT 
-                sfr.*, 
+            SELECT
+                sfr.id, sfr.student_id, sfr.batch_id, sfr.module_id, sfr.form_id,
+                sfr.response_json, sfr.submitted_at,
                 u.first_name, u.last_name, u.email,
                 b.batch_name,
-                m.name as module_name,
-                ff.title as form_title
+                m.name AS module_name,
+                ff.title AS form_title, ff.form_json
             FROM StudentFeedbackResponses sfr
             JOIN Users u ON sfr.student_id = u.id
             JOIN Batches b ON sfr.batch_id = b.id
             LEFT JOIN Modules m ON sfr.module_id = m.id
             JOIN FeedbackForms ff ON sfr.form_id = ff.id
+            ${where}
             ORDER BY sfr.submitted_at DESC
+        `, params);
+
+        // Batches that have at least one response (for filter dropdown)
+        const [batches] = await pool.query(`
+            SELECT DISTINCT b.id, b.batch_name
+            FROM StudentFeedbackResponses sfr
+            JOIN Batches b ON sfr.batch_id = b.id
+            ORDER BY b.batch_name
         `);
-        res.json({ reports });
+
+        // Forms/modules that have responses (optionally scoped to batch)
+        const formParams = [];
+        let formWhere = '';
+        if (batch_id) { formWhere = 'WHERE sfr.batch_id = ?'; formParams.push(batch_id); }
+        const [forms] = await pool.query(`
+            SELECT DISTINCT ff.id, ff.title, m.name AS module_name
+            FROM StudentFeedbackResponses sfr
+            JOIN FeedbackForms ff ON sfr.form_id = ff.id
+            LEFT JOIN Modules m ON ff.module_id = m.id
+            ${formWhere}
+            ORDER BY ff.title
+        `, formParams);
+
+        // Aggregate stats
+        const [stats] = await pool.query(`
+            SELECT
+                COUNT(*) AS total_responses,
+                COUNT(DISTINCT sfr.student_id) AS unique_students,
+                COUNT(DISTINCT sfr.batch_id) AS total_batches,
+                COUNT(DISTINCT sfr.form_id) AS total_forms
+            FROM StudentFeedbackResponses sfr
+        `);
+
+        res.json({ reports, batches, forms, stats: stats[0] });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching feedback reports', error: error.message });
     }

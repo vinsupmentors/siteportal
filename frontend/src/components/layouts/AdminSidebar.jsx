@@ -4,7 +4,7 @@ import { BrandLogo } from '../icons/BrandLogo';
 import {
     LayoutDashboard, Users,
     ClipboardList, Megaphone, Link as LinkIcon,
-    BarChart3, HelpCircle, MessageSquare, CalendarOff, Briefcase, Settings, Target, Rocket
+    BarChart3, HelpCircle, MessageSquare, CalendarOff, Briefcase, Settings, Target, Rocket, Star
 } from 'lucide-react';
 import { adminAPI } from '../../services/api';
 
@@ -76,8 +76,9 @@ export const AdminSidebar = ({ isOpen, setIsOpen }) => {
         {
             label: 'Analytics',
             links: [
-                { name: 'Reports Hub', path: '/admin/reports',     icon: BarChart3 },
-                { name: 'Audit Logs',  path: '/admin/audit-logs',  icon: ClipboardList },
+                { name: 'Reports Hub',        path: '/admin/reports',             icon: BarChart3 },
+                { name: 'Feedback Responses', path: '/admin/feedback-responses',  icon: Star },
+                { name: 'Audit Logs',         path: '/admin/audit-logs',          icon: ClipboardList },
             ]
         }
     ];

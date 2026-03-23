@@ -52,7 +52,8 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
                 { name: 'Manage Courses',             path: '/super-admin/courses',           icon: BookOpen },
                 { name: 'IOP Curriculum',             path: '/super-admin/iop-curriculum',    icon: Layers },
                 { name: 'Student & Batch Hub',        path: '/super-admin/student-batch-hub', icon: Users },
-                { name: 'Feedback Builder',           path: '/super-admin/feedback-builder',  icon: Star },
+                { name: 'Feedback Builder',           path: '/super-admin/feedback-builder',    icon: Star },
+                { name: 'Feedback Responses',         path: '/super-admin/feedback-responses',  icon: MessageSquare },
                 { name: 'Certificates & Internships', path: '/super-admin/certificates',      icon: Award },
             ]
         },

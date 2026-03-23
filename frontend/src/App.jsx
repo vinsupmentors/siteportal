@@ -42,6 +42,7 @@ import { SAReports } from './pages/superadmin/SAReports';
 import { SAStudentDoubts } from './pages/superadmin/SAStudentDoubts';
 import { SAStudentHelpdesk } from './pages/superadmin/SAStudentHelpdesk';
 import { SAFeedbackBuilder } from './pages/superadmin/SAFeedbackBuilder';
+import { SAFeedbackResponses } from './pages/superadmin/SAFeedbackResponses';
 import { SATrainerLeaves } from './pages/superadmin/SATrainerLeaves';
 import SAJobRequests from './pages/superadmin/SAJobRequests';
 
@@ -114,6 +115,7 @@ const AppRoutes = () => {
         <Route path="student-doubts" element={<SAStudentDoubts />} />
         <Route path="student-issues" element={<SAStudentHelpdesk />} />
         <Route path="feedback-builder" element={<SAFeedbackBuilder />} />
+        <Route path="feedback-responses" element={<SAFeedbackResponses />} />
         <Route path="trainer-leaves" element={<SATrainerLeaves />} />
         <Route path="job-requests" element={<SAJobRequests />} />
         <Route path="jobs" element={<RecruiterJobs />} />
@@ -141,6 +143,7 @@ const AppRoutes = () => {
         <Route path="audit-logs" element={<AdminAuditLogs />} />
         <Route path="iop-dashboard" element={<RecruiterDashboard />} />
         <Route path="iop-students" element={<RecruiterStudents />} />
+        <Route path="feedback-responses" element={<SAFeedbackResponses />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 

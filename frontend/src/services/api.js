@@ -155,7 +155,7 @@ deleteCapstoneFile: (fileId) => api.delete(`/super-admin/capstone-files/${fileId
     // Dynamic Feedback System
     createFeedbackForm: (data) => api.post('/super-admin/feedback-forms', data),
     getFeedbackForms: () => api.get('/super-admin/feedback-forms'),
-    getFeedbackReports: () => api.get('/super-admin/reports/feedback'),
+    getFeedbackReports: (params) => api.get('/super-admin/reports/feedback', { params }),
     // Trainer Leave Management (Super Admin)
     getAllTrainerLeaves: (status) => api.get(`/super-admin/trainer-leaves${status ? `?status=${status}` : ''}`),
     updateTrainerLeaveStatus: (id, data) => api.patch(`/super-admin/trainer-leaves/${id}`, data),
@@ -334,7 +334,7 @@ export const adminAPI = {
     getAttendanceSubBatches: (group) => api.get(`/super-admin/reports/attendance/sub-batches?group=${group}`),
     getDetailedBatchAttendance: (batchId, date) => api.get(`/super-admin/reports/attendance/detailed/${batchId}?date=${date || ''}`),
     getDailyKRA: (date) => api.get(`/super-admin/daily-kra?date=${date}`),
-    getFeedbackReports: () => api.get('/super-admin/reports/feedback'),
+    getFeedbackReports: (params) => api.get('/super-admin/reports/feedback', { params }),
 
     // Trainer Leaves
     getTrainerLeaves: () => api.get('/super-admin/trainer-leaves'),
