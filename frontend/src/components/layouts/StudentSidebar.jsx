@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { BrandLogo } from '../icons/BrandLogo';
 import {
     LayoutDashboard, Calendar, FileText, Layers,
-    BookOpen, CalendarOff, MessageSquare, Star, MessageCircle,
+    BookOpen, CalendarOff, MessageSquare, Star,
     HelpCircle, Bell, TrendingUp, Briefcase, Settings, GraduationCap, Globe
 } from 'lucide-react';
 import { studentAPI } from '../../services/api';
@@ -40,7 +40,6 @@ export const StudentSidebar = ({ isOpen, setIsOpen }) => {
         { name: 'Dashboard',             path: '/student/dashboard',    icon: LayoutDashboard },
         { name: 'Settings',              path: '/student/settings',     icon: Settings },
         { name: 'My Calendar',           path: '/student/calendar',     icon: Calendar },
-        { name: 'Chat',                  path: '/student/chat',         icon: MessageCircle },
         { name: 'Tests',                 path: '/student/tests',        icon: FileText },
         { name: 'Soft Skills & Aptitude', path: '/student/worksheets',  icon: Layers },
         { name: 'Course Materials',      path: '/student/materials',    icon: BookOpen },

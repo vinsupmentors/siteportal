@@ -783,7 +783,7 @@ const StudentsTab = ({ students }) => {
                                             {s.roll_number ?? '—'}
                                         </td>
                                         <td style={{ padding: '11px 16px', fontSize: '13px', color: theme.text.primary, fontWeight: 600 }}>
-                                            {s.name ?? `${s.first_name ?? ''} ${s.last_name ?? ''}`.trim() || '—'}
+                                            {s.name ?? (`${s.first_name ?? ''} ${s.last_name ?? ''}`.trim() || '—')}
                                         </td>
                                         <td style={{ padding: '11px 16px', fontSize: '12px', color: theme.text.muted, fontWeight: 500 }}>
                                             {s.email ?? '—'}
@@ -896,7 +896,7 @@ const AttendanceTab = ({
                         </div>
 
                         {students.map((s, i) => {
-                            const name = s.name ?? `${s.first_name ?? ''} ${s.last_name ?? ''}`.trim() || `Student ${i + 1}`;
+                            const name = s.name ?? (`${s.first_name ?? ''} ${s.last_name ?? ''}`.trim() || `Student ${i + 1}`);
                             const current = attendance[s.id];
                             return (
                                 <div

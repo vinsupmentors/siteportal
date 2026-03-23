@@ -522,14 +522,6 @@ exports.getBatchCurriculum = async (req, res) => {
             projectFiles = pFiles;
         }
 
-        // Get Feedback Forms linked to these modules
-        const [feedbackForms] = await pool.query(
-            `SELECT id, module_id, title FROM FeedbackForms WHERE module_id IN (${placeholders})`,
-            moduleIds
-        );
-        const feedbackFormMap = {};
-        feedbackForms.forEach(f => { feedbackFormMap[f.module_id] = f; });
-
         const modulesWithState = modules.map(mod => {
             const modDays = days.filter(d => d.module_id === mod.id);
             const totalDays = modDays.length;
