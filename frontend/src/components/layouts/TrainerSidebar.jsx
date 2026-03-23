@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { BrandLogo } from '../icons/BrandLogo';
 import {
     LayoutDashboard, Calendar, Users, MessageSquare, Megaphone, Clock, Settings,
-    FolderOpen, ClipboardCheck, CheckSquare
+    FolderOpen, ClipboardCheck, CheckSquare, BarChart3
 } from 'lucide-react';
 import { trainerAPI } from '../../services/api';
 
@@ -46,6 +46,7 @@ export const TrainerSidebar = ({ isOpen, setIsOpen }) => {
         { name: 'Announcements',   path: '/trainer/announcements', icon: Megaphone },
         { name: 'Student Doubts',  path: '/trainer/doubts',        icon: MessageSquare, badgeKey: 'pendingDoubts' },
         { name: 'Leave Requests',  path: '/trainer/leaves',        icon: Clock,         badgeKey: 'pendingStudentLeaves' },
+        { name: 'My Reports',      path: '/trainer/reports',       icon: BarChart3 },
     ];
 
     return (

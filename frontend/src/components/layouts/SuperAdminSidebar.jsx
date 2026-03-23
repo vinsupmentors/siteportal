@@ -105,7 +105,8 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
         {
             label: 'Analytics',
             links: [
-                { name: 'Reports', path: '/super-admin/reports', icon: BarChart3 },
+                { name: 'Reports',              path: '/super-admin/reports',            icon: BarChart3 },
+                { name: 'Certificate Report',   path: '/super-admin/certificate-report', icon: Award },
             ]
         }
     ];

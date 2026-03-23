@@ -39,6 +39,7 @@ import { SAPortfolios } from './pages/superadmin/SAPortfolios';
 import { SAAnnouncements } from './pages/superadmin/SAAnnouncements';
 import { SAMeetingLinks } from './pages/superadmin/SAMeetingLinks';
 import { SAReports } from './pages/superadmin/SAReports';
+import { SACertificateWorkReport } from './pages/superadmin/SACertificateWorkReport';
 import { SAStudentDoubts } from './pages/superadmin/SAStudentDoubts';
 import { SAStudentHelpdesk } from './pages/superadmin/SAStudentHelpdesk';
 import { SAFeedbackBuilder } from './pages/superadmin/SAFeedbackBuilder';
@@ -58,6 +59,7 @@ import { TrainerContentManager } from './pages/trainer/TrainerContentManager';
 import { TrainerSubmissions } from './pages/trainer/TrainerSubmissions';
 import { TrainerStudentProfile } from './pages/trainer/TrainerStudentProfile';
 import { TrainerLeaves } from './pages/trainer/TrainerLeaves';
+import { TrainerReports } from './pages/trainer/TrainerReports';
 
 // Admin Pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -112,6 +114,7 @@ const AppRoutes = () => {
         <Route path="announcements" element={<SAAnnouncements />} />
         <Route path="meeting-links" element={<SAMeetingLinks />} />
         <Route path="reports" element={<SAReports />} />
+        <Route path="certificate-report" element={<SACertificateWorkReport />} />
         <Route path="student-doubts" element={<SAStudentDoubts />} />
         <Route path="student-issues" element={<SAStudentHelpdesk />} />
         <Route path="feedback-builder" element={<SAFeedbackBuilder />} />
@@ -139,6 +142,7 @@ const AppRoutes = () => {
         <Route path="student-issues" element={<SAStudentHelpdesk />} />
         <Route path="student-doubts" element={<SAStudentDoubts />} />
         <Route path="reports" element={<AdminReports />} />
+        <Route path="certificate-report" element={<SACertificateWorkReport />} />
         <Route path="trainer-leaves" element={<AdminTrainerLeaves />} />
         <Route path="audit-logs" element={<AdminAuditLogs />} />
         <Route path="iop-dashboard" element={<RecruiterDashboard />} />
@@ -190,6 +194,7 @@ const AppRoutes = () => {
         <Route path="submissions" element={<TrainerSubmissions />} />
         <Route path="student-profile/:batchId/:studentId" element={<TrainerStudentProfile />} />
         <Route path="leaves" element={<TrainerLeaves />} />
+        <Route path="reports" element={<TrainerReports />} />
         <Route path="settings" element={<Settings />} />
         <Route path="chat" element={<ChatWindow />} />
         <Route path="courses/:courseId/forum" element={<ForumList />} />

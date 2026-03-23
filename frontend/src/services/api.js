@@ -421,4 +421,18 @@ export const forumAPI = {
     acceptReply: (replyId) => api.post(`/forum/replies/${replyId}/accept`)
 };
 
+// Reports API — SA + Admin
+export const reportsAPI = {
+    getBatches:            ()       => api.get('/reports/batches'),
+    getCertificateReport:  (params) => api.get('/reports/certificates',  { params }),
+    getStudentWorkReport:  (params) => api.get('/reports/student-work',  { params }),
+};
+
+// Reports API — Trainer (own batches only)
+export const trainerReportsAPI = {
+    getBatches:            ()       => api.get('/reports/batches'),
+    getCertificateReport:  (params) => api.get('/reports/trainer/certificates', { params }),
+    getStudentWorkReport:  (params) => api.get('/reports/trainer/student-work', { params }),
+};
+
 export default api;

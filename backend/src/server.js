@@ -53,6 +53,7 @@ const recruiterRoutes = require('./routes/recruiter.routes');
 const chatRoutes = require('./routes/chat.routes');
 const forumRoutes = require('./routes/forum.routes');
 const iopTrainerRoutes = require('./routes/iop_trainer.routes');
+const reportsRoutes    = require('./routes/reports.routes');
 const path = require('path');
 
 // Serve uploaded content files statically
@@ -94,7 +95,7 @@ app.use('/api/recruiter', recruiterRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/forum', forumRoutes);
 app.use('/api/iop-trainer', iopTrainerRoutes);
-
+app.use('/api/reports',    reportsRoutes);
 
 // ==========================================
 // Systemic Enterprise Cron Routine Jobs 
