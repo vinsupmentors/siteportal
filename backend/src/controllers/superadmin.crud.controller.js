@@ -1644,18 +1644,14 @@ exports.triggerAbsenceEmails = async () => {
     }
 };
 
-// HTTP wrapper so SA/Admin can trigger absence emails on-demand from the portal
+// HTTP wrapper — responds immediately, sends emails in background
 exports.triggerAbsenceEmailsHTTP = async (req, res) => {
-    try {
-        const result = await exports.triggerAbsenceEmails();
-        if (result.success) {
-            res.json({ success: true, message: `Absence alert emails sent to ${result.count} student(s) and management notified for 3+ day absences.`, count: result.count });
-        } else {
-            res.status(500).json({ success: false, message: 'Failed to send absence emails. Check server logs.' });
-        }
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
+    res.json({ success: true, message: 'Absence alert job started. Emails are being sent in the background.' });
+    exports.triggerAbsenceEmails().then(r => {
+        console.log(`[AbsenceAlert] Manual trigger complete — ${r.count} emails sent`);
+    }).catch(err => {
+        console.error('[AbsenceAlert] Manual trigger error:', err.message);
+    });
 };
 
 // ==========================================
@@ -2352,10 +2348,13 @@ exports.sendProgressEmails = async (req, res) => {
             }
         });
 
-        // Wait for all (we want a count)
-        await Promise.allSettled(emailPromises);
+        // Respond immediately — emails send in background
+        res.json({ sent: students.length, failed: 0, total: students.length, message: `Progress emails are being sent to ${students.length} student(s) in the background.` });
 
-        res.json({ sent, failed, total: students.length, message: `Progress emails sent to ${sent} student(s)` });
+        Promise.allSettled(emailPromises).then(results => {
+            const failed = results.filter(r => r.status === 'rejected').length;
+            console.log(`[ProgressEmail] Complete — ${students.length - failed} sent, ${failed} failed`);
+        });
     } catch (error) {
         res.status(500).json({ message: 'Error sending progress emails', error: error.message });
     }
