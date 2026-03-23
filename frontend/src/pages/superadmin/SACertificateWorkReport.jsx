@@ -77,7 +77,7 @@ const CertificateReport = ({ selectedBatch, selectedCourse, selectedBatchStatus 
         setLoading(true);
         try {
             const params = {};
-            if (selectedBatch)       params.batch_id     = selectedBatch;
+            if (selectedBatch)       params.batch_name   = selectedBatch;
             if (selectedCourse)      params.course_id    = selectedCourse;
             if (selectedBatchStatus) params.batch_status = selectedBatchStatus;
             const res = await reportsAPI.getCertificateReport(params);
@@ -282,7 +282,7 @@ const StudentWorkReport = ({ selectedBatch, selectedCourse, selectedBatchStatus 
         setLoading(true);
         try {
             const params = {};
-            if (selectedBatch)       params.batch_id     = selectedBatch;
+            if (selectedBatch)       params.batch_name   = selectedBatch;
             if (selectedCourse)      params.course_id    = selectedCourse;
             if (selectedBatchStatus) params.batch_status = selectedBatchStatus;
             const res = await reportsAPI.getStudentWorkReport(params);
@@ -516,18 +516,17 @@ export const SACertificateWorkReport = () => {
     };
 
     // Batches visible in the batch dropdown = filtered by course AND status
-    const visibleBatches = allBatches
+    const filteredBatches = allBatches
         .filter(b => !selectedCourse      || String(b.course_id) === String(selectedCourse))
         .filter(b => !selectedBatchStatus || b.status === selectedBatchStatus);
 
-    // If multiple batches share the same name, show course name to disambiguate
-    const batchNameCount = visibleBatches.reduce((acc, b) => {
-        acc[b.batch_name] = (acc[b.batch_name] || 0) + 1;
-        return acc;
-    }, {});
-    const batchLabel = b => batchNameCount[b.batch_name] > 1
-        ? `${b.batch_name} · ${b.course_name}`
-        : b.batch_name;
+    // Deduplicate by batch_name — each unique name appears only once
+    const seenNames = new Set();
+    const visibleBatches = filteredBatches.filter(b => {
+        if (seenNames.has(b.batch_name)) return false;
+        seenNames.add(b.batch_name);
+        return true;
+    });
 
     const tabs = [
         { key: 'certificates', label: 'Certificate & Eligibility Report', icon: Award },
@@ -576,7 +575,7 @@ export const SACertificateWorkReport = () => {
                         <select value={selectedBatch} onChange={e => setSelectedBatch(e.target.value)} style={selectStyle}>
                             <option value="">All Batches</option>
                             {visibleBatches.map(b => (
-                                <option key={b.id} value={b.id}>{batchLabel(b)}</option>
+                                <option key={b.batch_name} value={b.batch_name}>{b.batch_name}</option>
                             ))}
                         </select>
                     </div>

@@ -39,16 +39,17 @@ exports.getBatchesForReport = async (req, res) => {
 exports.getCertificateReport = async (req, res) => {
     try {
         const { role_id, id: userId } = req.user;
-        const { batch_id, course_id, batch_status } = req.query;
+        const { batch_id, batch_name, course_id, batch_status } = req.query;
         const isTrainer = role_id === 3;
 
         // 1. Get all students in relevant batches
         const conditions = [];
         const params = [];
-        if (isTrainer)    { conditions.push('b.trainer_id = ?'); params.push(userId); }
-        if (batch_id)     { conditions.push('b.id = ?');          params.push(batch_id); }
-        if (course_id)    { conditions.push('c.id = ?');          params.push(course_id); }
-        if (batch_status) { conditions.push('b.status = ?');      params.push(batch_status); }
+        if (isTrainer)    { conditions.push('b.trainer_id = ?');  params.push(userId); }
+        if (batch_id)     { conditions.push('b.id = ?');           params.push(batch_id); }
+        if (batch_name)   { conditions.push('b.batch_name = ?');   params.push(batch_name); }
+        if (course_id)    { conditions.push('c.id = ?');           params.push(course_id); }
+        if (batch_status) { conditions.push('b.status = ?');       params.push(batch_status); }
 
         const [students] = await pool.query(`
             SELECT
@@ -281,15 +282,16 @@ exports.getCertificateReport = async (req, res) => {
 exports.getStudentWorkReport = async (req, res) => {
     try {
         const { role_id, id: userId } = req.user;
-        const { batch_id, course_id, batch_status } = req.query;
+        const { batch_id, batch_name, course_id, batch_status } = req.query;
         const isTrainer = role_id === 3;
 
         const conditions = [];
         const params = [];
-        if (isTrainer)    { conditions.push('b.trainer_id = ?'); params.push(userId); }
-        if (batch_id)     { conditions.push('b.id = ?');          params.push(batch_id); }
-        if (course_id)    { conditions.push('c.id = ?');          params.push(course_id); }
-        if (batch_status) { conditions.push('b.status = ?');      params.push(batch_status); }
+        if (isTrainer)    { conditions.push('b.trainer_id = ?');  params.push(userId); }
+        if (batch_id)     { conditions.push('b.id = ?');           params.push(batch_id); }
+        if (batch_name)   { conditions.push('b.batch_name = ?');   params.push(batch_name); }
+        if (course_id)    { conditions.push('c.id = ?');           params.push(course_id); }
+        if (batch_status) { conditions.push('b.status = ?');       params.push(batch_status); }
 
         // 1. Students
         const [students] = await pool.query(`
