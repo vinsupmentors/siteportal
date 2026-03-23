@@ -39,15 +39,16 @@ exports.getBatchesForReport = async (req, res) => {
 exports.getCertificateReport = async (req, res) => {
     try {
         const { role_id, id: userId } = req.user;
-        const { batch_id, course_id } = req.query;
+        const { batch_id, course_id, batch_status } = req.query;
         const isTrainer = role_id === 3;
 
         // 1. Get all students in relevant batches
         const conditions = [];
         const params = [];
-        if (isTrainer) { conditions.push('b.trainer_id = ?'); params.push(userId); }
-        if (batch_id)  { conditions.push('b.id = ?');          params.push(batch_id); }
-        if (course_id) { conditions.push('c.id = ?');          params.push(course_id); }
+        if (isTrainer)    { conditions.push('b.trainer_id = ?'); params.push(userId); }
+        if (batch_id)     { conditions.push('b.id = ?');          params.push(batch_id); }
+        if (course_id)    { conditions.push('c.id = ?');          params.push(course_id); }
+        if (batch_status) { conditions.push('b.status = ?');      params.push(batch_status); }
 
         const [students] = await pool.query(`
             SELECT
@@ -55,7 +56,7 @@ exports.getCertificateReport = async (req, res) => {
                 c.id AS course_id, c.name AS course_name,
                 u.id AS student_id,
                 CONCAT(u.first_name, ' ', u.last_name) AS student_name,
-                u.email, u.roll_number, u.student_status
+                u.email, bs.roll_number AS roll_number, u.student_status
             FROM Batches b
             JOIN Courses c ON b.course_id = c.id
             JOIN BatchStudents bs ON b.id = bs.batch_id
@@ -280,14 +281,15 @@ exports.getCertificateReport = async (req, res) => {
 exports.getStudentWorkReport = async (req, res) => {
     try {
         const { role_id, id: userId } = req.user;
-        const { batch_id, course_id } = req.query;
+        const { batch_id, course_id, batch_status } = req.query;
         const isTrainer = role_id === 3;
 
         const conditions = [];
         const params = [];
-        if (isTrainer) { conditions.push('b.trainer_id = ?'); params.push(userId); }
-        if (batch_id)  { conditions.push('b.id = ?');          params.push(batch_id); }
-        if (course_id) { conditions.push('c.id = ?');          params.push(course_id); }
+        if (isTrainer)    { conditions.push('b.trainer_id = ?'); params.push(userId); }
+        if (batch_id)     { conditions.push('b.id = ?');          params.push(batch_id); }
+        if (course_id)    { conditions.push('c.id = ?');          params.push(course_id); }
+        if (batch_status) { conditions.push('b.status = ?');      params.push(batch_status); }
 
         // 1. Students
         const [students] = await pool.query(`
@@ -295,7 +297,7 @@ exports.getStudentWorkReport = async (req, res) => {
                    c.id AS course_id, c.name AS course_name,
                    u.id AS student_id,
                    CONCAT(u.first_name, ' ', u.last_name) AS student_name,
-                   u.email, u.roll_number
+                   u.email, bs.roll_number AS roll_number
             FROM Batches b
             JOIN Courses c ON b.course_id = c.id
             JOIN BatchStudents bs ON b.id = bs.batch_id

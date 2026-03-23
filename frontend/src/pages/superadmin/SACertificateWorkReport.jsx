@@ -67,7 +67,7 @@ const BatchStatusSection = ({ label, count, color, bg, children }) => (
 // ══════════════════════════════════════════════════════════════════════════════
 // CERTIFICATE REPORT TAB
 // ══════════════════════════════════════════════════════════════════════════════
-const CertificateReport = ({ selectedBatch, selectedCourse }) => {
+const CertificateReport = ({ selectedBatch, selectedCourse, selectedBatchStatus }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [expanded, setExpanded] = useState({});
@@ -77,8 +77,9 @@ const CertificateReport = ({ selectedBatch, selectedCourse }) => {
         setLoading(true);
         try {
             const params = {};
-            if (selectedBatch)  params.batch_id  = selectedBatch;
-            if (selectedCourse) params.course_id = selectedCourse;
+            if (selectedBatch)       params.batch_id     = selectedBatch;
+            if (selectedCourse)      params.course_id    = selectedCourse;
+            if (selectedBatchStatus) params.batch_status = selectedBatchStatus;
             const res = await reportsAPI.getCertificateReport(params);
             setData(res.data);
             const initExp = {};
@@ -87,7 +88,7 @@ const CertificateReport = ({ selectedBatch, selectedCourse }) => {
         } catch (err) {
             console.error(err);
         } finally { setLoading(false); }
-    }, [selectedBatch, selectedCourse]);
+    }, [selectedBatch, selectedCourse, selectedBatchStatus]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -270,7 +271,7 @@ const CertificateReport = ({ selectedBatch, selectedCourse }) => {
 // ══════════════════════════════════════════════════════════════════════════════
 // STUDENT WORK REPORT TAB
 // ══════════════════════════════════════════════════════════════════════════════
-const StudentWorkReport = ({ selectedBatch, selectedCourse }) => {
+const StudentWorkReport = ({ selectedBatch, selectedCourse, selectedBatchStatus }) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [expandedBatch, setExpandedBatch] = useState({});
@@ -281,8 +282,9 @@ const StudentWorkReport = ({ selectedBatch, selectedCourse }) => {
         setLoading(true);
         try {
             const params = {};
-            if (selectedBatch)  params.batch_id  = selectedBatch;
-            if (selectedCourse) params.course_id = selectedCourse;
+            if (selectedBatch)       params.batch_id     = selectedBatch;
+            if (selectedCourse)      params.course_id    = selectedCourse;
+            if (selectedBatchStatus) params.batch_status = selectedBatchStatus;
             const res = await reportsAPI.getStudentWorkReport(params);
             setData(res.data);
             const initBatch = {};
@@ -291,7 +293,7 @@ const StudentWorkReport = ({ selectedBatch, selectedCourse }) => {
         } catch (err) {
             console.error(err);
         } finally { setLoading(false); }
-    }, [selectedBatch, selectedCourse]);
+    }, [selectedBatch, selectedCourse, selectedBatchStatus]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -494,8 +496,9 @@ export const SACertificateWorkReport = () => {
     const [tab, setTab]                   = useState('certificates');
     const [allBatches, setAllBatches]     = useState([]);
     const [courses, setCourses]           = useState([]);
-    const [selectedCourse, setSelectedCourse] = useState('');
-    const [selectedBatch,  setSelectedBatch]  = useState('');
+    const [selectedCourse,      setSelectedCourse]      = useState('');
+    const [selectedBatch,       setSelectedBatch]       = useState('');
+    const [selectedBatchStatus, setSelectedBatchStatus] = useState('');
 
     useEffect(() => {
         reportsAPI.getBatches()
@@ -506,16 +509,16 @@ export const SACertificateWorkReport = () => {
             .catch(() => {});
     }, []);
 
-    // When course changes, reset batch filter
+    // When course changes, reset batch + status filters
     const handleCourseChange = (e) => {
         setSelectedCourse(e.target.value);
         setSelectedBatch('');
     };
 
-    // Batches visible in the batch dropdown = filtered by selected course
-    const visibleBatches = selectedCourse
-        ? allBatches.filter(b => String(b.course_id) === String(selectedCourse))
-        : allBatches;
+    // Batches visible in the batch dropdown = filtered by course AND status
+    const visibleBatches = allBatches
+        .filter(b => !selectedCourse      || String(b.course_id) === String(selectedCourse))
+        .filter(b => !selectedBatchStatus || b.status === selectedBatchStatus);
 
     const tabs = [
         { key: 'certificates', label: 'Certificate & Eligibility Report', icon: Award },
@@ -535,7 +538,7 @@ export const SACertificateWorkReport = () => {
                     </p>
                 </div>
 
-                {/* Dual filter */}
+                {/* Triple filter */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <Filter size={14} color="var(--text-muted)" />
 
@@ -548,15 +551,23 @@ export const SACertificateWorkReport = () => {
                         </select>
                     </div>
 
+                    {/* Batch Status filter */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>Status</label>
+                        <select value={selectedBatchStatus} onChange={e => { setSelectedBatchStatus(e.target.value); setSelectedBatch(''); }} style={selectStyle}>
+                            <option value="">All Status</option>
+                            <option value="active">Ongoing</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+
                     {/* Batch filter */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                         <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>Batch</label>
                         <select value={selectedBatch} onChange={e => setSelectedBatch(e.target.value)} style={selectStyle}>
                             <option value="">All Batches</option>
                             {visibleBatches.map(b => (
-                                <option key={b.id} value={b.id}>
-                                    {b.batch_name} {!selectedCourse ? `(${b.course_name})` : ''} {b.status !== 'active' ? '— Completed' : ''}
-                                </option>
+                                <option key={b.id} value={b.id}>{b.batch_name}</option>
                             ))}
                         </select>
                     </div>
@@ -584,8 +595,8 @@ export const SACertificateWorkReport = () => {
             </div>
 
             {/* Tab content */}
-            {tab === 'certificates' && <CertificateReport selectedBatch={selectedBatch} selectedCourse={selectedCourse} />}
-            {tab === 'student-work' && <StudentWorkReport selectedBatch={selectedBatch} selectedCourse={selectedCourse} />}
+            {tab === 'certificates' && <CertificateReport selectedBatch={selectedBatch} selectedCourse={selectedCourse} selectedBatchStatus={selectedBatchStatus} />}
+            {tab === 'student-work' && <StudentWorkReport selectedBatch={selectedBatch} selectedCourse={selectedCourse} selectedBatchStatus={selectedBatchStatus} />}
         </div>
     );
 };
