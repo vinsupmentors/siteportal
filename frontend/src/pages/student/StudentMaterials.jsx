@@ -653,15 +653,20 @@ export const StudentMaterials = () => {
                                                 {q.question || q.label}
                                                 {q.required && <span style={{ color: theme.accent.red, marginLeft: '4px' }}>*</span>}
                                             </div>
-                                            {q.type === 'star_rating' && (
-                                                <div style={{ display: 'flex', gap: '6px' }}>
+                                            {(q.type === 'star' || q.type === 'star_rating') && (
+                                                <div style={{ display: 'flex', gap: '8px' }}>
                                                     {[1,2,3,4,5].map(s => (
                                                         <button key={s} type="button" onClick={() => setFeedbackResponses(p => ({ ...p, [qid]: s }))}
-                                                            style={{ width: '40px', height: '40px', borderRadius: theme.radius.sm, border: `1px solid ${(val||0)>=s ? theme.accent.yellow : theme.border.subtle}`, background: (val||0)>=s ? `${theme.accent.yellow}20` : 'transparent', color: (val||0)>=s ? theme.accent.yellow : theme.text.muted, cursor: 'pointer', fontSize: '18px' }}>★</button>
+                                                            style={{ width: '44px', height: '44px', borderRadius: theme.radius.sm, border: `2px solid ${(val||0)>=s ? '#f59e0b' : theme.border.light}`, background: (val||0)>=s ? 'rgba(245,158,11,0.18)' : theme.bg.card, color: (val||0)>=s ? '#f59e0b' : '#6b7280', cursor: 'pointer', fontSize: '22px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>★</button>
                                                     ))}
+                                                    {val > 0 && <span style={{ alignSelf: 'center', fontSize: '12px', fontWeight: 700, color: '#f59e0b', marginLeft: '4px' }}>{val}/5</span>}
                                                 </div>
                                             )}
-                                            {q.type === 'text' && (
+                                            {(q.type === 'short') && (
+                                                <input type="text" placeholder="Type your answer..." value={val || ''} onChange={e => setFeedbackResponses(p => ({ ...p, [qid]: e.target.value }))}
+                                                    style={{ width: '100%', padding: '10px 12px', borderRadius: theme.radius.sm, background: theme.bg.card, border: `1px solid ${theme.border.light}`, color: theme.text.primary, fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                                            )}
+                                            {(q.type === 'paragraph' || q.type === 'text') && (
                                                 <textarea rows={3} placeholder="Type your answer..." value={val || ''} onChange={e => setFeedbackResponses(p => ({ ...p, [qid]: e.target.value }))}
                                                     style={{ width: '100%', padding: '10px 12px', borderRadius: theme.radius.sm, background: theme.bg.card, border: `1px solid ${theme.border.light}`, color: theme.text.primary, fontSize: '13px', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
                                             )}
