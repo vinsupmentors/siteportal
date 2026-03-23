@@ -53,9 +53,9 @@ export const StudentFeedback = () => {
                     onClick={() => setResponses(p => ({ ...p, [qid]: star }))}
                     style={{
                         width: '42px', height: '42px', borderRadius: theme.radius.sm,
-                        background: (val || 0) >= star ? `${theme.accent.yellow}20` : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${(val || 0) >= star ? theme.accent.yellow : theme.border.subtle}`,
-                        color: (val || 0) >= star ? theme.accent.yellow : theme.text.muted,
+                        background: (val || 0) >= star ? `${theme.accent.yellow}20` : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${(val || 0) >= star ? theme.accent.yellow : 'rgba(255,255,255,0.18)'}`,
+                        color: (val || 0) >= star ? '#f59e0b' : '#6b7280',
                         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '18px', transition: 'all 0.15s',
                     }}
@@ -140,9 +140,17 @@ export const StudentFeedback = () => {
                                 </div>
                             </div>
 
-                            {q.type === 'star_rating' && renderStarRating(q.id || idx, responses[q.id || idx])}
+                            {(q.type === 'star' || q.type === 'star_rating') && renderStarRating(q.id || idx, responses[q.id || idx])}
 
-                            {q.type === 'text' && (
+                            {(q.type === 'short') && (
+                                <input type="text" placeholder="Type your answer..."
+                                    style={{ ...inputStyle }}
+                                    value={responses[q.id || idx] || ''}
+                                    onChange={(e) => setResponses(p => ({ ...p, [q.id || idx]: e.target.value }))}
+                                />
+                            )}
+
+                            {(q.type === 'paragraph' || q.type === 'text') && (
                                 <textarea rows="3" placeholder="Type your answer..."
                                     style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
                                     value={responses[q.id || idx] || ''}
