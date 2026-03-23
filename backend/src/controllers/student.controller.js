@@ -933,22 +933,40 @@ exports.submitFeedback = async (req, res) => {
         const studentId = req.user.id;
         const { feedback_form_id, release_id, responses } = req.body;
 
+        console.log('[submitFeedback] student:', studentId, 'form:', feedback_form_id, 'release:', release_id);
+
+        if (!feedback_form_id) return res.status(400).json({ message: 'feedback_form_id is required' });
+        if (!release_id)       return res.status(400).json({ message: 'release_id is required' });
+
         // Resolve batch_id and module_id from the BatchReleases record
         const [[release]] = await pool.query(
             'SELECT batch_id, module_id FROM BatchReleases WHERE id = ?', [release_id]
         );
-        if (!release) return res.status(404).json({ message: 'Release not found' });
+        if (!release) return res.status(404).json({ message: 'Release not found for id: ' + release_id });
+
+        // Check for duplicate submission
+        const [[existing]] = await pool.query(
+            'SELECT id FROM StudentFeedbackResponses WHERE student_id = ? AND form_id = ? AND batch_id = ?',
+            [studentId, feedback_form_id, release.batch_id]
+        );
+        if (existing) return res.status(409).json({ message: 'Feedback already submitted for this form' });
 
         await pool.query(
             'INSERT INTO StudentFeedbackResponses (student_id, batch_id, module_id, form_id, response_json) VALUES (?, ?, ?, ?, ?)',
-            [studentId, release.batch_id, release.module_id, feedback_form_id, JSON.stringify(responses)]
+            [studentId, release.batch_id, release.module_id || null, feedback_form_id, JSON.stringify(responses || {})]
         );
 
-        await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
-            [studentId, 'FEEDBACK_SUBMITTED', 'StudentFeedbackResponses', feedback_form_id]);
+        // Non-fatal audit log
+        try {
+            await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
+                [studentId, 'FEEDBACK_SUBMITTED', 'StudentFeedbackResponses', feedback_form_id]);
+        } catch (auditErr) {
+            console.warn('[submitFeedback] AuditLog insert failed (non-fatal):', auditErr.message);
+        }
 
         res.status(201).json({ message: 'Feedback submitted successfully' });
     } catch (error) {
+        console.error('[submitFeedback] ERROR:', error.message, error.stack);
         res.status(500).json({ message: 'Error submitting feedback', error: error.message });
     }
 };
