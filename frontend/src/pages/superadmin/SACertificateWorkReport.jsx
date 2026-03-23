@@ -520,6 +520,15 @@ export const SACertificateWorkReport = () => {
         .filter(b => !selectedCourse      || String(b.course_id) === String(selectedCourse))
         .filter(b => !selectedBatchStatus || b.status === selectedBatchStatus);
 
+    // If multiple batches share the same name, show course name to disambiguate
+    const batchNameCount = visibleBatches.reduce((acc, b) => {
+        acc[b.batch_name] = (acc[b.batch_name] || 0) + 1;
+        return acc;
+    }, {});
+    const batchLabel = b => batchNameCount[b.batch_name] > 1
+        ? `${b.batch_name} · ${b.course_name}`
+        : b.batch_name;
+
     const tabs = [
         { key: 'certificates', label: 'Certificate & Eligibility Report', icon: Award },
         { key: 'student-work', label: 'Student Work & Projects Report',   icon: Briefcase },
@@ -567,7 +576,7 @@ export const SACertificateWorkReport = () => {
                         <select value={selectedBatch} onChange={e => setSelectedBatch(e.target.value)} style={selectStyle}>
                             <option value="">All Batches</option>
                             {visibleBatches.map(b => (
-                                <option key={b.id} value={b.id}>{b.batch_name}</option>
+                                <option key={b.id} value={b.id}>{batchLabel(b)}</option>
                             ))}
                         </select>
                     </div>
