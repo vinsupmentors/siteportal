@@ -33,7 +33,7 @@ const fileUrl = (fileId) => `${API_BASE}/api/files/${fileId}`;
 const TYPE_META = {
     module_project:             { label: 'Project',            color: theme.accent.blue,   icon: Briefcase,     submittable: true  },
     module_test:                { label: 'Test',               color: theme.accent.yellow, icon: FileSignature, submittable: true  },
-    module_feedback:            { label: 'Feedback Form',      color: theme.accent.green,  icon: Star,          submittable: false },
+    module_feedback:            { label: 'Feedback Form',      color: theme.accent.green,  icon: Star,          submittable: false, fillable: true },
     module_study_material:      { label: 'Study Materials',    color: theme.accent.purple, icon: BookOpen,      submittable: false },
     module_interview_questions: { label: 'Interview Q&A',      color: '#06b6d4',           icon: HelpCircle,    submittable: false },
     capstone_project:           { label: 'Capstone Project',   color: '#f97316',           icon: Award,         submittable: true  },
@@ -189,12 +189,13 @@ const SubmitModal = ({ release, onClose, onDone }) => {
 };
 
 // ─── Release Card ──────────────────────────────────────────────────────────────
-const ReleaseCard = ({ release, onSubmit }) => {
+const ReleaseCard = ({ release, onSubmit, onFillFeedback }) => {
     const meta = TYPE_META[release.release_type] || {};
     const Icon = meta.icon || FileText;
     const overdue = isOverdue(release.due_date);
     const submitted = !!release.submission_id;
     const graded = release.submission_status === 'graded';
+    const feedbackSubmitted = release.already_submitted;
 
     return (
         <div style={{
@@ -289,6 +290,22 @@ const ReleaseCard = ({ release, onSubmit }) => {
                         {submitted ? <><Edit2 size={12} /> Update</> : <><Upload size={12} /> Submit</>}
                     </button>
                 )}
+                {meta.fillable && (
+                    feedbackSubmitted
+                        ? <span style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0, padding: '8px 14px', borderRadius: theme.radius.md, fontSize: '12px', fontWeight: 700, background: `${theme.accent.green}15`, color: theme.accent.green, border: `1px solid ${theme.accent.green}30` }}>
+                            <CheckCircle size={12} /> Submitted
+                          </span>
+                        : <button onClick={() => onFillFeedback(release)} style={{
+                            display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
+                            padding: '8px 16px', borderRadius: theme.radius.md, cursor: 'pointer',
+                            fontSize: '12px', fontWeight: 700,
+                            border: `1px solid ${theme.accent.green}40`,
+                            background: `${theme.accent.green}15`,
+                            color: theme.accent.green, transition: 'all 0.15s',
+                          }}>
+                            <Star size={12} /> Fill Feedback
+                          </button>
+                )}
             </div>
         </div>
     );
@@ -308,6 +325,9 @@ export const StudentMaterials = () => {
     const [relLoading, setRelLoading] = useState(true);
     const [submitModal, setSubmitModal] = useState(null);
     const [releaseFilter, setReleaseFilter] = useState('all');
+    const [feedbackModal, setFeedbackModal] = useState(null); // { release }
+    const [feedbackResponses, setFeedbackResponses] = useState({});
+    const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
 
     useEffect(() => {
         studentAPI.getCurriculum()
@@ -443,7 +463,7 @@ export const StudentMaterials = () => {
                                 <EmptyState icon={<CheckCircle size={32} />} title="All caught up!" message="No items in this category." />
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    {filteredReleases.map(r => <ReleaseCard key={r.id} release={r} onSubmit={setSubmitModal} />)}
+                                    {filteredReleases.map(r => <ReleaseCard key={r.id} release={r} onSubmit={setSubmitModal} onFillFeedback={r2 => { setFeedbackModal(r2); setFeedbackResponses({}); }} />)}
                                 </div>
                             )}
                         </>
@@ -591,6 +611,100 @@ export const StudentMaterials = () => {
             {submitModal && (
                 <SubmitModal release={submitModal} onClose={() => setSubmitModal(null)} onDone={loadReleases} />
             )}
+
+            {/* ── Inline Feedback Form Modal ── */}
+            {feedbackModal && (() => {
+                const questions = feedbackModal.form_questions || [];
+                const handleFbSubmit = async () => {
+                    setFeedbackSubmitting(true);
+                    try {
+                        await studentAPI.submitFeedback({
+                            feedback_form_id: feedbackModal.entity_id,
+                            release_id: feedbackModal.id,
+                            responses: feedbackResponses,
+                        });
+                        setFeedbackModal(null);
+                        setFeedbackResponses({});
+                        loadReleases();
+                    } catch (err) {
+                        alert('Error: ' + (err.response?.data?.message || err.message));
+                    } finally { setFeedbackSubmitting(false); }
+                };
+                return (
+                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(11,17,32,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+                        <div style={{ background: theme.bg.card, borderRadius: theme.radius.lg, border: `1px solid ${theme.border.light}`, width: '100%', maxWidth: '620px', maxHeight: '85vh', overflowY: 'auto' }}>
+                            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${theme.border.subtle}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <span style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: theme.accent.green, background: `${theme.accent.green}12`, padding: '3px 10px', borderRadius: '4px' }}>Feedback Form</span>
+                                    <h2 style={{ margin: '8px 0 0', fontSize: '18px', fontWeight: 800, color: theme.text.primary }}>{feedbackModal.name}</h2>
+                                </div>
+                                <button onClick={() => setFeedbackModal(null)} style={{ background: 'none', border: 'none', color: theme.text.muted, cursor: 'pointer' }}><X size={20} /></button>
+                            </div>
+                            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                {questions.length === 0 ? (
+                                    <p style={{ color: theme.text.muted, fontSize: '13px', textAlign: 'center', padding: '20px' }}>No questions found in this form.</p>
+                                ) : questions.map((q, idx) => {
+                                    const qid = q.id || idx;
+                                    const val = feedbackResponses[qid];
+                                    return (
+                                        <div key={qid} style={{ background: theme.bg.input, borderRadius: theme.radius.md, padding: '16px' }}>
+                                            <div style={{ fontSize: '13px', fontWeight: 600, color: theme.text.primary, marginBottom: '10px' }}>
+                                                <span style={{ color: theme.accent.blue, fontWeight: 800, marginRight: '8px' }}>{idx + 1}.</span>
+                                                {q.question || q.label}
+                                                {q.required && <span style={{ color: theme.accent.red, marginLeft: '4px' }}>*</span>}
+                                            </div>
+                                            {q.type === 'star_rating' && (
+                                                <div style={{ display: 'flex', gap: '6px' }}>
+                                                    {[1,2,3,4,5].map(s => (
+                                                        <button key={s} type="button" onClick={() => setFeedbackResponses(p => ({ ...p, [qid]: s }))}
+                                                            style={{ width: '40px', height: '40px', borderRadius: theme.radius.sm, border: `1px solid ${(val||0)>=s ? theme.accent.yellow : theme.border.subtle}`, background: (val||0)>=s ? `${theme.accent.yellow}20` : 'transparent', color: (val||0)>=s ? theme.accent.yellow : theme.text.muted, cursor: 'pointer', fontSize: '18px' }}>★</button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {q.type === 'text' && (
+                                                <textarea rows={3} placeholder="Type your answer..." value={val || ''} onChange={e => setFeedbackResponses(p => ({ ...p, [qid]: e.target.value }))}
+                                                    style={{ width: '100%', padding: '10px 12px', borderRadius: theme.radius.sm, background: theme.bg.card, border: `1px solid ${theme.border.light}`, color: theme.text.primary, fontSize: '13px', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+                                            )}
+                                            {(q.type === 'radio' || q.type === 'dropdown') && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                    {(q.options || []).map((opt, oi) => (
+                                                        <button key={oi} onClick={() => setFeedbackResponses(p => ({ ...p, [qid]: opt }))}
+                                                            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', borderRadius: theme.radius.sm, border: `1px solid ${val===opt ? theme.accent.blue : theme.border.subtle}`, background: val===opt ? `${theme.accent.blue}12` : 'transparent', color: val===opt ? theme.accent.blue : theme.text.secondary, cursor: 'pointer', fontSize: '13px', fontWeight: val===opt ? 700 : 500, textAlign: 'left' }}>
+                                                            <span style={{ width: '14px', height: '14px', borderRadius: '50%', border: `2px solid ${val===opt ? theme.accent.blue : theme.border.light}`, background: val===opt ? theme.accent.blue : 'transparent', flexShrink: 0 }} />
+                                                            {opt}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {q.type === 'checkbox' && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                    {(q.options || []).map((opt, oi) => {
+                                                        const vals = val || [];
+                                                        const checked = vals.includes(opt);
+                                                        return (
+                                                            <button key={oi} onClick={() => setFeedbackResponses(p => ({ ...p, [qid]: checked ? vals.filter(v => v !== opt) : [...vals, opt] }))}
+                                                                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', borderRadius: theme.radius.sm, border: `1px solid ${checked ? theme.accent.blue : theme.border.subtle}`, background: checked ? `${theme.accent.blue}12` : 'transparent', color: checked ? theme.accent.blue : theme.text.secondary, cursor: 'pointer', fontSize: '13px', fontWeight: checked ? 700 : 500, textAlign: 'left' }}>
+                                                                <span style={{ width: '14px', height: '14px', borderRadius: '4px', border: `2px solid ${checked ? theme.accent.blue : theme.border.light}`, background: checked ? theme.accent.blue : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#fff' }}>{checked && '✓'}</span>
+                                                                {opt}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div style={{ padding: '16px 24px', borderTop: `1px solid ${theme.border.subtle}`, display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                                <button onClick={() => setFeedbackModal(null)} style={{ padding: '9px 20px', borderRadius: theme.radius.md, border: `1px solid ${theme.border.light}`, background: 'transparent', color: theme.text.secondary, cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>Cancel</button>
+                                <button onClick={handleFbSubmit} disabled={feedbackSubmitting} style={{ padding: '9px 20px', borderRadius: theme.radius.md, border: 'none', background: feedbackSubmitting ? theme.text.muted : theme.accent.green, color: '#fff', cursor: feedbackSubmitting ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Send size={13} /> {feedbackSubmitting ? 'Submitting...' : 'Submit Feedback'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             <style>{`
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

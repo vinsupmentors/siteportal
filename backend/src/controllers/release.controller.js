@@ -368,8 +368,18 @@ exports.getStudentReleases = async (req, res) => {
                     files = tFiles;
 
                 } else if (r.release_type === 'module_feedback') {
-                    const [[form]] = await pool.query('SELECT title FROM FeedbackForms WHERE id = ?', [r.entity_id]);
+                    const [[form]] = await pool.query('SELECT id, title, form_json FROM FeedbackForms WHERE id = ?', [r.entity_id]);
                     name = form?.title || 'Feedback Form';
+                    const formJson = form?.form_json
+                        ? (typeof form.form_json === 'string' ? JSON.parse(form.form_json) : form.form_json)
+                        : {};
+                    extra.form_questions = formJson?.fields || [];
+                    // Check if student already submitted this feedback
+                    const [[sfr]] = await pool.query(
+                        'SELECT id FROM StudentFeedbackResponses WHERE student_id = ? AND form_id = ? AND batch_id = ?',
+                        [studentId, r.entity_id, r.batch_id]
+                    );
+                    extra.already_submitted = !!sfr;
 
                 } else if (r.release_type === 'module_study_material') {
                     const [[mod]] = await pool.query('SELECT name, study_material_url FROM Modules WHERE id = ?', [r.entity_id]);
