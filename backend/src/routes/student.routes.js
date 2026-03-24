@@ -40,6 +40,7 @@ router.post('/ready-for-interview', studentController.markReadyForInterview);
 router.post('/certificates/generate', studentController.generateCertificate);
 router.get('/certificates', studentController.getCertificates);
 router.get('/certificates/:id/download', studentController.downloadCertificate);
+router.get('/profile-photo', studentController.getProfilePhoto);
 router.post('/profile-photo', studentController.uploadProfilePhoto);
 
 // ── Student Released Content & Submissions ───────────────────────────────────
