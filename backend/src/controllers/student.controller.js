@@ -1358,8 +1358,8 @@ exports.generateCertificate = async (req, res) => {
         const today = new Date().toISOString().split('T')[0];
         const [result] = await pool.query(
             `INSERT INTO Certificates
-                (student_id, course_id, type, issued_date, issued_by, cert_type, program_type, generated_at, cert_data)
-             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
+                (student_id, course_id, type, issued_date, issued_by, cert_type, program_type, generated_at, cert_data, certificate_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, '')`,
             [studentId, info.course_id, legacyType, today, studentId, cert_type, info.program_type || 'JRP', htmlBuffer]
         );
 
