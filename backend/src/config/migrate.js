@@ -46,6 +46,9 @@ async function runMigrations() {
         await addColumnIfNotExists('Certificates', "type ENUM('course_completion','internship') DEFAULT 'course_completion'");
         await addColumnIfNotExists('Certificates', 'issued_by INT');
 
+        // ── Users: profile photo ─────────────────────────────────────────
+        await addColumnIfNotExists('Users', 'profile_photo MEDIUMTEXT NULL');
+
         // ── Batches: missing columns ────────────────────────────────────
         await addColumnIfNotExists('Batches', 'schedule_type VARCHAR(50)');
         await addColumnIfNotExists('Batches', 'timing VARCHAR(100)');

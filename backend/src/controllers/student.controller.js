@@ -1114,7 +1114,7 @@ exports.markReadyForInterview = async (req, res) => {
     }
 };
 
-const generateCertificateHTML = async (type, studentName, courseName, batchName, date, studentId) => {
+const generateCertificateHTML = async (type, studentName, courseName, batchName, date, studentId, photoDataUrl, portfolioQRDataUrl) => {
     const formatted = new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
     const dateShort = new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const studentIdFmt = `VS${String(studentId).padStart(5, '0')}`;
@@ -1126,6 +1126,9 @@ const generateCertificateHTML = async (type, studentName, courseName, batchName,
     const base64 = imgBuffer.toString('base64');
 
     if (type === 'completion') {
+        const photoHTML = photoDataUrl
+            ? `<img class="ov" src="${photoDataUrl}" style="top:20.5%;left:3.5%;width:110px;height:110px;border-radius:50%;object-fit:cover;border:4px solid #d4a017;" />`
+            : '';
         return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
@@ -1137,11 +1140,10 @@ const generateCertificateHTML = async (type, studentName, courseName, batchName,
 </style></head>
 <body><div class="wrap">
   <img class="bg" src="data:image/jpeg;base64,${base64}" />
-  <!-- Student name: centered below "THIS IS TO CERTIFY THAT" -->
+  ${photoHTML}
   <div class="ov" style="top:43%;left:50%;transform:translateX(-50%);width:460px;text-align:center;font-size:26px;font-weight:900;color:#1a3a6b;letter-spacing:2px;">
     ${studentName.toUpperCase()}
   </div>
-  <!-- Meta values -->
   <div class="ov" style="top:67.2%;left:27.5%;font-size:13px;font-weight:700;color:#1a3a6b;">${dateShort}</div>
   <div class="ov" style="top:70.8%;left:27.5%;font-size:13px;font-weight:700;color:#1a3a6b;">${studentIdFmt}</div>
   <div class="ov" style="top:74.3%;left:27.5%;font-size:13px;font-weight:700;color:#1a3a6b;">${courseName}</div>
@@ -1150,6 +1152,9 @@ const generateCertificateHTML = async (type, studentName, courseName, batchName,
     }
 
     // ── INTERNSHIP ──────────────────────────────────────────────────────────────
+    const qrHTML = portfolioQRDataUrl
+        ? `<img class="ov" src="${portfolioQRDataUrl}" style="top:73.5%;left:68%;width:88px;height:88px;" />`
+        : '';
     return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
@@ -1161,17 +1166,15 @@ const generateCertificateHTML = async (type, studentName, courseName, batchName,
 </style></head>
 <body><div class="wrap">
   <img class="bg" src="data:image/jpeg;base64,${base64}" />
-  <!-- Student name: on the underline after "This is to certify that" -->
   <div class="ov" style="top:28%;left:34%;font-size:15px;font-weight:700;color:#1a3a6b;font-style:italic;">
     ${studentName}
   </div>
-  <!-- Meta values -->
   <div class="ov" style="top:74.2%;left:18%;font-size:13px;font-weight:600;color:#222;">${formatted}</div>
   <div class="ov" style="top:77.5%;left:18%;font-size:13px;font-weight:600;color:#222;">${studentIdFmt}</div>
   <div class="ov" style="top:80.7%;left:18%;font-size:13px;font-weight:600;color:#222;">${courseName}</div>
   <div class="ov" style="top:83.8%;left:18%;font-size:13px;font-weight:600;color:#222;">${batchName}</div>
+  ${qrHTML}
 </div></body></html>`;
-
 };
 
 exports.generateCertificate = async (req, res) => {
@@ -1224,7 +1227,30 @@ exports.generateCertificate = async (req, res) => {
         }
 
         const studentName = `${info.first_name} ${info.last_name}`;
-        const html = await generateCertificateHTML(cert_type, studentName, info.course_name, info.batch_name, new Date(), studentId);
+
+        // Fetch profile photo
+        const [photoRows] = await pool.query('SELECT profile_photo FROM Users WHERE id = ?', [studentId]);
+        const photoDataUrl = photoRows[0]?.profile_photo || null;
+
+        // Fetch approved portfolio link and generate QR (internship only)
+        let portfolioQRDataUrl = null;
+        if (cert_type === 'internship') {
+            try {
+                const QRCode = require('qrcode');
+                const [portRows] = await pool.query(
+                    'SELECT portfolio_link FROM PortfolioRequests WHERE student_id = ? AND status = ? ORDER BY id DESC LIMIT 1',
+                    [studentId, 'approved']
+                );
+                const portfolioLink = portRows[0]?.portfolio_link;
+                if (portfolioLink) {
+                    portfolioQRDataUrl = await QRCode.toDataURL(portfolioLink, { width: 88, margin: 1 });
+                }
+            } catch (qrErr) {
+                console.error('[Certificate] QR generation skipped:', qrErr.message);
+            }
+        }
+
+        const html = await generateCertificateHTML(cert_type, studentName, info.course_name, info.batch_name, new Date(), studentId, photoDataUrl, portfolioQRDataUrl);
 
         // Store as HTML in cert_data — include original schema columns to satisfy NOT NULL constraints
         const htmlBuffer = Buffer.from(html);
@@ -1241,6 +1267,22 @@ exports.generateCertificate = async (req, res) => {
     } catch (error) {
         console.error('[Certificate] generateCertificate error:', error.message, error.stack);
         res.status(500).json({ message: 'Error generating certificate', error: error.message });
+    }
+};
+
+// ── Upload / update profile photo (stored as base64 data URL) ────────────────
+exports.uploadProfilePhoto = async (req, res) => {
+    try {
+        const studentId = req.user.id;
+        const { photo } = req.body; // base64 data URL: "data:image/jpeg;base64,..."
+        if (!photo) return res.status(400).json({ message: 'No photo provided' });
+        if (!photo.startsWith('data:image/')) return res.status(400).json({ message: 'Invalid image format' });
+        // Limit size: max ~2MB encoded
+        if (photo.length > 2_800_000) return res.status(400).json({ message: 'Photo too large (max ~2MB)' });
+        await pool.query('UPDATE Users SET profile_photo = ? WHERE id = ?', [photo, studentId]);
+        res.json({ message: 'Profile photo saved' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error saving photo', error: error.message });
     }
 };
 

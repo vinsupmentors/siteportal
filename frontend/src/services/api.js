@@ -310,6 +310,7 @@ submitReleaseWork: (releaseId, formData) => api.post(`/student/releases/${releas
     generateCertificate: (data) => api.post('/student/certificates/generate', data),
     getCertificates: () => api.get('/student/certificates'),
     downloadCertificate: (id) => api.get(`/student/certificates/${id}/download`, { responseType: 'blob' }),
+    uploadProfilePhoto: (photo) => api.post('/student/profile-photo', { photo }),
 
     // IOP Curriculum (IOP students only)
     getIOPCurriculum: () => api.get('/student/iop-curriculum'),

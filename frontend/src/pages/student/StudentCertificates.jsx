@@ -4,7 +4,7 @@ import theme from './theme';
 import { PageHeader, Card, LoadingSpinner } from './StudentComponents';
 import {
     GraduationCap, Download, CheckCircle, AlertCircle,
-    Award, FileText, RefreshCw,
+    Award, FileText, RefreshCw, Camera, Upload,
 } from 'lucide-react';
 
 const fmtDate = (d) => {
@@ -71,6 +71,8 @@ export const StudentCertificates = () => {
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(null);
     const [msg, setMsg] = useState('');
+    const [profilePhoto, setProfilePhoto] = useState(null);
+    const [photoUploading, setPhotoUploading] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -86,6 +88,28 @@ export const StudentCertificates = () => {
     };
 
     useEffect(() => { fetchData(); }, []);
+
+    const handlePhotoChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) { setMsg('Please upload an image file'); return; }
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            const dataUrl = ev.target.result;
+            setProfilePhoto(dataUrl);
+            setPhotoUploading(true);
+            setMsg('');
+            try {
+                await studentAPI.uploadProfilePhoto(dataUrl);
+                setMsg('Photo uploaded! It will appear on your certificate.');
+            } catch {
+                setMsg('Photo upload failed. Please try again.');
+            } finally {
+                setPhotoUploading(false);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
 
     const handleGenerate = async (cert_type) => {
         setGenerating(cert_type);
@@ -158,6 +182,40 @@ export const StudentCertificates = () => {
                     {msg}
                 </div>
             )}
+
+            {/* Photo Upload Card */}
+            <Card style={{ marginBottom: '24px', padding: '20px 24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                    {/* Preview */}
+                    <div style={{
+                        width: '80px', height: '80px', borderRadius: '50%', flexShrink: 0,
+                        background: '#1e2a3a', border: '3px solid #2461a8',
+                        overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        {profilePhoto
+                            ? <img src={profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : <Camera size={28} color="#4a6fa5" />}
+                    </div>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#e2e8f0', marginBottom: '4px' }}>
+                            Your Photo for Completion Certificate
+                        </div>
+                        <div style={{ fontSize: '12px', color: theme.text.muted, marginBottom: '12px' }}>
+                            Your photo will be placed in the circular badge on your certificate. Upload a clear, passport-style photo.
+                        </div>
+                        <label style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '8px',
+                            padding: '8px 16px', borderRadius: theme.radius.sm, cursor: 'pointer',
+                            background: '#2461a8', color: '#fff', fontSize: '12px', fontWeight: 700,
+                            opacity: photoUploading ? 0.6 : 1,
+                        }}>
+                            <Upload size={13} />
+                            {photoUploading ? 'Uploading…' : profilePhoto ? 'Change Photo' : 'Upload Photo'}
+                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoChange} disabled={photoUploading} />
+                        </label>
+                    </div>
+                </div>
+            </Card>
 
             {/* Certificate cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(340px,1fr))', gap: '24px', marginBottom: '32px' }}>
