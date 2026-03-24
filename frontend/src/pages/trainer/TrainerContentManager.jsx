@@ -643,7 +643,7 @@ export const TrainerContentManager = () => {
                                                                         </a>
                                                                     )}
                                                                     {studyFiles.map(f => (
-                                                                        <a key={f.id} href={`/uploads/content/${f.stored_name}`} target="_blank" rel="noopener noreferrer"
+                                                                        <a key={f.id} href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/files/${f.id}`} target="_blank" rel="noopener noreferrer"
                                                                             style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: theme.text.secondary, textDecoration: 'none' }}>
                                                                             <Download size={10} /> {f.original_name}
                                                                         </a>
@@ -672,7 +672,7 @@ export const TrainerContentManager = () => {
                                                                         </a>
                                                                     )}
                                                                     {testFiles.map(f => (
-                                                                        <a key={f.id} href={`/uploads/content/${f.stored_name}`} target="_blank" rel="noopener noreferrer"
+                                                                        <a key={f.id} href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/files/${f.id}`} target="_blank" rel="noopener noreferrer"
                                                                             style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: theme.accent.yellow, textDecoration: 'none' }}>
                                                                             <Download size={10} /> {f.original_name}
                                                                         </a>
@@ -701,7 +701,7 @@ export const TrainerContentManager = () => {
                                                                         </a>
                                                                     )}
                                                                     {iqFiles.map(f => (
-                                                                        <a key={f.id} href={`/uploads/content/${f.stored_name}`} target="_blank" rel="noopener noreferrer"
+                                                                        <a key={f.id} href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/files/${f.id}`} target="_blank" rel="noopener noreferrer"
                                                                             style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#06b6d4', textDecoration: 'none' }}>
                                                                             <Download size={10} /> {f.original_name}
                                                                         </a>
@@ -794,7 +794,7 @@ export const TrainerContentManager = () => {
                                                                                         {proj.files?.length > 0 ? (
                                                                                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                                                                                 {proj.files.map(f => (
-                                                                                                    <a key={f.id} href={`/uploads/content/${f.stored_name}`} target="_blank" rel="noopener noreferrer"
+                                                                                                    <a key={f.id} href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/files/${f.id}`} target="_blank" rel="noopener noreferrer"
                                                                                                         style={{
                                                                                                             display: 'inline-flex', alignItems: 'center', gap: '4px',
                                                                                                             fontSize: '11px', color: theme.accent.blue, textDecoration: 'none',

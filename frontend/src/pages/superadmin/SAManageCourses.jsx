@@ -99,7 +99,7 @@ const ContentUploader = ({ entityType, entityId, category, title, subtext, icon:
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                                <a href={`${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000'}/uploads/content/${f.stored_name}`} download={f.original_name} target="_blank" rel="noopener noreferrer"
+                                <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/files/${f.id}`} target="_blank" rel="noopener noreferrer"
                                     style={{ padding: '6px', background: 'var(--primary-light)', color: 'var(--primary)', borderRadius: '4px', display: 'flex' }}>
                                     <Download size={14} />
                                 </a>
