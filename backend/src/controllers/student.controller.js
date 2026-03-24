@@ -1125,56 +1125,72 @@ const generateCertificateHTML = async (type, studentName, courseName, batchName,
     const imgBuffer = await fs.readFile(templatePath);
     const base64 = imgBuffer.toString('base64');
 
+    // Common print-bar + shared CSS injected into every certificate page
+    const printBar = `
+<div id="pbar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#1a3a6b;color:#fff;padding:10px 22px;display:flex;align-items:center;gap:14px;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;box-shadow:0 2px 12px rgba(0,0,0,0.35)">
+  <span style="flex:1">🎓 <strong>Vinsup Certificate</strong> &nbsp;—&nbsp; Click <em>Save as PDF</em> to download a permanent PDF copy</span>
+  <button onclick="window.print()" style="padding:8px 20px;background:#fff;color:#1a3a6b;border:none;border-radius:6px;cursor:pointer;font-weight:800;font-size:13px;letter-spacing:.3px;">🖨&nbsp; Save as PDF</button>
+</div>`;
+
+    const commonCSS = `
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#dde3ec;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .page{width:794px;margin:54px auto 24px;box-shadow:0 4px 24px rgba(0,0,0,0.25)}
+  .wrap{position:relative;width:794px;height:1123px;overflow:hidden}
+  .bg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill}
+  .ov{position:absolute;font-family:'Segoe UI',Arial,sans-serif}
+  @media print{#pbar{display:none!important}.page{margin:0!important;box-shadow:none!important}}`;
+
     if (type === 'completion') {
+        // Photo goes inside the golden circular badge (left side, ~42% from top centre)
         const photoHTML = photoDataUrl
-            ? `<img class="ov" src="${photoDataUrl}" style="top:20.5%;left:3.5%;width:110px;height:110px;border-radius:50%;object-fit:cover;border:4px solid #d4a017;" />`
+            ? `<img class="ov" src="${photoDataUrl}" style="top:37.5%;left:1.8%;width:107px;height:107px;border-radius:50%;object-fit:cover;" />`
             : '';
         return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
-<style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{width:794px;height:1123px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
-  .wrap{position:relative;width:794px;height:1123px;overflow:hidden}
-  .bg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill}
-  .ov{position:absolute;font-family:'Segoe UI',Arial,sans-serif}
-</style></head>
-<body><div class="wrap">
+<style>${commonCSS}</style></head>
+<body>
+${printBar}
+<div class="page"><div class="wrap">
   <img class="bg" src="data:image/jpeg;base64,${base64}" />
   ${photoHTML}
-  <div class="ov" style="top:43%;left:50%;transform:translateX(-50%);width:460px;text-align:center;font-size:26px;font-weight:900;color:#1a3a6b;letter-spacing:2px;">
+  <!-- Student name on the underline between "THIS IS TO CERTIFY THAT" and the body paragraph -->
+  <div class="ov" style="top:39%;left:50%;transform:translateX(-50%);width:460px;text-align:center;font-size:24px;font-weight:900;color:#1a3a6b;letter-spacing:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
     ${studentName.toUpperCase()}
   </div>
-  <div class="ov" style="top:67.2%;left:27.5%;font-size:13px;font-weight:700;color:#1a3a6b;">${dateShort}</div>
-  <div class="ov" style="top:70.8%;left:27.5%;font-size:13px;font-weight:700;color:#1a3a6b;">${studentIdFmt}</div>
-  <div class="ov" style="top:74.3%;left:27.5%;font-size:13px;font-weight:700;color:#1a3a6b;">${courseName}</div>
-  <div class="ov" style="top:77.8%;left:27.5%;font-size:13px;font-weight:700;color:#1a3a6b;">${batchName}</div>
-</div></body></html>`;
+  <!-- Metadata values — placed after the label colons on each row -->
+  <div class="ov" style="top:62.5%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${dateShort}</div>
+  <div class="ov" style="top:66.2%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${studentIdFmt}</div>
+  <div class="ov" style="top:69.8%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${courseName}</div>
+  <div class="ov" style="top:73.4%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${batchName}</div>
+</div></div>
+</body></html>`;
     }
 
     // ── INTERNSHIP ──────────────────────────────────────────────────────────────
+    // QR code goes in the box at bottom-right of the internship template
     const qrHTML = portfolioQRDataUrl
-        ? `<img class="ov" src="${portfolioQRDataUrl}" style="top:73.5%;left:68%;width:88px;height:88px;" />`
+        ? `<img class="ov" src="${portfolioQRDataUrl}" style="top:71%;left:66.5%;width:90px;height:90px;" />`
         : '';
     return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
-<style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{width:794px;height:1123px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
-  .wrap{position:relative;width:794px;height:1123px;overflow:hidden}
-  .bg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill}
-  .ov{position:absolute;font-family:'Segoe UI',Arial,sans-serif}
-</style></head>
-<body><div class="wrap">
+<style>${commonCSS}</style></head>
+<body>
+${printBar}
+<div class="page"><div class="wrap">
   <img class="bg" src="data:image/jpeg;base64,${base64}" />
-  <div class="ov" style="top:28%;left:34%;font-size:15px;font-weight:700;color:#1a3a6b;font-style:italic;">
+  <!-- Name sits on the blank underline in "This is to certify that ___" -->
+  <div class="ov" style="top:18.5%;left:41%;font-size:14px;font-weight:700;color:#1a3a6b;font-style:italic;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
     ${studentName}
   </div>
-  <div class="ov" style="top:74.2%;left:18%;font-size:13px;font-weight:600;color:#222;">${formatted}</div>
-  <div class="ov" style="top:77.5%;left:18%;font-size:13px;font-weight:600;color:#222;">${studentIdFmt}</div>
-  <div class="ov" style="top:80.7%;left:18%;font-size:13px;font-weight:600;color:#222;">${courseName}</div>
-  <div class="ov" style="top:83.8%;left:18%;font-size:13px;font-weight:600;color:#222;">${batchName}</div>
+  <!-- Metadata values after label colons -->
+  <div class="ov" style="top:71%;left:20%;font-size:13px;font-weight:600;color:#222;">${formatted}</div>
+  <div class="ov" style="top:74.5%;left:20%;font-size:13px;font-weight:600;color:#222;">${studentIdFmt}</div>
+  <div class="ov" style="top:78%;left:20%;font-size:13px;font-weight:600;color:#222;">${courseName}</div>
+  <div class="ov" style="top:81.5%;left:20%;font-size:13px;font-weight:600;color:#222;">${batchName}</div>
   ${qrHTML}
-</div></body></html>`;
+</div></div>
+</body></html>`;
 };
 
 exports.generateCertificate = async (req, res) => {
@@ -1283,6 +1299,16 @@ exports.uploadProfilePhoto = async (req, res) => {
         res.json({ message: 'Profile photo saved' });
     } catch (error) {
         res.status(500).json({ message: 'Error saving photo', error: error.message });
+    }
+};
+
+// ── Get saved profile photo ──────────────────────────────────────────────────
+exports.getProfilePhoto = async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT profile_photo FROM Users WHERE id = ?', [req.user.id]);
+        res.json({ photo: rows[0]?.profile_photo || null });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching photo', error: error.message });
     }
 };
 
