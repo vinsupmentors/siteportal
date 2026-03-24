@@ -1159,10 +1159,10 @@ ${printBar}
     ${studentName.toUpperCase()}
   </div>
   <!-- Metadata values — placed after the label colons on each row -->
-  <div class="ov" style="top:62.5%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${dateShort}</div>
-  <div class="ov" style="top:66.2%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${studentIdFmt}</div>
-  <div class="ov" style="top:69.8%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${courseName}</div>
-  <div class="ov" style="top:73.4%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${batchName}</div>
+  <div class="ov" style="top:66%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${dateShort}</div>
+  <div class="ov" style="top:69.5%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${studentIdFmt}</div>
+  <div class="ov" style="top:73%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${courseName}</div>
+  <div class="ov" style="top:76.5%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${batchName}</div>
 </div></div>
 </body></html>`;
     }
@@ -1184,10 +1184,10 @@ ${printBar}
     ${studentName}
   </div>
   <!-- Metadata values after label colons -->
-  <div class="ov" style="top:71%;left:20%;font-size:13px;font-weight:600;color:#222;">${formatted}</div>
-  <div class="ov" style="top:74.5%;left:20%;font-size:13px;font-weight:600;color:#222;">${studentIdFmt}</div>
-  <div class="ov" style="top:78%;left:20%;font-size:13px;font-weight:600;color:#222;">${courseName}</div>
-  <div class="ov" style="top:81.5%;left:20%;font-size:13px;font-weight:600;color:#222;">${batchName}</div>
+  <div class="ov" style="top:73.5%;left:22%;font-size:13px;font-weight:600;color:#222;">${formatted}</div>
+  <div class="ov" style="top:77%;left:22%;font-size:13px;font-weight:600;color:#222;">${studentIdFmt}</div>
+  <div class="ov" style="top:80.5%;left:22%;font-size:13px;font-weight:600;color:#222;">${courseName}</div>
+  <div class="ov" style="top:84%;left:22%;font-size:13px;font-weight:600;color:#222;">${batchName}</div>
   ${qrHTML}
 </div></div>
 </body></html>`;
@@ -1217,12 +1217,12 @@ exports.generateCertificate = async (req, res) => {
         if (!infoRows.length) return res.status(400).json({ message: 'No batch found for this student' });
         const info = infoRows[0];
 
-        // Check existing non-reset certificate
+        // Check for existing certificate (allow re-generation to update the stored HTML)
         const [existing] = await pool.query(
             'SELECT id FROM Certificates WHERE student_id = ? AND cert_type = ? AND reset_by_admin = 0',
             [studentId, cert_type]
         );
-        if (existing.length) return res.status(400).json({ message: 'Certificate already generated' });
+        const existingId = existing.length ? existing[0].id : null;
 
         // Check eligibility
         if (cert_type === 'internship') {
@@ -1268,18 +1268,28 @@ exports.generateCertificate = async (req, res) => {
 
         const html = await generateCertificateHTML(cert_type, studentName, info.course_name, info.batch_name, new Date(), studentId, photoDataUrl, portfolioQRDataUrl);
 
-        // Store as HTML in cert_data — include original schema columns to satisfy NOT NULL constraints
+        // Store / update the certificate HTML in the DB
         const htmlBuffer = Buffer.from(html);
         const legacyType = cert_type === 'internship' ? 'internship' : 'course_completion';
         const today = new Date().toISOString().split('T')[0];
-        const [result] = await pool.query(
-            `INSERT INTO Certificates
-                (student_id, course_id, type, issued_date, issued_by, cert_type, program_type, generated_at, cert_data, certificate_url)
-             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, '')`,
-            [studentId, info.course_id, legacyType, today, studentId, cert_type, info.program_type || 'JRP', htmlBuffer]
-        );
+        let result;
+        if (existingId) {
+            // Refresh the stored HTML with the corrected layout
+            await pool.query(
+                `UPDATE Certificates SET cert_data = ?, generated_at = NOW(), reset_by_admin = 0 WHERE id = ?`,
+                [htmlBuffer, existingId]
+            );
+            result = { insertId: existingId };
+        } else {
+            [result] = await pool.query(
+                `INSERT INTO Certificates
+                    (student_id, course_id, type, issued_date, issued_by, cert_type, program_type, generated_at, cert_data, certificate_url)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, '')`,
+                [studentId, info.course_id, legacyType, today, studentId, cert_type, info.program_type || 'JRP', htmlBuffer]
+            );
+        }
 
-        res.json({ message: 'Certificate generated', certificate_id: result.insertId, html });
+        res.json({ message: existingId ? 'Certificate refreshed' : 'Certificate generated', certificate_id: result.insertId, html });
     } catch (error) {
         console.error('[Certificate] generateCertificate error:', error.message, error.stack);
         res.status(500).json({ message: 'Error generating certificate', error: error.message });
