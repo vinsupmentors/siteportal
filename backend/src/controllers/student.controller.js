@@ -1,4 +1,6 @@
 const pool = require('../config/db');
+const path = require('path');
+const fs   = require('fs').promises;
 
 // ==========================================
 // STUDENT SPECIFIC WORKFLOWS
@@ -1112,192 +1114,64 @@ exports.markReadyForInterview = async (req, res) => {
     }
 };
 
-const generateCertificateHTML = (type, studentName, courseName, batchName, date, studentId) => {
+const generateCertificateHTML = async (type, studentName, courseName, batchName, date, studentId) => {
     const formatted = new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
     const dateShort = new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const studentIdFmt = `VS${String(studentId).padStart(5, '0')}`;
 
-    // ── COURSE COMPLETION CERTIFICATE (Vinsup Skill Academy brand) ─────────────
+    // Read the JPG template and convert to base64
+    const templateFile = type === 'internship' ? 'cert_internship.jpg' : 'cert_completion.jpg';
+    const templatePath = path.join(__dirname, '../assets', templateFile);
+    const imgBuffer = await fs.readFile(templatePath);
+    const base64 = imgBuffer.toString('base64');
+
     if (type === 'completion') {
         return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{width:794px;min-height:1123px;background:#fff;font-family:'Segoe UI',Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .page{width:794px;min-height:1123px;display:flex;position:relative;overflow:hidden}
-  /* Left geometric panel */
-  .left{width:210px;min-height:1123px;background:#1a3a6b;position:relative;flex-shrink:0}
-  .left-mid{position:absolute;top:0;right:0;width:150px;height:100%;background:#2461a8;clip-path:polygon(30px 0,100% 0,100% 100%,0 100%)}
-  .left-light{position:absolute;bottom:0;left:0;width:130px;height:420px;background:#4eb3d3;clip-path:polygon(0 60px,100% 0,100% 100%,0 100%)}
-  /* Photo circle */
-  .photo-wrap{position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);z-index:10}
-  .photo-circle{width:110px;height:110px;border-radius:50%;border:6px solid #d4a017;background:#e8e8e8;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:52px}
-  .ribbon{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);width:70px;height:16px;background:#2461a8;clip-path:polygon(0 0,100% 0,90% 100%,10% 100%)}
-  /* Right content */
-  .right{flex:1;padding:44px 44px 36px 36px;display:flex;flex-direction:column;align-items:center}
-  .logo-row{display:flex;align-items:center;gap:12px;margin-bottom:6px}
-  .v-icon{width:38px;height:38px;background:linear-gradient(135deg,#e53e3e,#dd6b20);clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:17px;flex-shrink:0}
-  .logo-text-wrap{}
-  .logo-name{font-size:18px;font-weight:800;color:#1a3a6b;letter-spacing:.5px}
-  .logo-sub{font-size:10px;letter-spacing:3px;color:#666;text-transform:uppercase;font-weight:600}
-  .tagline{font-size:10px;color:#e53e3e;font-style:italic;font-weight:600;margin-bottom:24px;text-align:center}
-  .title-cert{font-size:54px;font-weight:900;color:#1a3a6b;letter-spacing:3px;text-align:center;line-height:1}
-  .title-sub{font-size:13px;letter-spacing:4px;color:#666;text-transform:uppercase;margin:6px 0 22px;text-align:center}
-  .student-name{font-size:30px;font-weight:800;color:#dd6b20;letter-spacing:2px;text-align:center;border-bottom:3px solid #2461a8;padding-bottom:10px;margin-bottom:18px;width:100%}
-  .body-txt{font-size:13px;color:#555;text-align:center;line-height:1.9;margin-bottom:32px}
-  .divider{width:100%;border-top:1px solid #e2e8f0;margin-bottom:20px}
-  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 32px;width:100%;margin-bottom:32px}
-  .meta-item{}
-  .meta-lbl{font-size:9px;font-weight:700;letter-spacing:2px;color:#999;text-transform:uppercase}
-  .meta-val{font-size:13px;font-weight:700;color:#1a3a6b;margin-top:2px}
-  .sigs{display:flex;justify-content:space-around;width:100%;margin-top:auto}
-  .sig{text-align:center}
-  .sig-line{width:130px;border-top:2px solid #333;margin:0 auto 6px}
-  .sig-lbl{font-size:11px;font-weight:700;color:#333;letter-spacing:1px}
-  .mascot{position:absolute;bottom:24px;right:28px;font-size:72px;opacity:.1;line-height:1}
+  body{width:794px;height:1123px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
+  .wrap{position:relative;width:794px;height:1123px;overflow:hidden}
+  .bg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill}
+  .ov{position:absolute;font-family:'Segoe UI',Arial,sans-serif}
 </style></head>
-<body><div class="page">
-  <div class="left">
-    <div class="left-mid"></div>
-    <div class="left-light"></div>
-    <div class="photo-wrap">
-      <div class="photo-circle">👤</div>
-      <div class="ribbon"></div>
-    </div>
+<body><div class="wrap">
+  <img class="bg" src="data:image/jpeg;base64,${base64}" />
+  <!-- Student name: centered below "THIS IS TO CERTIFY THAT" -->
+  <div class="ov" style="top:43%;left:50%;transform:translateX(-50%);width:460px;text-align:center;font-size:26px;font-weight:900;color:#1a3a6b;letter-spacing:2px;">
+    ${studentName.toUpperCase()}
   </div>
-  <div class="right">
-    <div class="logo-row">
-      <div class="v-icon">V</div>
-      <div class="logo-text-wrap">
-        <div class="logo-name">VINSUP SKILL ACADEMY</div>
-        <div class="logo-sub">Skill Academy</div>
-      </div>
-    </div>
-    <div class="tagline">Building Future — Ready Professionals</div>
-    <div class="title-cert">CERTIFICATE</div>
-    <div class="title-sub">This is to certify that</div>
-    <div class="student-name">${studentName.toUpperCase()}</div>
-    <div class="body-txt">
-      for successfully completing the <strong>${courseName}</strong> Course and has demonstrated proficiency<br>
-      in Industry-relevant technical skills &amp; Practical application through projects.
-    </div>
-    <div class="divider"></div>
-    <div class="meta-grid">
-      <div class="meta-item"><div class="meta-lbl">ISSUED ON</div><div class="meta-val">${dateShort}</div></div>
-      <div class="meta-item"><div class="meta-lbl">COURSE</div><div class="meta-val">${courseName}</div></div>
-      <div class="meta-item"><div class="meta-lbl">STUDENT ID</div><div class="meta-val">VS${String(studentId).padStart(5,'0')}</div></div>
-      <div class="meta-item"><div class="meta-lbl">BATCH</div><div class="meta-val">${batchName}</div></div>
-    </div>
-    <div class="sigs">
-      <div class="sig"><div class="sig-line"></div><div class="sig-lbl">CGO</div></div>
-      <div class="sig"><div class="sig-line"></div><div class="sig-lbl">VP</div></div>
-    </div>
-  </div>
-  <div class="mascot">🎓</div>
+  <!-- Meta values -->
+  <div class="ov" style="top:67.2%;left:27.5%;font-size:13px;font-weight:700;color:#1a3a6b;">${dateShort}</div>
+  <div class="ov" style="top:70.8%;left:27.5%;font-size:13px;font-weight:700;color:#1a3a6b;">${studentIdFmt}</div>
+  <div class="ov" style="top:74.3%;left:27.5%;font-size:13px;font-weight:700;color:#1a3a6b;">${courseName}</div>
+  <div class="ov" style="top:77.8%;left:27.5%;font-size:13px;font-weight:700;color:#1a3a6b;">${batchName}</div>
 </div></body></html>`;
     }
 
-    // ── INTERNSHIP COMPLETION CERTIFICATE (Vinsup Infotech brand) ─────────────
+    // ── INTERNSHIP ──────────────────────────────────────────────────────────────
     return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{width:794px;min-height:1123px;background:#fff;font-family:'Segoe UI',Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .page{width:794px;min-height:1123px;position:relative;padding:0}
-  /* Header */
-  .header{display:flex;align-items:center;justify-content:space-between;padding:16px 36px;border-bottom:2px solid #1a3a6b}
-  .hdr-logo{display:flex;align-items:center;gap:10px}
-  .v-icon{width:36px;height:36px;background:linear-gradient(135deg,#e53e3e,#dd6b20);clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:16px}
-  .hdr-co{font-size:14px;font-weight:800;color:#1a3a6b}
-  .hdr-co-sub{font-size:9px;letter-spacing:2px;color:#666;text-transform:uppercase}
-  .hdr-contact{text-align:right;font-size:10px;color:#555;line-height:1.8}
-  .hdr-contact b{color:#1a3a6b}
-  /* Wave decorations */
-  .wave-top{position:absolute;top:68px;right:0;width:180px;height:80px;overflow:hidden}
-  .w1{position:absolute;top:0;right:0;width:160px;height:50px;background:#1a3a6b;border-radius:0 0 0 60px}
-  .w2{position:absolute;top:20px;right:0;width:120px;height:42px;background:#4eb3d3;border-radius:0 0 0 40px}
-  .wave-bot{position:absolute;bottom:0;left:0;right:0;height:80px;overflow:hidden}
-  .wb1{position:absolute;bottom:0;left:0;right:0;height:60px;background:#1a3a6b}
-  .wb2{position:absolute;bottom:0;left:0;width:70%;height:44px;background:#4eb3d3;clip-path:polygon(0 0,90% 0,100% 100%,0 100%)}
-  /* Body */
-  .body-wrap{padding:36px 56px 100px}
-  .cert-title{font-size:22px;font-weight:800;color:#1a3a6b;letter-spacing:1px;text-align:center;margin-bottom:24px;text-transform:uppercase}
-  .body-para{font-size:13px;color:#333;line-height:1.9;margin-bottom:16px}
-  .bullet-head{font-size:13px;font-weight:700;color:#333;margin:16px 0 8px}
-  .bullets{list-style:disc;padding-left:28px;margin-bottom:16px}
-  .bullets li{font-size:13px;color:#444;line-height:1.9}
-  .closing{font-size:13px;color:#333;line-height:1.9;margin-bottom:32px}
-  /* Meta + QR */
-  .meta-qr{display:flex;justify-content:space-between;align-items:flex-start;margin-top:32px;margin-bottom:48px}
-  .meta-block{}
-  .meta-row{margin-bottom:6px;font-size:13px}
-  .meta-row b{color:#1a3a6b;font-size:12px;letter-spacing:.5px}
-  .qr-box{width:80px;height:80px;border:2px solid #333;display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;text-align:center;line-height:1.3}
-  /* Signatures */
-  .sigs{display:flex;gap:80px}
-  .sig{text-align:center}
-  .sig-line{width:130px;border-top:2px solid #333;margin-bottom:6px}
-  .sig-lbl{font-size:11px;font-weight:700;color:#333;letter-spacing:1px}
+  body{width:794px;height:1123px;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;overflow:hidden}
+  .wrap{position:relative;width:794px;height:1123px;overflow:hidden}
+  .bg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill}
+  .ov{position:absolute;font-family:'Segoe UI',Arial,sans-serif}
 </style></head>
-<body><div class="page">
-  <div class="header">
-    <div class="hdr-logo">
-      <div class="v-icon">V</div>
-      <div>
-        <div class="hdr-co">VINSUP INFOTECH PVT LTD</div>
-        <div class="hdr-co-sub">Empowering Careers</div>
-      </div>
-    </div>
-    <div class="hdr-contact">
-      <b>Phone:</b> 8870060607 &nbsp;|&nbsp; <b>Email:</b> hrvinsup@gmail.com<br>
-      <b>Address:</b> 148, Gopalasamy Kovil St, Ganapathy, Coimbatore – 641006
-    </div>
+<body><div class="wrap">
+  <img class="bg" src="data:image/jpeg;base64,${base64}" />
+  <!-- Student name: on the underline after "This is to certify that" -->
+  <div class="ov" style="top:28%;left:34%;font-size:15px;font-weight:700;color:#1a3a6b;font-style:italic;">
+    ${studentName}
   </div>
-
-  <!-- Top-right wave -->
-  <div class="wave-top"><div class="w1"></div><div class="w2"></div></div>
-
-  <div class="body-wrap">
-    <div class="cert-title">Internship Completion Certificate</div>
-
-    <p class="body-para">
-      This is to certify that <strong>${studentName}</strong> has successfully completed the
-      <strong>Internship Program</strong> at <strong>Vinsup Infotech Private Limited</strong>.
-    </p>
-    <p class="body-para">
-      Throughout the internship tenure, the candidate has demonstrated commendable proficiency in
-      industry-relevant technical competencies and has effectively translated theoretical knowledge
-      into practical execution through real-time projects and assignments.
-    </p>
-    <div class="bullet-head">During the program, the student consistently displayed:</div>
-    <ul class="bullets">
-      <li>Strong analytical and problem-solving abilities</li>
-      <li>Professional work ethics and discipline</li>
-      <li>Effective communication and collaborative skills</li>
-      <li>Commitment towards quality delivery and performance excellence</li>
-    </ul>
-    <p class="closing">
-      We acknowledge the candidate's dedication and wish them continued success in all future endeavors.
-    </p>
-
-    <div class="meta-qr">
-      <div class="meta-block">
-        <div class="meta-row"><b>Issued On &nbsp;:&nbsp;</b> ${dateShort}</div>
-        <div class="meta-row"><b>Student ID &nbsp;:&nbsp;</b> VS${String(studentId).padStart(5,'0')}</div>
-        <div class="meta-row"><b>Course &nbsp;:&nbsp;</b> ${courseName}</div>
-        <div class="meta-row"><b>Batch &nbsp;:&nbsp;</b> ${batchName}</div>
-      </div>
-      <div class="qr-box">QR<br>Code</div>
-    </div>
-
-    <div class="sigs">
-      <div class="sig"><div class="sig-line"></div><div class="sig-lbl">CGO</div></div>
-      <div class="sig"><div class="sig-line"></div><div class="sig-lbl">CBPO</div></div>
-    </div>
-  </div>
-
-  <!-- Bottom wave -->
-  <div class="wave-bot"><div class="wb1"></div><div class="wb2"></div></div>
+  <!-- Meta values -->
+  <div class="ov" style="top:74.2%;left:18%;font-size:13px;font-weight:600;color:#222;">${formatted}</div>
+  <div class="ov" style="top:77.5%;left:18%;font-size:13px;font-weight:600;color:#222;">${studentIdFmt}</div>
+  <div class="ov" style="top:80.7%;left:18%;font-size:13px;font-weight:600;color:#222;">${courseName}</div>
+  <div class="ov" style="top:83.8%;left:18%;font-size:13px;font-weight:600;color:#222;">${batchName}</div>
 </div></body></html>`;
+
 };
 
 exports.generateCertificate = async (req, res) => {
@@ -1350,7 +1224,7 @@ exports.generateCertificate = async (req, res) => {
         }
 
         const studentName = `${info.first_name} ${info.last_name}`;
-        const html = generateCertificateHTML(cert_type, studentName, info.course_name, info.batch_name, new Date(), studentId);
+        const html = await generateCertificateHTML(cert_type, studentName, info.course_name, info.batch_name, new Date(), studentId);
 
         // Store as HTML in cert_data — include original schema columns to satisfy NOT NULL constraints
         const htmlBuffer = Buffer.from(html);
