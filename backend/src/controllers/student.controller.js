@@ -1364,6 +1364,7 @@ exports.generateCertificate = async (req, res) => {
 
         res.json({ message: 'Certificate generated', certificate_id: result.insertId, html });
     } catch (error) {
+        console.error('[Certificate] generateCertificate error:', error.message, error.stack);
         res.status(500).json({ message: 'Error generating certificate', error: error.message });
     }
 };
