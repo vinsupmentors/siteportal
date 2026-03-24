@@ -63,20 +63,44 @@ exports.getStudentCertificates = async (req, res) => {
 exports.getAllCertificates = async (req, res) => {
     try {
         const [certificates] = await pool.query(`
-            SELECT c.*, cr.name as course_name, 
+            SELECT c.id, c.student_id, c.cert_type, c.type, c.generated_at, c.issued_date,
+                   c.reset_by_admin, c.certificate_url,
+                   COALESCE(cr.name, 'N/A') as course_name,
                    CONCAT(s.first_name, ' ', s.last_name) as student_name,
                    s.email as student_email,
-                   CONCAT(u.first_name, ' ', u.last_name) as issuer_name
+                   bs.roll_number,
+                   b.batch_name,
+                   CONCAT(u.first_name, ' ', u.last_name) as issuer_name,
+                   CASE WHEN c.cert_data IS NOT NULL AND LENGTH(c.cert_data) > 0 THEN 1 ELSE 0 END as has_preview
             FROM Certificates c
-            JOIN Courses cr ON c.course_id = cr.id
+            LEFT JOIN Courses cr ON c.course_id = cr.id
             JOIN Users s ON c.student_id = s.id
+            LEFT JOIN BatchStudents bs ON bs.student_id = s.id
+            LEFT JOIN Batches b ON bs.batch_id = b.id
             LEFT JOIN Users u ON c.issued_by = u.id
-            ORDER BY c.issued_date DESC
+            ORDER BY COALESCE(c.generated_at, c.issued_date) DESC
         `);
-
         res.json({ certificates });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching all certificates', error: error.message });
+    }
+};
+
+// Preview a certificate HTML (SA/Admin only)
+exports.previewCertificate = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [rows] = await pool.query(
+            'SELECT cert_data, cert_type FROM Certificates WHERE id = ?', [id]
+        );
+        if (!rows.length || !rows[0].cert_data) {
+            return res.status(404).json({ message: 'Certificate HTML not found — this certificate was issued manually without generated HTML.' });
+        }
+        const html = rows[0].cert_data.toString('utf8');
+        res.setHeader('Content-Type', 'text/html');
+        res.send(html);
+    } catch (error) {
+        res.status(500).json({ message: 'Error previewing certificate', error: error.message });
     }
 };
 

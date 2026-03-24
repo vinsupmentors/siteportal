@@ -150,6 +150,7 @@ deleteCapstoneFile: (fileId) => api.delete(`/super-admin/capstone-files/${fileId
     // Certificates
     issueCertificate: (data) => api.post('/certificates/issue', data),
     getAllCertificates: () => api.get('/certificates/all'),
+    previewCertificate: (id) => `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/certificates/${id}/preview`,
     getStudentCertificates: (studentId) => api.get(`/certificates/student/${studentId}`),
     deleteCertificate: (id) => api.delete(`/certificates/${id}`),
     // Dynamic Feedback System
