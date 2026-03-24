@@ -1308,7 +1308,7 @@ exports.generateCertificate = async (req, res) => {
             return res.status(400).json({ message: 'cert_type must be completion or internship' });
         }
 
-        // Get student + batch info
+        // Get student + batch info (allow active OR completed batches)
         const [infoRows] = await pool.query(`
             SELECT u.first_name, u.last_name, u.program_type, b.id as batch_id,
                    b.batch_name, b.course_id, c.name as course_name
@@ -1316,11 +1316,12 @@ exports.generateCertificate = async (req, res) => {
             JOIN BatchStudents bs ON u.id = bs.student_id
             JOIN Batches b ON bs.batch_id = b.id
             JOIN Courses c ON b.course_id = c.id
-            WHERE u.id = ? AND b.status = 'active'
+            WHERE u.id = ?
+            ORDER BY b.id DESC
             LIMIT 1
         `, [studentId]);
 
-        if (!infoRows.length) return res.status(400).json({ message: 'No active batch found' });
+        if (!infoRows.length) return res.status(400).json({ message: 'No batch found for this student' });
         const info = infoRows[0];
 
         // Check existing non-reset certificate
