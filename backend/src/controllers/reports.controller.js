@@ -195,8 +195,9 @@ exports.getCertificateReport = async (req, res) => {
 
         // 10. Certificates obtained
         const [certRows] = await pool.query(`
-            SELECT student_id, cert_type,
-                   DATE_FORMAT(generated_at, '%Y-%m-%d') AS cert_date
+            SELECT id, student_id, cert_type,
+                   DATE_FORMAT(generated_at, '%Y-%m-%d') AS cert_date,
+                   CASE WHEN cert_data IS NOT NULL AND LENGTH(cert_data) > 0 THEN 1 ELSE 0 END AS has_preview
             FROM Certificates
             WHERE student_id IN (${sph}) AND reset_by_admin = 0
               AND cert_type IN ('completion','internship')
@@ -204,7 +205,7 @@ exports.getCertificateReport = async (req, res) => {
         const certMap = {};
         certRows.forEach(r => {
             const key = `${r.cert_type}_${r.student_id}`;
-            if (!certMap[key]) certMap[key] = r.cert_date;
+            if (!certMap[key]) certMap[key] = { date: r.cert_date, id: r.id, has_preview: r.has_preview };
         });
 
         // Build output
@@ -254,8 +255,12 @@ exports.getCertificateReport = async (req, res) => {
                 portfolio_status: portStatus || 'not_submitted', portfolio_approved: portApproved,
                 completion_eligible: completionEligible,
                 internship_eligible: internshipEligible,
-                completion_cert_at: certMap[`completion_${s.student_id}`] || null,
-                internship_cert_at: certMap[`internship_${s.student_id}`] || null,
+                completion_cert_at:      certMap[`completion_${s.student_id}`]?.date        || null,
+                completion_cert_id:      certMap[`completion_${s.student_id}`]?.id          || null,
+                completion_has_preview:  certMap[`completion_${s.student_id}`]?.has_preview || 0,
+                internship_cert_at:      certMap[`internship_${s.student_id}`]?.date        || null,
+                internship_cert_id:      certMap[`internship_${s.student_id}`]?.id          || null,
+                internship_has_preview:  certMap[`internship_${s.student_id}`]?.has_preview || 0,
             });
         }
 

@@ -4,8 +4,10 @@ import {
     Award, Briefcase, ChevronDown, ChevronRight, CheckCircle2,
     XCircle, Clock, ExternalLink, FileText, Users,
     BarChart3, GraduationCap, Filter, RefreshCw, Link2, Star,
-    AlertCircle, Package, TrendingUp, Layers, BookOpen
+    AlertCircle, Package, TrendingUp, Layers, BookOpen, Eye
 } from 'lucide-react';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const fmtDate = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -187,16 +189,32 @@ const CertificateReport = ({ selectedBatch, selectedCourse, selectedBatchStatus 
                                                     : <Badge color="#fa5252" bg="rgba(250,82,82,0.10)">{s.portfolio_status || 'None'}</Badge>}
                                             </td>
                                             <td style={{ padding: '0.7rem 1rem' }}>
-                                                <Badge {...certColor(cs)}>
-                                                    {cs === 'obtained' ? <CheckCircle2 size={11} /> : cs === 'eligible' ? <Clock size={11} /> : <XCircle size={11} />}
-                                                    {cs === 'obtained' ? fmtDate(s.completion_cert_at) : cs === 'eligible' ? 'Eligible' : 'Not Yet'}
-                                                </Badge>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                    <Badge {...certColor(cs)}>
+                                                        {cs === 'obtained' ? <CheckCircle2 size={11} /> : cs === 'eligible' ? <Clock size={11} /> : <XCircle size={11} />}
+                                                        {cs === 'obtained' ? fmtDate(s.completion_cert_at) : cs === 'eligible' ? 'Eligible' : 'Not Yet'}
+                                                    </Badge>
+                                                    {cs === 'obtained' && s.completion_has_preview ? (
+                                                        <a href={`${API_BASE}/certificates/${s.completion_cert_id}/preview`} target="_blank" rel="noopener noreferrer"
+                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700, background: 'rgba(76,110,245,0.15)', color: '#4c6ef5', textDecoration: 'none' }}>
+                                                            <Eye size={10} /> View
+                                                        </a>
+                                                    ) : null}
+                                                </div>
                                             </td>
                                             <td style={{ padding: '0.7rem 1rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                                 <Badge {...certColor(is)}>
                                                     {is === 'obtained' ? <CheckCircle2 size={11} /> : is === 'eligible' ? <Clock size={11} /> : <XCircle size={11} />}
                                                     {is === 'obtained' ? fmtDate(s.internship_cert_at) : is === 'eligible' ? 'Eligible' : 'Not Yet'}
                                                 </Badge>
+                                                    {is === 'obtained' && s.internship_has_preview ? (
+                                                        <a href={`${API_BASE}/certificates/${s.internship_cert_id}/preview`} target="_blank" rel="noopener noreferrer"
+                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700, background: 'rgba(76,110,245,0.15)', color: '#4c6ef5', textDecoration: 'none' }}>
+                                                            <Eye size={10} /> View
+                                                        </a>
+                                                    ) : null}
+                                                </div>
                                             </td>
                                         </tr>
                                     );
