@@ -1158,11 +1158,18 @@ ${printBar}
   <div class="ov" style="top:39%;left:50%;transform:translateX(-50%);width:460px;text-align:center;font-size:24px;font-weight:900;color:#1a3a6b;letter-spacing:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
     ${studentName.toUpperCase()}
   </div>
-  <!-- Metadata values — placed after the label colons on each row -->
-  <div class="ov" style="top:66%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${dateShort}</div>
-  <div class="ov" style="top:69.5%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${studentIdFmt}</div>
-  <div class="ov" style="top:73%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${courseName}</div>
-  <div class="ov" style="top:76.5%;left:37%;font-size:13px;font-weight:700;color:#1a3a6b;">${batchName}</div>
+  <!--
+    Metadata: ONE container div eliminates cumulative % drift.
+    top:67% = ISSUED ON label row (confirmed from template image).
+    left:55% = after the label colon ("ISSUED ON :" ends at ~53%, "STUDENT ID :" ends at ~54%).
+    height/line-height:32px per row = matches the template's 2.85% row spacing on a 1123px cert.
+  -->
+  <div class="ov" style="top:67%;left:55%;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:700;color:#1a3a6b;">
+    <div style="height:32px;line-height:32px;">${dateShort}</div>
+    <div style="height:32px;line-height:32px;">${studentIdFmt}</div>
+    <div style="height:32px;line-height:32px;">${courseName}</div>
+    <div style="height:32px;line-height:32px;">${batchName}</div>
+  </div>
 </div></div>
 </body></html>`;
     }

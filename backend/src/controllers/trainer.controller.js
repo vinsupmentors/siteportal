@@ -52,14 +52,22 @@ exports.updateTaskStatus = async (req, res) => {
         const { taskId } = req.params;
         const { status } = req.body;
 
-        await pool.query('UPDATE TrainerTasks SET status = ? WHERE id = ? AND trainer_id = ?', [status, taskId, req.user.id]);
-        await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
-            [req.user.id, `UPDATE_TASK_STATUS_${status.toUpperCase()}`, 'TrainerTasks', taskId]
+        const [upd] = await pool.query(
+            'UPDATE TrainerTasks SET status = ? WHERE id = ? AND trainer_id = ?',
+            [status, taskId, req.user.id]
         );
+        if (upd.affectedRows === 0) {
+            return res.status(404).json({ message: 'Task not found or not assigned to you' });
+        }
+        // Audit log is non-critical — don't let it fail the request
+        pool.query(
+            'INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
+            [req.user.id, `UPDATE_TASK_STATUS_${status.toUpperCase()}`, 'TrainerTasks', taskId]
+        ).catch(() => {});
 
-        res.status(200).json({ message: 'Task pipeline status updated.' });
+        res.status(200).json({ message: 'Task status updated.' });
     } catch (error) {
-        res.status(500).json({ message: 'Server fault updating task.', error: error.message });
+        res.status(500).json({ message: 'Error updating task status', error: error.message });
     }
 };
 
@@ -68,16 +76,20 @@ exports.submitTaskForReview = async (req, res) => {
     try {
         const { taskId } = req.params;
         const { review_notes } = req.body;
-        await pool.query(
+        const [upd] = await pool.query(
             'UPDATE TrainerTasks SET status = ?, review_notes = ?, review_date = NOW() WHERE id = ? AND trainer_id = ?',
             ['review', review_notes, taskId, req.user.id]
         );
-        await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
+        if (upd.affectedRows === 0) {
+            return res.status(404).json({ message: 'Task not found or not assigned to you' });
+        }
+        pool.query(
+            'INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
             [req.user.id, 'SUBMIT_FOR_REVIEW', 'TrainerTasks', taskId]
-        );
+        ).catch(() => {});
         res.json({ message: 'Task submitted for review' });
     } catch (error) {
-        res.status(500).json({ message: 'Submit review error', error: error.message });
+        res.status(500).json({ message: 'Error submitting task for review', error: error.message });
     }
 };
 
@@ -811,11 +823,16 @@ exports.getStudentPerformance = async (req, res) => {
         const { batchId, studentId } = req.params;
 
         // Get student info
-        const [student] = await pool.query('SELECT first_name, last_name, email, student_status FROM Users WHERE id = ?', [studentId]);
+        const [student] = await pool.query(
+            'SELECT first_name, last_name, email, student_status FROM Users WHERE id = ?',
+            [studentId]
+        );
 
-        // Get all submissions
-        const [submissions] = await pool.query(`
-            SELECT s.*, m.name as module_name, d.day_number
+        // Legacy submissions (old Submissions table)
+        const [legacySubmissions] = await pool.query(`
+            SELECT s.id, s.student_id, s.file_url, s.submitted_at, s.marks, s.feedback, s.status,
+                   m.name AS module_name, d.day_number,
+                   'legacy' AS source, NULL AS release_type
             FROM Submissions s
             LEFT JOIN Modules m ON s.module_id = m.id
             LEFT JOIN Days d ON s.day_id = d.id
@@ -823,9 +840,24 @@ exports.getStudentPerformance = async (req, res) => {
             ORDER BY s.submitted_at DESC
         `, [studentId]);
 
+        // Release-based submissions (new StudentReleaseSubmissions table)
+        const [releaseSubmissions] = await pool.query(`
+            SELECT srs.id, srs.student_id, srs.file_url, srs.submitted_at, srs.marks, srs.feedback, srs.status,
+                   m.name AS module_name, NULL AS day_number,
+                   'release' AS source, br.release_type
+            FROM StudentReleaseSubmissions srs
+            JOIN BatchReleases br ON srs.release_id = br.id
+            LEFT JOIN Modules m ON br.module_id = m.id
+            WHERE srs.student_id = ? AND srs.batch_id = ?
+            ORDER BY srs.submitted_at DESC
+        `, [studentId, batchId]);
+
+        // Merge both, release submissions first (newer data)
+        const submissions = [...releaseSubmissions, ...legacySubmissions];
+
         // Get attendance stats for this batch
         const [[attendance]] = await pool.query(`
-            SELECT 
+            SELECT
                 COUNT(*) as total_days,
                 SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_days
             FROM StudentAttendance
@@ -836,7 +868,9 @@ exports.getStudentPerformance = async (req, res) => {
             student: student[0],
             submissions,
             attendance: {
-                percentage: attendance.total_days > 0 ? (attendance.present_days / attendance.total_days) * 100 : 0,
+                percentage: attendance.total_days > 0
+                    ? Math.round((attendance.present_days / attendance.total_days) * 100)
+                    : 0,
                 total: attendance.total_days,
                 present: attendance.present_days
             }
