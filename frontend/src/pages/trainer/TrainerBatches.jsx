@@ -6,7 +6,7 @@ import {
 } from './TrainerComponents';
 import {
     Users, GraduationCap, Clock, Calendar, ExternalLink, CheckCircle, BookOpenCheck,
-    ChevronDown, ChevronUp, UserCircle, ClipboardList,
+    ChevronDown, ChevronUp, UserCircle, ClipboardList, Flag,
 } from 'lucide-react';
 
 export const TrainerBatches = () => {
@@ -14,6 +14,7 @@ export const TrainerBatches = () => {
     const [loading, setLoading] = useState(true);
     // { [batchId]: { open: bool, loading: bool, students: [] } }
     const [studentPanels, setStudentPanels] = useState({});
+    const [markingTech, setMarkingTech] = useState({});
 
     useEffect(() => {
         (async () => {
@@ -23,6 +24,21 @@ export const TrainerBatches = () => {
             } catch (err) { console.error(err); } finally { setLoading(false); }
         })();
     }, []);
+
+    const handleMarkTechnicalComplete = async (batchId) => {
+        if (!window.confirm('Mark this batch as "Technical Class Completed"? The Super Admin will decide the next stage.')) return;
+        setMarkingTech(prev => ({ ...prev, [batchId]: true }));
+        try {
+            await trainerAPI.markBatchTechnicalComplete(batchId);
+            // Refresh batch list
+            const res = await trainerAPI.getMyCalendar();
+            setBatches(res.data.batches || []);
+        } catch (err) {
+            alert(err?.response?.data?.message || 'Failed to update batch status');
+        } finally {
+            setMarkingTech(prev => ({ ...prev, [batchId]: false }));
+        }
+    };
 
     const toggleStudents = async (batchId) => {
         const panel = studentPanels[batchId] || {};
@@ -132,7 +148,7 @@ export const TrainerBatches = () => {
                                                 </div>
 
                                                 {/* Action buttons row */}
-                                                <div style={{ padding: '14px 24px 20px', borderTop: `1px solid ${theme.border.subtle}`, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
+                                                <div style={{ padding: '14px 24px 20px', borderTop: `1px solid ${theme.border.subtle}`, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: '8px' }}>
                                                     <Link to={`/trainer/attendance/${batch.id}`} style={{ textDecoration: 'none' }}>
                                                         <ActionButton icon={<CheckCircle size={12} />} style={{ width: '100%', justifyContent: 'center', padding: '9px 4px', fontSize: '10px' }}>
                                                             Attendance
@@ -169,6 +185,37 @@ export const TrainerBatches = () => {
                                                         Students
                                                         {panel.open ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
                                                     </button>
+
+                                                    {/* Mark Technical Class Completed */}
+                                                    {batch.status === 'technical_class_completed' ? (
+                                                        <div style={{
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                                                            width: '100%', padding: '9px 4px', fontSize: '10px', fontWeight: 700,
+                                                            borderRadius: theme.radius.md, border: `1.5px solid ${theme.accent.green}40`,
+                                                            background: `${theme.accent.green}10`, color: theme.accent.green,
+                                                        }}>
+                                                            <Flag size={10} /> Tech Done
+                                                        </div>
+                                                    ) : batch.status === 'active' ? (
+                                                        <button
+                                                            onClick={() => handleMarkTechnicalComplete(batch.id)}
+                                                            disabled={markingTech[batch.id]}
+                                                            title="Mark Technical Classes as Completed"
+                                                            style={{
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                                                                width: '100%', padding: '9px 4px', fontSize: '10px', fontWeight: 700,
+                                                                borderRadius: theme.radius.md, border: `1.5px solid ${theme.accent.yellow}50`,
+                                                                background: `${theme.accent.yellow}10`, color: theme.accent.yellow,
+                                                                cursor: markingTech[batch.id] ? 'not-allowed' : 'pointer', transition: 'all 0.18s',
+                                                                opacity: markingTech[batch.id] ? 0.6 : 1,
+                                                            }}
+                                                        >
+                                                            <Flag size={10} />
+                                                            {markingTech[batch.id] ? '...' : 'Tech Done'}
+                                                        </button>
+                                                    ) : (
+                                                        <div style={{ width: '100%' }} />
+                                                    )}
                                                 </div>
                                             </Card>
 

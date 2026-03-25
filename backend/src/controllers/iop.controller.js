@@ -337,13 +337,13 @@ exports.getStudentIOPCurriculum = async (req, res) => {
     try {
         const studentId = req.user.id;
 
-        // Verify student is IOP
+        // Verify student is IOP — non-IOP students get empty list (not an error)
         const [[user]] = await pool.query(
             'SELECT program_type FROM Users WHERE id = ?',
             [studentId]
         );
         if (!user || user.program_type !== 'IOP') {
-            return res.status(403).json({ message: 'IOP curriculum is only available for IOP students' });
+            return res.json({ modules: [] });
         }
 
         // Get student's active batch

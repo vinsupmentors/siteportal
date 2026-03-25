@@ -5,7 +5,7 @@ const trainerController = require('../controllers/trainer.controller');
 const { verifyToken, requireRole } = require('../middlewares/auth.middleware');
 
 router.use(verifyToken);
-router.use(requireRole([3]));
+router.use(requireRole([3, 6])); // 3=Trainer, 6=IOP Trainer
 
 // Dashboard
 router.get('/dashboard', trainerController.getTrainerDashboard);
@@ -75,6 +75,9 @@ router.delete('/batches/:batchId/release/:releaseId', releaseCtrl.unreleaseItem)
 router.get('/batches/:batchId/release-submissions', releaseCtrl.getBatchReleaseSubmissions);
 router.put('/release-submissions/:submissionId/grade', releaseCtrl.gradeReleaseSubmission);
 router.get('/release-submissions/:submissionId/file', releaseCtrl.getSubmissionFile);
+
+// ── Batch Stage Management ────────────────────────────────────────────────────
+router.patch('/batches/:batchId/mark-technical-complete', trainerController.markBatchTechnicalComplete);
 
 // ── IOP Curriculum (trainer as iop_trainer_id) ────────────────────────────────
 const iopCtrl = require('../controllers/iop.controller');

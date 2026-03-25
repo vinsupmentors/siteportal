@@ -2446,6 +2446,11 @@ exports.createIOPGroup = async (req, res) => {
                 'INSERT IGNORE INTO IOPGroupBatches (iop_group_id, batch_id) VALUES (?, ?)',
                 [groupId, batchId]
             );
+            // Sync iop_trainer_id on the batch so IOP trainer can access curriculum
+            await pool.query(
+                'UPDATE Batches SET iop_trainer_id = ? WHERE id = ?',
+                [iop_trainer_id, batchId]
+            );
         }
 
         res.json({ message: 'IOP Group created', id: groupId });
@@ -2471,6 +2476,13 @@ exports.updateIOPGroup = async (req, res) => {
                     'INSERT IGNORE INTO IOPGroupBatches (iop_group_id, batch_id) VALUES (?, ?)',
                     [id, batchId]
                 );
+                // Sync iop_trainer_id on the batch so IOP trainer can access curriculum
+                if (iop_trainer_id) {
+                    await pool.query(
+                        'UPDATE Batches SET iop_trainer_id = ? WHERE id = ?',
+                        [iop_trainer_id, batchId]
+                    );
+                }
             }
         }
 

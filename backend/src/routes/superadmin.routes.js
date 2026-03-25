@@ -161,7 +161,7 @@ router.get('/student-doubts', requireRole([1, 2]), crudController.getStudentDoub
 // DYNAMIC FEEDBACK SYSTEM (ADMIN)
 // ==========================================
 router.post('/feedback-forms', requireRole([1]), crudController.createFeedbackForm);
-router.get('/feedback-forms', requireRole([1, 2]), crudController.getFeedbackForms);
+router.get('/feedback-forms', requireRole([1, 2, 3]), crudController.getFeedbackForms);
 router.get('/reports/feedback', requireRole([1, 2]), crudController.getFeedbackReports);
 
 // ==========================================

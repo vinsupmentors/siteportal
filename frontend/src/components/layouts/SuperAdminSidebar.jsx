@@ -54,7 +54,6 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
                 { name: 'Student & Batch Hub',        path: '/super-admin/student-batch-hub', icon: Users },
                 { name: 'Feedback Builder',           path: '/super-admin/feedback-builder',    icon: Star },
                 { name: 'Feedback Responses',         path: '/super-admin/feedback-responses',  icon: MessageSquare },
-                { name: 'Certificates & Internships', path: '/super-admin/certificates',      icon: Award },
             ]
         },
         {

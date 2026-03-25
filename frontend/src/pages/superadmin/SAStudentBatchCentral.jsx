@@ -180,7 +180,7 @@ export const SAStudentBatchCentral = () => {
 
     const filteredBatches = batches.filter(b => batchFilter === 'all' || b.status === batchFilter);
 
-    const statusColors = { active: '#51cf66', upcoming: '#4c6ef5', completed: '#868e96' };
+    const statusColors = { active: '#51cf66', upcoming: '#4c6ef5', completed: '#868e96', technical_class_completed: '#f97316' };
     const inputStyle = { padding: '10px', borderRadius: '8px', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: 'var(--text-main)', outline: 'none', width: '100%' };
 
     if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}><div className="spinner" /></div>;
@@ -366,15 +366,21 @@ export const SAStudentBatchCentral = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            {['all', 'active', 'upcoming', 'completed'].map(s => (
-                                <button key={s} onClick={() => setBatchFilter(s)}
+                            {[
+                                { key: 'all', label: 'All' },
+                                { key: 'active', label: 'Active' },
+                                { key: 'upcoming', label: 'Upcoming' },
+                                { key: 'technical_class_completed', label: 'Tech Done' },
+                                { key: 'completed', label: 'Completed' },
+                            ].map(({ key, label }) => (
+                                <button key={key} onClick={() => setBatchFilter(key)}
                                     style={{
-                                        padding: '8px 18px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.85rem', textTransform: 'capitalize',
-                                        background: batchFilter === s ? 'var(--primary)' : 'var(--bg-surface)',
-                                        color: batchFilter === s ? 'white' : 'var(--text-muted)',
-                                        border: `1px solid ${batchFilter === s ? 'var(--primary)' : 'var(--border-color)'}`
+                                        padding: '8px 18px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.85rem',
+                                        background: batchFilter === key ? 'var(--primary)' : 'var(--bg-surface)',
+                                        color: batchFilter === key ? 'white' : 'var(--text-muted)',
+                                        border: `1px solid ${batchFilter === key ? 'var(--primary)' : 'var(--border-color)'}`
                                     }}>
-                                    {s}
+                                    {label}
                                 </button>
                             ))}
                         </div>
@@ -422,6 +428,7 @@ export const SAStudentBatchCentral = () => {
                                 <select value={batchForm.status} onChange={e => setBatchForm({ ...batchForm, status: e.target.value })} style={inputStyle}>
                                     <option value="active">Active</option>
                                     <option value="upcoming">Upcoming</option>
+                                    <option value="technical_class_completed">Technical Class Completed</option>
                                     <option value="completed">Completed</option>
                                 </select>
                                 <div style={{ gridColumn: 'span 2', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>

@@ -270,6 +270,9 @@ downloadReleaseSubmissionFile: (submissionId) => api.get(`/trainer/release-submi
     getIOPCurriculum: (batchId) => api.get(`/trainer/batches/${batchId}/iop-curriculum`),
     unlockIOPModule: (batchId, data) => api.post(`/trainer/batches/${batchId}/iop-unlock`, data),
     downloadIOPModuleFile: (fileId) => api.get(`/trainer/iop-module-files/${fileId}/download`, { responseType: 'blob' }),
+
+    // Batch stage
+    markBatchTechnicalComplete: (batchId) => api.patch(`/trainer/batches/${batchId}/mark-technical-complete`),
 };
 
 // Student API (student portal)
