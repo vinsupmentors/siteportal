@@ -2394,18 +2394,19 @@ exports.getIOPTrainers = async (req, res) => {
 exports.createIOPTrainer = async (req, res) => {
     try {
         const { first_name, last_name, email, password, phone } = req.body;
-        if (!first_name || !last_name || !email || !password) {
-            return res.status(400).json({ message: 'first_name, last_name, email, password are required' });
+        if (!first_name || !last_name || !email) {
+            return res.status(400).json({ message: 'first_name, last_name, and email are required' });
         }
-        const [exists] = await pool.query('SELECT id FROM Users WHERE email = ?', [email]);
-        if (exists.length > 0) return res.status(409).json({ message: 'Email already registered' });
-
         const [result] = await pool.query(
             'INSERT INTO Users (first_name, last_name, email, password, phone, role_id, status) VALUES (?, ?, ?, ?, ?, 6, ?)',
-            [first_name, last_name, email, password, phone || null, 'active']
+            [first_name, last_name, email, password || 'abcd@1234', phone || null, 'active']
         );
-        res.json({ message: 'IOP Trainer created', id: result.insertId });
+        pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'CREATE_IOP_TRAINER', 'Users', result.insertId]).catch(() => {});
+        res.status(201).json({ message: 'IOP Trainer created', id: result.insertId });
     } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ message: 'A user with this email already exists.' });
+        }
         res.status(500).json({ message: 'Error creating IOP trainer', error: error.message });
     }
 };

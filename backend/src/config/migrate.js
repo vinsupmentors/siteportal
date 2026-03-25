@@ -553,6 +553,32 @@ async function runMigrations() {
             )
         `);
 
+        // ── Roles: expand ENUM and seed Job Assistance (5) + IOP Trainer (6) ──
+        // The Roles table ENUM must include new role names before we can insert them.
+        try {
+            await pool.query(`
+                ALTER TABLE Roles MODIFY COLUMN name
+                ENUM('Super Admin','Admin','Trainer','Student','Job Assistance','IOP Trainer')
+                NOT NULL
+            `);
+        } catch (e) { /* Ignore if already modified */ }
+        await pool.query(`
+            INSERT IGNORE INTO Roles (id, name) VALUES
+                (5, 'Job Assistance'),
+                (6, 'IOP Trainer')
+        `);
+
+        // ── TrainerLeaves: add 'emergency' leave type if not present ─────────
+        try {
+            await pool.query(`
+                ALTER TABLE TrainerLeaves MODIFY COLUMN leave_type
+                ENUM('casual','sick','comp','emergency') DEFAULT 'casual'
+            `);
+        } catch (e) { /* Ignore */ }
+
+        // ── TrainerLeaves: track who reviewed ────────────────────────────────
+        await addColumnIfNotExists('TrainerLeaves', 'reviewed_by_name VARCHAR(200) NULL');
+
         console.log('[Migration] All migrations applied successfully.');
     } catch (err) {
         console.error('[Migration] Error:', err.message);
