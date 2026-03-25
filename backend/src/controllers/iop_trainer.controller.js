@@ -139,11 +139,15 @@ exports.getGroupCurriculum = async (req, res) => {
             'SELECT * FROM IOPTopics ORDER BY module_id, day_number'
         );
         const [unlocks] = await pool.query(
-            'SELECT module_id, unlocked_up_to_day FROM IOPGroupUnlocks WHERE iop_group_id = ?',
+            `SELECT module_id, unlocked_up_to_day,
+                    COALESCE(is_concepts_released, 0)        as is_concepts_released,
+                    COALESCE(is_sample_problems_released, 0) as is_sample_problems_released,
+                    COALESCE(is_worksheet_released, 0)       as is_worksheet_released
+             FROM IOPGroupUnlocks WHERE iop_group_id = ?`,
             [groupId]
         );
         const unlockMap = {};
-        unlocks.forEach(u => { unlockMap[u.module_id] = u.unlocked_up_to_day; });
+        unlocks.forEach(u => { unlockMap[u.module_id] = u; });
 
         const [files] = await pool.query(
             'SELECT id, module_id, file_type, file_name FROM IOPModuleFiles'
@@ -154,14 +158,20 @@ exports.getGroupCurriculum = async (req, res) => {
             filesByModule[f.module_id][f.file_type] = { id: f.id, file_name: f.file_name };
         });
 
-        const result = modules.map(m => ({
-            ...m,
-            unlocked_up_to_day: unlockMap[m.id] || 0,
-            files: filesByModule[m.id] || {},
-            topics: topics
-                .filter(t => t.module_id === m.id)
-                .map(t => ({ ...t, is_unlocked: t.day_number <= (unlockMap[m.id] || 0) }))
-        }));
+        const result = modules.map(m => {
+            const u = unlockMap[m.id] || {};
+            return {
+                ...m,
+                unlocked_up_to_day:           u.unlocked_up_to_day           || 0,
+                is_concepts_released:          u.is_concepts_released          || 0,
+                is_sample_problems_released:   u.is_sample_problems_released   || 0,
+                is_worksheet_released:         u.is_worksheet_released         || 0,
+                files: filesByModule[m.id] || {},
+                topics: topics
+                    .filter(t => t.module_id === m.id)
+                    .map(t => ({ ...t, is_unlocked: t.day_number <= (u.unlocked_up_to_day || 0) }))
+            };
+        });
 
         res.json({ modules: result });
     } catch (error) {
@@ -175,10 +185,16 @@ exports.unlockGroupModule = async (req, res) => {
     try {
         const { groupId } = req.params;
         const trainerId = req.user.id;
-        const { module_id, unlocked_up_to_day } = req.body;
+        const {
+            module_id,
+            unlocked_up_to_day,
+            is_concepts_released,
+            is_sample_problems_released,
+            is_worksheet_released,
+        } = req.body;
 
-        if (!module_id || unlocked_up_to_day === undefined) {
-            return res.status(400).json({ message: 'module_id and unlocked_up_to_day are required' });
+        if (!module_id) {
+            return res.status(400).json({ message: 'module_id is required' });
         }
 
         const [[group]] = await pool.query(
@@ -188,13 +204,26 @@ exports.unlockGroupModule = async (req, res) => {
         if (!group) return res.status(403).json({ message: 'Not authorized for this group' });
 
         await pool.query(`
-            INSERT INTO IOPGroupUnlocks (iop_group_id, module_id, unlocked_up_to_day, unlocked_by)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO IOPGroupUnlocks
+                (iop_group_id, module_id, unlocked_up_to_day,
+                 is_concepts_released, is_sample_problems_released, is_worksheet_released,
+                 unlocked_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
-                unlocked_up_to_day = VALUES(unlocked_up_to_day),
-                unlocked_by = VALUES(unlocked_by),
-                unlocked_at = CURRENT_TIMESTAMP
-        `, [groupId, module_id, unlocked_up_to_day, trainerId]);
+                unlocked_up_to_day           = VALUES(unlocked_up_to_day),
+                is_concepts_released         = VALUES(is_concepts_released),
+                is_sample_problems_released  = VALUES(is_sample_problems_released),
+                is_worksheet_released        = VALUES(is_worksheet_released),
+                unlocked_by                  = VALUES(unlocked_by),
+                unlocked_at                  = CURRENT_TIMESTAMP
+        `, [
+            groupId, module_id,
+            unlocked_up_to_day          ?? 0,
+            is_concepts_released        ?? 0,
+            is_sample_problems_released ?? 0,
+            is_worksheet_released       ?? 0,
+            trainerId,
+        ]);
 
         res.json({ message: 'Module unlock updated' });
     } catch (error) {

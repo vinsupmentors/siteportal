@@ -115,6 +115,8 @@ export const IOPTrainerGroups = () => {
 
     /* per-module unlock value (before saving) */
     const [unlockDraft, setUnlockDraft] = useState({}); // { moduleId: number }
+    /* per-module file release flags (before saving) */
+    const [releaseDraft, setReleaseDraft] = useState({}); // { moduleId: { is_concepts_released, is_sample_problems_released, is_worksheet_released } }
 
     const [error, setError] = useState(null);
     const [toast, setToast] = useState(null);
@@ -158,8 +160,17 @@ export const IOPTrainerGroups = () => {
             setCurriculum(mods);
             // initialise unlock draft from current values
             const draft = {};
-            mods.forEach(m => { draft[m.id] = m.unlocked_up_to_day ?? 0; });
+            const rDraft = {};
+            mods.forEach(m => {
+                draft[m.id] = m.unlocked_up_to_day ?? 0;
+                rDraft[m.id] = {
+                    is_concepts_released:        m.is_concepts_released        ?? 0,
+                    is_sample_problems_released: m.is_sample_problems_released ?? 0,
+                    is_worksheet_released:       m.is_worksheet_released       ?? 0,
+                };
+            });
             setUnlockDraft(draft);
+            setReleaseDraft(rDraft);
             setStudents(studRes.data?.students ?? studRes.data ?? []);
         } catch (err) {
             showToast(err?.response?.data?.message || 'Failed to load group details', 'error');
@@ -207,15 +218,19 @@ export const IOPTrainerGroups = () => {
     const handleUnlock = async (moduleId) => {
         if (!activeGroup) return;
         setSubmittingUnlock(prev => ({ ...prev, [moduleId]: true }));
+        const rd = releaseDraft[moduleId] || {};
         try {
             await iopTrainerAPI.unlockGroupModule(activeGroup.id, {
                 module_id: moduleId,
-                unlocked_up_to_day: unlockDraft[moduleId] ?? 0,
+                unlocked_up_to_day:          unlockDraft[moduleId] ?? 0,
+                is_concepts_released:        rd.is_concepts_released        ?? 0,
+                is_sample_problems_released: rd.is_sample_problems_released ?? 0,
+                is_worksheet_released:       rd.is_worksheet_released       ?? 0,
             });
             // update local curriculum
             setCurriculum(prev =>
                 prev.map(m => m.id === moduleId
-                    ? { ...m, unlocked_up_to_day: unlockDraft[moduleId] }
+                    ? { ...m, unlocked_up_to_day: unlockDraft[moduleId], ...rd }
                     : m
                 )
             );
@@ -407,6 +422,8 @@ export const IOPTrainerGroups = () => {
                                     curriculum={curriculum}
                                     unlockDraft={unlockDraft}
                                     setUnlockDraft={setUnlockDraft}
+                                    releaseDraft={releaseDraft}
+                                    setReleaseDraft={setReleaseDraft}
                                     submittingUnlock={submittingUnlock}
                                     handleUnlock={handleUnlock}
                                     expandedModules={expandedModules}
@@ -528,6 +545,7 @@ const GroupCard = ({ group, onClick }) => {
 /* ── Curriculum Tab ── */
 const CurriculumTab = ({
     curriculum, unlockDraft, setUnlockDraft,
+    releaseDraft, setReleaseDraft,
     submittingUnlock, handleUnlock,
     expandedModules, setExpandedModules,
 }) => {
@@ -552,6 +570,11 @@ const CurriculumTab = ({
                 const unlockedCount = topics.filter(t => (t.day_number ?? 0) <= currentUnlock).length;
                 const typeColor = moduleTypeColor(mod.type ?? mod.module_type);
                 const isExpanded = !!expandedModules[mod.id];
+                const rd = releaseDraft[mod.id] || {};
+                const setRd = (key, val) => setReleaseDraft(prev => ({
+                    ...prev,
+                    [mod.id]: { ...(prev[mod.id] || {}), [key]: val ? 1 : 0 },
+                }));
                 const isSaving = !!submittingUnlock[mod.id];
 
                 return (
@@ -680,6 +703,68 @@ const CurriculumTab = ({
                                 </button>
                             </div>
                         </div>
+
+                        {/* File Release Toggles — same as normal trainer */}
+                        {(mod.files?.concepts || mod.files?.sample_problems || mod.files?.worksheet) && (
+                            <div style={{
+                                background: 'rgba(255,255,255,0.02)',
+                                border: `1px solid ${theme.border.subtle}`,
+                                borderRadius: theme.radius.md,
+                                padding: '14px 16px',
+                                marginBottom: '14px',
+                            }}>
+                                <p style={{ margin: '0 0 12px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: theme.text.label }}>
+                                    File Releases
+                                </p>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                                    {[
+                                        { key: 'is_concepts_released',        fileKey: 'concepts',        label: 'Concepts',        color: theme.accent.blue   },
+                                        { key: 'is_sample_problems_released', fileKey: 'sample_problems', label: 'Sample Problems',  color: theme.accent.green  },
+                                        { key: 'is_worksheet_released',       fileKey: 'worksheet',       label: 'Worksheet',        color: theme.accent.yellow },
+                                    ].map(({ key, fileKey, label, color }) => {
+                                        const hasFile = !!mod.files?.[fileKey];
+                                        const isOn = !!(rd[key]);
+                                        return (
+                                            <div key={key} style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                padding: '10px 14px', borderRadius: theme.radius.md,
+                                                background: isOn ? `${color}0e` : theme.bg.input,
+                                                border: `1px solid ${isOn ? color + '30' : theme.border.subtle}`,
+                                                opacity: hasFile ? 1 : 0.45,
+                                            }}>
+                                                <div>
+                                                    <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: isOn ? color : theme.text.secondary }}>{label}</p>
+                                                    <p style={{ margin: '2px 0 0', fontSize: '10px', color: theme.text.muted }}>
+                                                        {!hasFile ? 'No file uploaded' : isOn ? 'Released to students' : 'Locked'}
+                                                    </p>
+                                                </div>
+                                                {/* Toggle switch */}
+                                                <div
+                                                    onClick={() => hasFile && setRd(key, !isOn)}
+                                                    style={{
+                                                        width: '40px', height: '22px', borderRadius: '11px',
+                                                        background: isOn ? color : 'rgba(255,255,255,0.1)',
+                                                        position: 'relative', cursor: hasFile ? 'pointer' : 'not-allowed',
+                                                        transition: 'background 0.2s', flexShrink: 0,
+                                                    }}
+                                                >
+                                                    <div style={{
+                                                        position: 'absolute', top: '3px',
+                                                        left: isOn ? '21px' : '3px',
+                                                        width: '16px', height: '16px', borderRadius: '50%',
+                                                        background: '#fff', transition: 'left 0.2s',
+                                                        boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                                                    }} />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <p style={{ margin: '10px 0 0', fontSize: '10px', color: theme.text.muted }}>
+                                    Toggle then click <strong>Save Unlock</strong> above to apply changes.
+                                </p>
+                            </div>
+                        )}
 
                         {/* Topics collapsible */}
                         {topics.length > 0 && (

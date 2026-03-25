@@ -553,6 +553,11 @@ async function runMigrations() {
             )
         `);
 
+        // ── IOPGroupUnlocks: add file-release flags to match normal trainer ────
+        await addColumnIfNotExists('IOPGroupUnlocks', 'is_concepts_released TINYINT(1) DEFAULT 0');
+        await addColumnIfNotExists('IOPGroupUnlocks', 'is_sample_problems_released TINYINT(1) DEFAULT 0');
+        await addColumnIfNotExists('IOPGroupUnlocks', 'is_worksheet_released TINYINT(1) DEFAULT 0');
+
         // ── Roles: expand ENUM and seed Job Assistance (5) + IOP Trainer (6) ──
         // The Roles table ENUM must include new role names before we can insert them.
         try {
