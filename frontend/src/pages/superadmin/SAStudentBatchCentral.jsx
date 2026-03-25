@@ -27,6 +27,11 @@ export const SAStudentBatchCentral = () => {
     const [bulkData, setBulkData] = useState(null);
     const [bulkStatus, setBulkStatus] = useState('');
     const fileRef = useRef(null);
+    const [filterBatch, setFilterBatch] = useState('');
+    const [filterCourse, setFilterCourse] = useState('');
+    const [filterTrainer, setFilterTrainer] = useState('');
+    const [filterProgram, setFilterProgram] = useState('');
+    const [bulkErrors, setBulkErrors] = useState([]);
 
     // --- BATCH STATE ---
     const [batchFilter, setBatchFilter] = useState('all');
@@ -131,13 +136,15 @@ export const SAStudentBatchCentral = () => {
     const submitBulkUpload = async () => {
         if (!bulkData || !bulkData.length) return;
         setBulkStatus('Uploading...');
+        setBulkErrors([]);
         try {
             const res = await superAdminAPI.bulkCreateStudents({ students: bulkData });
-            setBulkStatus(`✅ ${res.data.created} students created.`);
+            setBulkStatus(`✅ ${res.data.created} students created${res.data.errors?.length ? ` (${res.data.errors.length} failed)` : ''}.`);
+            if (res.data.errors?.length) setBulkErrors(res.data.errors);
             setBulkData(null);
             if (fileRef.current) fileRef.current.value = '';
             fetchData();
-        } catch (err) { setBulkStatus('❌ Upload failed'); }
+        } catch (err) { setBulkStatus('❌ Upload failed: ' + (err.response?.data?.message || err.message)); }
     };
 
     // --- BATCH HANDLERS ---
@@ -174,9 +181,14 @@ export const SAStudentBatchCentral = () => {
 
     const toggleGroup = (name) => setExpandedGroups(prev => ({ ...prev, [name]: !prev[name] }));
 
-    const filteredStudents = students.filter(s =>
-        `${s.first_name} ${s.last_name} ${s.email}`.toLowerCase().includes(studentSearch.toLowerCase())
-    );
+    const filteredStudents = students.filter(s => {
+        const searchMatch = `${s.first_name} ${s.last_name} ${s.email}`.toLowerCase().includes(studentSearch.toLowerCase());
+        const batchMatch = !filterBatch || String(s.batch_id) === filterBatch;
+        const courseMatch = !filterCourse || String(s.course_id) === filterCourse;
+        const trainerMatch = !filterTrainer || String(s.trainer_id) === filterTrainer;
+        const programMatch = !filterProgram || s.program_type === filterProgram;
+        return searchMatch && batchMatch && courseMatch && trainerMatch && programMatch;
+    });
 
     const filteredBatches = batches.filter(b => batchFilter === 'all' || b.status === batchFilter);
 
@@ -226,10 +238,61 @@ export const SAStudentBatchCentral = () => {
                         </div>
                     </div>
 
+                    {/* Filter row */}
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <select value={filterBatch} onChange={e => setFilterBatch(e.target.value)}
+                            style={{ ...inputStyle, width: 'auto', minWidth: '160px', cursor: 'pointer' }}>
+                            <option value="">All Batches</option>
+                            {batches.map(b => <option key={b.id} value={String(b.id)}>{b.batch_name}</option>)}
+                        </select>
+                        <select value={filterCourse} onChange={e => setFilterCourse(e.target.value)}
+                            style={{ ...inputStyle, width: 'auto', minWidth: '160px', cursor: 'pointer' }}>
+                            <option value="">All Courses</option>
+                            {courses.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+                        </select>
+                        <select value={filterTrainer} onChange={e => setFilterTrainer(e.target.value)}
+                            style={{ ...inputStyle, width: 'auto', minWidth: '160px', cursor: 'pointer' }}>
+                            <option value="">All Trainers</option>
+                            {trainers.map(t => <option key={t.id} value={String(t.id)}>{t.first_name} {t.last_name}</option>)}
+                        </select>
+                        <select value={filterProgram} onChange={e => setFilterProgram(e.target.value)}
+                            style={{ ...inputStyle, width: 'auto', minWidth: '120px', cursor: 'pointer' }}>
+                            <option value="">All Programs</option>
+                            <option value="JRP">JRP</option>
+                            <option value="IOP">IOP</option>
+                        </select>
+                        {(filterBatch || filterCourse || filterTrainer || filterProgram) && (
+                            <button onClick={() => { setFilterBatch(''); setFilterCourse(''); setFilterTrainer(''); setFilterProgram(''); }}
+                                style={{ padding: '8px 12px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem' }}>
+                                Clear Filters
+                            </button>
+                        )}
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                            {filteredStudents.length} of {students.length} students
+                        </span>
+                    </div>
+
                     {showBulkUpload && (
                         <div className="glass-card" style={{ padding: '1.5rem' }}>
-                            <h3 style={{ marginBottom: '1rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '10px' }}><Upload size={20} /> Bulk Enroll Students</h3>
-                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <h3 style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}><Upload size={20} /> Bulk Enroll Students</h3>
+                                <button
+                                    onClick={async () => {
+                                        const res = await superAdminAPI.downloadStudentTemplate();
+                                        const url = URL.createObjectURL(new Blob([res.data]));
+                                        const a = document.createElement('a');
+                                        a.href = url; a.download = 'student_bulk_upload_template.csv'; a.click();
+                                        URL.revokeObjectURL(url);
+                                    }}
+                                    style={{ padding: '8px 14px', borderRadius: '8px', background: 'var(--bg-surface)', color: 'var(--text-muted)', border: '1px solid var(--border-color)', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                >
+                                    ⬇ Download Sample CSV
+                                </button>
+                            </div>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                                CSV columns: <code>first_name, last_name, email, phone, program_type (JRP/IOP), batch_id (optional), student_status (optional)</code>
+                            </p>
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                 <input type="file" accept=".csv" ref={fileRef} onChange={handleCSVFile} style={{ ...inputStyle, maxWidth: '400px' }} />
                                 {bulkData && (
                                     <button onClick={submitBulkUpload} style={{ padding: '10px 20px', borderRadius: '8px', background: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
@@ -237,7 +300,41 @@ export const SAStudentBatchCentral = () => {
                                     </button>
                                 )}
                             </div>
-                            {bulkStatus && <p style={{ marginTop: '1rem', color: '#51cf66', fontSize: '0.9rem' }}>{bulkStatus}</p>}
+                            {bulkStatus && (
+                                <p style={{ marginTop: '1rem', color: bulkStatus.startsWith('❌') ? '#ff6b6b' : '#51cf66', fontSize: '0.9rem' }}>{bulkStatus}</p>
+                            )}
+                            {bulkErrors.length > 0 && (
+                                <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'rgba(255,107,107,0.08)', borderRadius: '8px', border: '1px solid rgba(255,107,107,0.2)' }}>
+                                    <p style={{ margin: '0 0 6px', fontSize: '0.8rem', fontWeight: 700, color: '#ff6b6b' }}>{bulkErrors.length} rows failed:</p>
+                                    {bulkErrors.map((e, i) => <p key={i} style={{ margin: '2px 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{e.email}: {e.error}</p>)}
+                                </div>
+                            )}
+                            {bulkData && bulkData.length > 0 && (
+                                <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Preview ({bulkData.length} rows):</p>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                {['first_name','last_name','email','phone','program_type','batch_id','student_status'].map(h => (
+                                                    <th key={h} style={{ padding: '6px 10px', textAlign: 'left', color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.7rem' }}>{h}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {bulkData.slice(0, 5).map((row, i) => (
+                                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                                    {['first_name','last_name','email','phone','program_type','batch_id','student_status'].map(h => (
+                                                        <td key={h} style={{ padding: '6px 10px', color: 'var(--text-main)' }}>{row[h] || '—'}</td>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                            {bulkData.length > 5 && (
+                                                <tr><td colSpan={7} style={{ padding: '6px 10px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>...and {bulkData.length - 5} more rows</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     )}
 

@@ -575,7 +575,9 @@ exports.getStudents = async (req, res) => {
     try {
         const [students] = await pool.query(`
             SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.status,
-                   b.batch_name, c.name as course_name,
+                   u.student_status, u.student_phase, u.program_type,
+                   b.id as batch_id, b.batch_name, c.id as course_id, c.name as course_name,
+                   t.id as trainer_id, CONCAT(t.first_name,' ',t.last_name) as trainer_name,
                    (SELECT ROUND(
                        (SELECT COUNT(*) FROM StudentAttendance sa WHERE sa.student_id = u.id AND sa.status = 'present') * 100.0 /
                        NULLIF((SELECT COUNT(*) FROM StudentAttendance sa WHERE sa.student_id = u.id), 0)
@@ -584,6 +586,7 @@ exports.getStudents = async (req, res) => {
             LEFT JOIN BatchStudents bs ON u.id = bs.student_id
             LEFT JOIN Batches b ON bs.batch_id = b.id
             LEFT JOIN Courses c ON b.course_id = c.id
+            LEFT JOIN Users t ON b.trainer_id = t.id
             WHERE u.role_id = 4 AND u.status = 'active'
             ORDER BY u.created_at DESC
         `);
@@ -618,7 +621,7 @@ exports.createStudent = async (req, res) => {
 
 exports.bulkCreateStudents = async (req, res) => {
     try {
-        const { students } = req.body; // Array of { first_name, last_name, email, phone }
+        const { students } = req.body;
         if (!students || !students.length) {
             return res.status(400).json({ message: 'No students data provided' });
         }
@@ -626,16 +629,22 @@ exports.bulkCreateStudents = async (req, res) => {
         const errors = [];
         for (const s of students) {
             try {
-                await pool.query(
-                    'INSERT INTO Users (role_id, first_name, last_name, email, password, phone) VALUES (4, ?, ?, ?, ?, ?)',
-                    [s.first_name, s.last_name, s.email, 'abcd@1234', s.phone || null]
+                const pt = ['IOP', 'iop'].includes((s.program_type || '').trim()) ? 'IOP' : 'JRP';
+                const ss = s.student_status ? s.student_status.trim() : 'Regular';
+                const [result] = await pool.query(
+                    'INSERT INTO Users (role_id, first_name, last_name, email, password, phone, program_type, student_status) VALUES (4, ?, ?, ?, ?, ?, ?, ?)',
+                    [s.first_name?.trim(), s.last_name?.trim(), s.email?.trim(), 'abcd@1234', s.phone?.trim() || null, pt, ss]
                 );
+                const batchId = s.batch_id ? Number(s.batch_id) : null;
+                if (batchId) {
+                    await pool.query('INSERT IGNORE INTO BatchStudents (batch_id, student_id) VALUES (?, ?)', [batchId, result.insertId]);
+                }
                 created++;
             } catch (e) {
                 errors.push({ email: s.email, error: e.message });
             }
         }
-        await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'BULK_CREATE_STUDENTS', 'Users', created]);
+        pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'BULK_CREATE_STUDENTS', 'Users', created]).catch(() => {});
         res.status(201).json({ message: `${created} students created`, created, errors });
     } catch (error) {
         res.status(500).json({ message: 'Bulk creation error', error: error.message });
@@ -664,8 +673,13 @@ exports.bulkAssignBatch = async (req, res) => {
 
 exports.downloadStudentTemplate = async (req, res) => {
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename=student_upload_template.csv');
-    res.send('first_name,last_name,email,phone\nJohn,Doe,john.doe@example.com,9876543210\nJane,Smith,jane.smith@example.com,9876543211');
+    res.setHeader('Content-Disposition', 'attachment; filename=student_bulk_upload_template.csv');
+    const csv = [
+        'first_name,last_name,email,phone,program_type,batch_id,student_status',
+        'John,Doe,john.doe@example.com,9876543210,JRP,,Regular',
+        'Jane,Smith,jane.smith@example.com,9876543211,IOP,5,Regular',
+    ].join('\n');
+    res.send(csv);
 };
 
 exports.updateStudent = async (req, res) => {
