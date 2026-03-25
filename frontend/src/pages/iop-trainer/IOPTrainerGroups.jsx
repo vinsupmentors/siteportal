@@ -376,7 +376,7 @@ export const IOPTrainerGroups = () => {
                                                 background: `${theme.accent.purple}12`,
                                                 color: theme.accent.purple,
                                                 fontSize: '10px', fontWeight: 700,
-                                            }}>{b}</span>
+                                            }}>{b.batch_name || b.id}</span>
                                         ))}
                                     </div>
                                 )}
@@ -498,7 +498,7 @@ const GroupCard = ({ group, onClick }) => {
                             padding: '2px 8px', borderRadius: theme.radius.full,
                             background: `${theme.accent.purple}12`, color: theme.accent.purple,
                             fontSize: '10px', fontWeight: 700,
-                        }}>{b}</span>
+                        }}>{b.batch_name || b.id}</span>
                     ))}
                     {group.batches.length > 4 && (
                         <span style={{ padding: '2px 8px', borderRadius: theme.radius.full, background: 'rgba(255,255,255,0.05)', color: theme.text.muted, fontSize: '10px', fontWeight: 700 }}>
