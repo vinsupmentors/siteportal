@@ -181,7 +181,7 @@ const StudentCalendar = () => {
                     </div>
 
                     {/* Day cells */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '0 16px 16px', gap: '4px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', padding: '0 16px 16px', gap: '3px' }}>
                         {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
                         {Array.from({ length: daysInMonth }).map((_, i) => {
                             const day = i + 1;
@@ -191,11 +191,13 @@ const StudentCalendar = () => {
                             const hasDeadline = dayEvents.some(e =>
                                 ['deadline', 'test', 'capstone', 'project', 'feedback'].includes(e.type)
                             );
+                            const visible = dayEvents.slice(0, 2);
+                            const overflow = dayEvents.length - visible.length;
 
                             return (
                                 <button key={day} onClick={() => setSelectedDay(isSel ? null : day)}
                                     style={{
-                                        width: '100%', aspectRatio: '1', borderRadius: '10px',
+                                        width: '100%', minHeight: '70px', borderRadius: '8px',
                                         border: isSel
                                             ? `2px solid ${theme.accent.blue}`
                                             : td ? `1px solid ${theme.accent.cyan}40`
@@ -208,8 +210,9 @@ const StudentCalendar = () => {
                                             : 'transparent',
                                         cursor: 'pointer',
                                         display: 'flex', flexDirection: 'column',
-                                        alignItems: 'center', justifyContent: 'center',
-                                        gap: '4px', padding: '6px', transition: 'all 0.15s',
+                                        alignItems: 'flex-start', justifyContent: 'flex-start',
+                                        padding: '5px 4px', gap: '3px', transition: 'all 0.15s',
+                                        textAlign: 'left',
                                     }}
                                     onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
                                     onMouseLeave={e => {
@@ -219,21 +222,48 @@ const StudentCalendar = () => {
                                             : 'transparent';
                                     }}
                                 >
+                                    {/* Day number */}
                                     <span style={{
-                                        fontSize: '14px', fontWeight: td ? 800 : 600,
+                                        fontSize: '12px', fontWeight: td ? 800 : 600, lineHeight: 1,
                                         color: td ? theme.accent.cyan : isSel ? theme.accent.blue : theme.text.primary,
+                                        marginBottom: '2px', alignSelf: 'flex-end',
                                     }}>
                                         {day}
                                     </span>
-                                    {dayEvents.length > 0 && (
-                                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                            {dayEvents.slice(0, 3).map((ev, j) => (
-                                                <span key={j} style={{
-                                                    width: '5px', height: '5px', borderRadius: '50%',
-                                                    background: eventColors[ev.type] || theme.accent.blue,
-                                                }} />
-                                            ))}
-                                        </div>
+
+                                    {/* Event chips */}
+                                    {visible.map((ev, j) => {
+                                        const color = eventColors[ev.type] || theme.accent.blue;
+                                        const label = (ev.title || ev.topic || 'Event');
+                                        return (
+                                            <span key={j} style={{
+                                                width: '100%',
+                                                display: 'block',
+                                                padding: '1px 4px',
+                                                borderRadius: '3px',
+                                                fontSize: '9px',
+                                                fontWeight: 700,
+                                                lineHeight: '14px',
+                                                background: `${color}20`,
+                                                color,
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                borderLeft: `2px solid ${color}`,
+                                            }}>
+                                                {label}
+                                            </span>
+                                        );
+                                    })}
+
+                                    {/* Overflow indicator */}
+                                    {overflow > 0 && (
+                                        <span style={{
+                                            fontSize: '9px', fontWeight: 700,
+                                            color: theme.text.muted, padding: '1px 4px',
+                                        }}>
+                                            +{overflow} more
+                                        </span>
                                     )}
                                 </button>
                             );
