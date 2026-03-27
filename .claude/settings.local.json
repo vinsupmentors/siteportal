@@ -1,4 +1,5 @@
 {
+  "disableAllHooks": true,
   "permissions": {
     "allow": [
       "Bash(tasklist:*)",
@@ -44,7 +45,14 @@
       "Bash(curl -s -X POST https://edutech-backend-9gff.onrender.com/api/auth/login -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"report@test.com\"\",\"\"password\"\":\"\"963\"\"}\")",
       "Bash(curl -s -X POST https://edutech-backend-9gff.onrender.com/api/auth/login -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"admin@test.com\"\",\"\"password\"\":\"\"963.\"\"}\")",
       "Bash(\"C:\\\\Users\\\\ASUS\\\\Downloads\\\\Anti-portal\\\\.claude\\\\worktrees\\\\quizzical-rhodes\\\\backend\\\\src\\\\controllers\\\\superadmin.crud.controller.js\")",
-      "Bash(if not:*)"
+      "Bash(if not:*)",
+      "Bash(git -C \"C:/Users/ASUS/Downloads/Anti-portal\" show HEAD:backend/src/controllers/trainer.controller.js)",
+      "Bash(npx vite:*)",
+      "Bash(gh pr:*)",
+      "Bash(find C:UsersASUSDownloadsAnti-portalfrontendsrc/pages/superadmin -name *.jsx -type f)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(find C:/Users/ASUS/Downloads/Anti-portal/.claude/worktrees/quizzical-rhodes -name *.md -not -path */node_modules/*)"
     ]
   }
 }

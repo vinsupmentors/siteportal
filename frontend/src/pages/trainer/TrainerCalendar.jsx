@@ -50,6 +50,7 @@ export const TrainerCalendar = () => {
     const getBatchesForDay = (day) => {
         const d = new Date(year, month, day);
         return batches.filter(b => {
+            if (!b.start_date) return false;
             const s = new Date(b.start_date), e = new Date(b.end_date || '2099-12-31');
             return d >= s && d <= e && d.getDay() !== 0;
         });
