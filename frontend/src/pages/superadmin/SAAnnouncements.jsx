@@ -16,6 +16,7 @@ export const SAAnnouncements = () => {
     // ── Announcements state ──────────────────────────────────────────────────
     const [title, setTitle] = useState('');
     const [message, setMessage] = useState('');
+    const [expiresAt, setExpiresAt] = useState('');
     const [target, setTarget] = useState('all');
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -58,9 +59,9 @@ export const SAAnnouncements = () => {
         }
         setSending(true);
         try {
-            const res = await superAdminAPI.broadcastAnnouncement({ title, message, target: finalTarget });
+            const res = await superAdminAPI.broadcastAnnouncement({ title, message, target: finalTarget, expires_at: expiresAt || null });
             alert(res.data.message);
-            setTitle(''); setMessage(''); setTarget('all'); setSelectedBatchId('');
+            setTitle(''); setMessage(''); setExpiresAt(''); setTarget('all'); setSelectedBatchId('');
             fetchData();
         } catch (err) { alert(err.response?.data?.message || 'Error broadcasting'); }
         finally { setSending(false); }
@@ -124,6 +125,12 @@ export const SAAnnouncements = () => {
                                 style={{ padding: '12px', borderRadius: '8px', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: 'var(--text-main)', outline: 'none', fontSize: '1rem' }} />
                             <textarea rows={4} placeholder="Write your announcement message..." value={message} onChange={e => setMessage(e.target.value)}
                                 style={{ padding: '12px', borderRadius: '8px', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: 'var(--text-main)', outline: 'none', resize: 'vertical', fontSize: '0.95rem' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Expires On (optional):</label>
+                                <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)}
+                                    min={new Date().toISOString().split('T')[0]}
+                                    style={{ padding: '8px 12px', borderRadius: '8px', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: 'var(--text-main)', outline: 'none', fontSize: '0.9rem' }} />
+                            </div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
                                     <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Target:</span>
@@ -162,6 +169,11 @@ export const SAAnnouncements = () => {
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(ann.created_at).toLocaleDateString()}</span>
                                     </div>
                                     <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '4px', whiteSpace: 'pre-wrap' }}>{ann.message}</p>
+                                    {ann.expires_at && (
+                                        <p style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '6px', color: new Date(ann.expires_at) < new Date() ? '#ef4444' : '#f59e0b' }}>
+                                            {new Date(ann.expires_at) < new Date() ? '⛔ Expired' : '⏳ Expires'}: {new Date(ann.expires_at).toLocaleDateString()}
+                                        </p>
+                                    )}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                             Target: {ann.target_role === 'all' ? 'All' : ann.target_role === '3' ? 'Trainers' : ann.target_role === '4' ? 'Students' : ann.target_batch_name}

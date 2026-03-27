@@ -1250,7 +1250,7 @@ exports.getAnnouncements = async (req, res) => {
 
 exports.broadcastAnnouncement = async (req, res) => {
     try {
-        const { title, message, target } = req.body;
+        const { title, message, target, expires_at } = req.body;
         // target mapping: 'all', '3' (trainers), '4' (students), or a numeric batch ID as string 'batch_12'
 
         let targetRole = 'all';
@@ -1264,8 +1264,8 @@ exports.broadcastAnnouncement = async (req, res) => {
         }
 
         const [result] = await pool.query(
-            'INSERT INTO Announcements (title, message, target_role, target_batch_id, created_by) VALUES (?, ?, ?, ?, ?)',
-            [title, message, targetRole, targetBatchId, req.user.id]
+            'INSERT INTO Announcements (title, message, target_role, target_batch_id, created_by, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [title, message, targetRole, targetBatchId, req.user.id, expires_at || null]
         );
 
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',

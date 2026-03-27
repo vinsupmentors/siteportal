@@ -93,12 +93,13 @@ exports.getStudentDashboard = async (req, res) => {
             passedModules = passed[0].cnt || 0;
         }
 
-        // 7. Announcements
+        // 7. Announcements (exclude expired)
         const [announcements] = await pool.query(`
             SELECT a.*, CONCAT(u.first_name, ' ', u.last_name) as author
             FROM Announcements a
             JOIN Users u ON a.created_by = u.id
-            WHERE a.target_role IN ('all', '4') OR a.target_batch_id = ?
+            WHERE (a.target_role IN ('all', '4') OR a.target_batch_id = ?)
+            AND (a.expires_at IS NULL OR a.expires_at >= CURDATE())
             ORDER BY a.created_at DESC LIMIT 5
         `, [activeBatch.id]);
 

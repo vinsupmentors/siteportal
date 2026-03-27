@@ -54,6 +54,9 @@ async function runMigrations() {
         await addColumnIfNotExists('Batches', 'timing VARCHAR(100)');
         await addColumnIfNotExists('Batches', 'meeting_link VARCHAR(500)');
 
+        // ── Announcements: expiry deadline ──────────────────────────────
+        await addColumnIfNotExists('Announcements', 'expires_at DATE NULL');
+
         // ── Jobs ────────────────────────────────────────────────────────
         await pool.query(`
             CREATE TABLE IF NOT EXISTS Jobs (
