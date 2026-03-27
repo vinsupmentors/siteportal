@@ -8,6 +8,7 @@ import { Send, Megaphone } from 'lucide-react';
 export const TrainerAnnouncements = () => {
     const [title, setTitle] = useState('');
     const [message, setMessage] = useState('');
+    const [expiresAt, setExpiresAt] = useState('');
     const [selectedBatchId, setSelectedBatchId] = useState('');
     const [batches, setBatches] = useState([]);
     const [history, setHistory] = useState([]);
@@ -31,8 +32,8 @@ export const TrainerAnnouncements = () => {
         if (!title.trim() || !message.trim() || !selectedBatchId) return alert('Please fill all fields and select a batch.');
         setSending(true);
         try {
-            await trainerAPI.broadcastAnnouncement({ title, message, batch_id: selectedBatchId });
-            setTitle(''); setMessage(''); setSelectedBatchId('');
+            await trainerAPI.broadcastAnnouncement({ title, message, batch_id: selectedBatchId, expires_at: expiresAt || null });
+            setTitle(''); setMessage(''); setExpiresAt(''); setSelectedBatchId('');
             fetchData();
         } catch (err) { alert(err.response?.data?.message || 'Error'); } finally { setSending(false); }
     };
@@ -67,6 +68,9 @@ export const TrainerAnnouncements = () => {
                             <FormField label="Message">
                                 <textarea rows={4} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Write your message..." value={message} onChange={e => setMessage(e.target.value)} />
                             </FormField>
+                            <FormField label="Expires On (optional)">
+                                <input type="date" style={inputStyle} value={expiresAt} onChange={e => setExpiresAt(e.target.value)} min={new Date().toISOString().split('T')[0]} />
+                            </FormField>
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                 <ActionButton onClick={handleBroadcast} disabled={sending} icon={<Send size={14} />}>
                                     {sending ? 'Sending...' : 'Broadcast'}
@@ -95,6 +99,11 @@ export const TrainerAnnouncements = () => {
                                             <span style={{ fontSize: '10px', color: theme.text.muted }}>{new Date(ann.created_at).toLocaleDateString()}</span>
                                         </div>
                                         <p style={{ fontSize: '12px', color: theme.text.muted, margin: '0 0 10px', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{ann.message}</p>
+                                        {ann.expires_at && (
+                                            <div style={{ fontSize: '10px', fontWeight: 600, marginBottom: '8px', color: new Date(ann.expires_at) < new Date() ? theme.accent.red : theme.accent.yellow }}>
+                                                {new Date(ann.expires_at) < new Date() ? '⛔ Expired' : '⏳ Expires'}: {new Date(ann.expires_at).toLocaleDateString()}
+                                            </div>
+                                        )}
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <span style={{ fontSize: '10px', color: theme.text.label }}>To: {ann.target_batch_name}</span>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

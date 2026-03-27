@@ -113,7 +113,7 @@ exports.getAnnouncements = async (req, res) => {
 
 exports.broadcastAnnouncement = async (req, res) => {
     try {
-        const { title, message, batch_id } = req.body;
+        const { title, message, batch_id, expires_at } = req.body;
 
         // Ensure the trainer actually owns the batch they are broadcasting to
         const [batchCheck] = await pool.query("SELECT id FROM Batches WHERE id = ? AND trainer_id = ? AND status IN ('active', 'upcoming')", [batch_id, req.user.id]);
@@ -122,8 +122,8 @@ exports.broadcastAnnouncement = async (req, res) => {
         }
 
         const [result] = await pool.query(
-            'INSERT INTO Announcements (title, message, target_role, target_batch_id, created_by) VALUES (?, ?, ?, ?, ?)',
-            [title, message, 'batch', batch_id, req.user.id]
+            'INSERT INTO Announcements (title, message, target_role, target_batch_id, created_by, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [title, message, 'batch', batch_id, req.user.id, expires_at || null]
         );
 
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)',
