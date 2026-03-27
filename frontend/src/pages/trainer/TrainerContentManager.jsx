@@ -270,7 +270,7 @@ export const TrainerContentManager = () => {
                     trainerAPI.getMyIOPBatches().catch(() => ({ data: { batches: [] } })),
                 ]);
                 const activeBatches = (calRes.data.batches || []).filter(
-                    b => b.status === 'active' || b.status === 'upcoming'
+                    b => b.status !== 'completed'
                 );
                 setBatches(activeBatches);
                 setIopBatches(iopRes.data.batches || []);

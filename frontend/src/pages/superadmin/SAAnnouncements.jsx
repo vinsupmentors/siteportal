@@ -43,7 +43,7 @@ export const SAAnnouncements = () => {
                 superAdminAPI.getBatches()
             ]);
             setHistory(annRes.data.announcements);
-            setBatches(batchRes.data.batches.filter(b => b.status === 'active' || b.status === 'upcoming'));
+            setBatches(batchRes.data.batches.filter(b => b.status !== 'completed'));
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     };

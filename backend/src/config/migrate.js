@@ -54,6 +54,11 @@ async function runMigrations() {
         await addColumnIfNotExists('Batches', 'timing VARCHAR(100)');
         await addColumnIfNotExists('Batches', 'meeting_link VARCHAR(500)');
 
+        // ── Batches: expand status ENUM ─────────────────────────────────
+        try {
+            await pool.query(`ALTER TABLE Batches MODIFY COLUMN status ENUM('upcoming','active','technical_class','project_phase','softskill_aptitude_phase','completed') DEFAULT 'upcoming'`);
+        } catch (e) { console.error('[Migration] Batches status ENUM update:', e.message); }
+
         // ── Announcements: expiry deadline ──────────────────────────────
         await addColumnIfNotExists('Announcements', 'expires_at DATE NULL');
 

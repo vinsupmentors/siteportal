@@ -192,7 +192,8 @@ export const SAStudentBatchCentral = () => {
 
     const filteredBatches = batches.filter(b => batchFilter === 'all' || b.status === batchFilter);
 
-    const statusColors = { active: '#51cf66', upcoming: '#4c6ef5', completed: '#868e96', technical_class_completed: '#f97316' };
+    const statusColors = { upcoming: '#4c6ef5', active: '#51cf66', technical_class: '#f59f00', project_phase: '#f97316', softskill_aptitude_phase: '#cc5de8', completed: '#868e96' };
+    const statusLabels = { upcoming: 'Upcoming', active: 'Active', technical_class: 'Technical Class', project_phase: 'Project Phase', softskill_aptitude_phase: 'SoftSkill & Aptitude', completed: 'Completed' };
     const inputStyle = { padding: '10px', borderRadius: '8px', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: 'var(--text-main)', outline: 'none', width: '100%' };
 
     if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}><div className="spinner" /></div>;
@@ -465,9 +466,11 @@ export const SAStudentBatchCentral = () => {
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             {[
                                 { key: 'all', label: 'All' },
-                                { key: 'active', label: 'Active' },
                                 { key: 'upcoming', label: 'Upcoming' },
-                                { key: 'technical_class_completed', label: 'Tech Done' },
+                                { key: 'active', label: 'Active' },
+                                { key: 'technical_class', label: 'Technical Class' },
+                                { key: 'project_phase', label: 'Project Phase' },
+                                { key: 'softskill_aptitude_phase', label: 'SoftSkill & Aptitude' },
                                 { key: 'completed', label: 'Completed' },
                             ].map(({ key, label }) => (
                                 <button key={key} onClick={() => setBatchFilter(key)}
@@ -523,9 +526,11 @@ export const SAStudentBatchCentral = () => {
                                 </div>
                                 <input placeholder="Meeting Link (Classroom URL)" value={batchForm.meeting_link} onChange={e => setBatchForm({ ...batchForm, meeting_link: e.target.value })} style={inputStyle} />
                                 <select value={batchForm.status} onChange={e => setBatchForm({ ...batchForm, status: e.target.value })} style={inputStyle}>
-                                    <option value="active">Active</option>
                                     <option value="upcoming">Upcoming</option>
-                                    <option value="technical_class_completed">Technical Class Completed</option>
+                                    <option value="active">Active</option>
+                                    <option value="technical_class">Technical Class</option>
+                                    <option value="project_phase">Project Phase</option>
+                                    <option value="softskill_aptitude_phase">SoftSkill & Aptitude Phase</option>
                                     <option value="completed">Completed</option>
                                 </select>
                                 <div style={{ gridColumn: 'span 2', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
@@ -595,7 +600,7 @@ export const SAStudentBatchCentral = () => {
                                                             <Users size={13} color="var(--text-muted)" />
                                                             <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{b.student_count || 0}</span>
                                                         </div>
-                                                        <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700, background: `${statusColors[b.status] || '#868e96'}20`, color: statusColors[b.status] || '#868e96', textTransform: 'uppercase', minWidth: 80, textAlign: 'center' }}>{b.status}</span>
+                                                        <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 700, background: `${statusColors[b.status] || '#868e96'}20`, color: statusColors[b.status] || '#868e96', minWidth: 80, textAlign: 'center' }}>{statusLabels[b.status] || b.status}</span>
                                                         <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto' }}>
                                                             <button onClick={() => openEdit(b)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}><Pencil size={15} /></button>
                                                             <button onClick={() => handleBatchDelete(b.id)} style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', padding: 4 }}><Trash2 size={15} /></button>

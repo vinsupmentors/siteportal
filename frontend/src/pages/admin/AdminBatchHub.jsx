@@ -90,7 +90,8 @@ export const AdminBatchHub = () => {
         }, {})
     );
 
-    const statusColors = { active: '#51cf66', upcoming: '#4c6ef5', completed: '#868e96' };
+    const statusColors = { upcoming: '#4c6ef5', active: '#51cf66', technical_class: '#f59f00', project_phase: '#f97316', softskill_aptitude_phase: '#cc5de8', completed: '#868e96' };
+    const statusLabels = { upcoming: 'Upcoming', active: 'Active', technical_class: 'Technical Class', project_phase: 'Project Phase', softskill_aptitude_phase: 'SoftSkill & Aptitude', completed: 'Completed' };
     const inputStyle = { padding: '10px', borderRadius: '8px', background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: 'var(--text-main)', outline: 'none', width: '100%' };
 
     if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}><div className="spinner" /></div>;
@@ -109,15 +110,23 @@ export const AdminBatchHub = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {['all', 'active', 'upcoming', 'completed'].map(s => (
-                    <button key={s} onClick={() => setBatchFilter(s)}
+                {[
+                    { key: 'all', label: 'All' },
+                    { key: 'upcoming', label: 'Upcoming' },
+                    { key: 'active', label: 'Active' },
+                    { key: 'technical_class', label: 'Technical Class' },
+                    { key: 'project_phase', label: 'Project Phase' },
+                    { key: 'softskill_aptitude_phase', label: 'SoftSkill & Aptitude' },
+                    { key: 'completed', label: 'Completed' },
+                ].map(({ key, label }) => (
+                    <button key={key} onClick={() => setBatchFilter(key)}
                         style={{
-                            padding: '8px 18px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.85rem', textTransform: 'capitalize',
-                            background: batchFilter === s ? 'var(--primary)' : 'var(--bg-surface)',
-                            color: batchFilter === s ? 'white' : 'var(--text-muted)',
-                            border: `1px solid ${batchFilter === s ? 'var(--primary)' : 'var(--border-color)'}`
+                            padding: '8px 18px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.85rem',
+                            background: batchFilter === key ? 'var(--primary)' : 'var(--bg-surface)',
+                            color: batchFilter === key ? 'white' : 'var(--text-muted)',
+                            border: `1px solid ${batchFilter === key ? 'var(--primary)' : 'var(--border-color)'}`
                         }}>
-                        {s}
+                        {label}
                     </button>
                 ))}
             </div>
@@ -158,8 +167,11 @@ export const AdminBatchHub = () => {
                         </div>
                         <input placeholder="Meeting Link (Classroom URL)" value={batchForm.meeting_link} onChange={e => setBatchForm({ ...batchForm, meeting_link: e.target.value })} style={inputStyle} />
                         <select value={batchForm.status} onChange={e => setBatchForm({ ...batchForm, status: e.target.value })} style={inputStyle}>
-                            <option value="active">Active</option>
                             <option value="upcoming">Upcoming</option>
+                            <option value="active">Active</option>
+                            <option value="technical_class">Technical Class</option>
+                            <option value="project_phase">Project Phase</option>
+                            <option value="softskill_aptitude_phase">SoftSkill & Aptitude Phase</option>
                             <option value="completed">Completed</option>
                         </select>
                         <div style={{ gridColumn: 'span 2', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>

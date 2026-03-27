@@ -22,7 +22,7 @@ export const TrainerAnnouncements = () => {
                 trainerAPI.getMyCalendar(new Date().getMonth() + 1, new Date().getFullYear()),
             ]);
             setHistory(annRes.data.announcements || []);
-            if (batchRes.data.batches) setBatches(batchRes.data.batches.filter(b => b.status === 'active' || b.status === 'upcoming'));
+            if (batchRes.data.batches) setBatches(batchRes.data.batches.filter(b => b.status !== 'completed'));
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
