@@ -58,7 +58,7 @@ export const StudentSidebar = ({ isOpen, setIsOpen }) => {
         <nav className={`sidebar ${isOpen ? 'open' : ''}`}>
             <div className="sidebar-header">
                 <BrandLogo />
-                <span className="brand-text">Edutech Pro</span>
+                <span className="brand-text">Vinsup Skill Academy</span>
             </div>
             <div className="nav-links">
                 {studentLinks.map((link) => {

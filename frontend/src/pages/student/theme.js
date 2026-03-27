@@ -1,4 +1,4 @@
-// Edutech Pro — Student Portal Theme
+// Vinsup Skill Academy — Student Portal Theme
 // Extracted from Admin portal design system
 
 const theme = {
