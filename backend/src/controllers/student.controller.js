@@ -41,14 +41,15 @@ exports.getStudentDashboard = async (req, res) => {
             ? Math.round((attendance[0].present_days / attendance[0].total_days) * 100)
             : 0;
 
-        // 3. Performance Metrics
+        // 3. Performance Metrics (from StudentReleaseSubmissions)
         const [performance] = await pool.query(`
             SELECT
-                AVG(CASE WHEN submission_type = 'module_test' AND marks IS NOT NULL THEN marks ELSE NULL END) as avg_test_score,
-                COUNT(CASE WHEN submission_type IN ('module_project', 'capstone') AND marks IS NOT NULL THEN 1 ELSE NULL END) as completed_projects
-            FROM Submissions
-            WHERE student_id = ?
-        `, [studentId]);
+                AVG(CASE WHEN br.release_type = 'module_test' AND srs.marks IS NOT NULL THEN srs.marks ELSE NULL END) as avg_test_score,
+                COUNT(CASE WHEN br.release_type IN ('module_project', 'capstone_project') AND srs.marks IS NOT NULL THEN 1 ELSE NULL END) as completed_projects
+            FROM StudentReleaseSubmissions srs
+            JOIN BatchReleases br ON srs.release_id = br.id
+            WHERE srs.student_id = ? AND srs.batch_id = ?
+        `, [studentId, activeBatch.id]);
 
         // 4. Next Lesson
         const [nextLesson] = await pool.query(`
@@ -74,7 +75,7 @@ exports.getStudentDashboard = async (req, res) => {
             LIMIT 3
         `, [activeBatch.course_id, studentId]);
 
-        // 6. Module progress (passed count)
+        // 6. Module progress (passed count via StudentReleaseSubmissions)
         const [modules] = await pool.query(`SELECT id FROM Modules WHERE course_id = ?`, [activeBatch.course_id]);
         const totalModules = modules.length;
         let passedModules = 0;
@@ -82,11 +83,13 @@ exports.getStudentDashboard = async (req, res) => {
             const mIds = modules.map(m => m.id);
             const ph = mIds.map(() => '?').join(',');
             const [passed] = await pool.query(`
-                SELECT COUNT(DISTINCT module_id) as cnt
-                FROM Submissions
-                WHERE student_id = ? AND submission_type = 'module_test'
-                AND module_id IN (${ph}) AND marks >= 75
-            `, [studentId, ...mIds]);
+                SELECT COUNT(DISTINCT br.entity_id) as cnt
+                FROM StudentReleaseSubmissions srs
+                JOIN BatchReleases br ON srs.release_id = br.id
+                WHERE srs.student_id = ? AND srs.batch_id = ?
+                AND br.release_type = 'module_test'
+                AND br.entity_id IN (${ph}) AND srs.marks >= 75
+            `, [studentId, activeBatch.id, ...mIds]);
             passedModules = passed[0].cnt || 0;
         }
 
