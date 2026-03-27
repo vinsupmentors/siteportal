@@ -17,7 +17,7 @@ export const IOPTrainerSidebar = ({ isOpen, setIsOpen }) => {
         <nav className={`sidebar ${isOpen ? 'open' : ''}`}>
             <div className="sidebar-header">
                 <BrandLogo />
-                <span className="brand-text">Edutech Pro</span>
+                <span className="brand-text">Vinsup Skill Academy</span>
             </div>
             <div style={{
                 fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1.4px',

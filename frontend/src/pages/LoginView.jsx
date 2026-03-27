@@ -27,7 +27,7 @@ export const LoginView = () => {
             <div className="glass-card" style={{ width: '400px', padding: '2.5rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
                     <BrandLogo />
-                    <h2 style={{ marginTop: '1rem', className: 'brand-text', color: 'var(--text-main)' }}>Sign In to Edutech Pro</h2>
+                    <h2 style={{ marginTop: '1rem', className: 'brand-text', color: 'var(--text-main)' }}>Sign In to Vinsup Skill Academy</h2>
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem' }}>Enter your organizational credentials</p>
                 </div>
 

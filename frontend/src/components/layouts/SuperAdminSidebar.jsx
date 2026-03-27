@@ -114,7 +114,7 @@ export const SuperAdminSidebar = ({ isOpen, setIsOpen }) => {
         <nav className={`sidebar ${isOpen ? 'open' : ''}`}>
             <div className="sidebar-header">
                 <BrandLogo />
-                <span className="brand-text">Edutech Pro</span>
+                <span className="brand-text">Vinsup Skill Academy</span>
             </div>
             <div className="nav-links">
                 {navGroups.map((group) => (
