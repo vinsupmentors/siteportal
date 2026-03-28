@@ -80,7 +80,7 @@ export const StatusBadge = ({ status, color }) => {
         locked: theme.text.muted, open: theme.accent.yellow, resolved: theme.accent.green,
         assigned: theme.accent.blue, review: theme.accent.purple, complete: theme.accent.green,
         return: theme.accent.red, upcoming: theme.accent.cyan, present: theme.accent.green,
-        absent: theme.accent.red, technical_class_completed: theme.accent.orange || '#f97316',
+        absent: theme.accent.red, technical_class: theme.accent.orange || '#f97316',
     };
     const c = color || colorMap[status?.toLowerCase()] || theme.text.muted;
     return (

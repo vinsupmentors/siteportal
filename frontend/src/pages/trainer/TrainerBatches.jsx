@@ -187,7 +187,7 @@ export const TrainerBatches = () => {
                                                     </button>
 
                                                     {/* Mark Technical Class Completed */}
-                                                    {batch.status === 'technical_class_completed' ? (
+                                                    {batch.status === 'technical_class' ? (
                                                         <div style={{
                                                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
                                                             width: '100%', padding: '9px 4px', fontSize: '10px', fontWeight: 700,

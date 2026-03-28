@@ -13,7 +13,7 @@ exports.getMyCalendar = async (req, res) => {
             SELECT b.*, c.name as course_name
             FROM Batches b
             JOIN Courses c ON b.course_id = c.id
-            WHERE b.trainer_id = ? AND b.status IN ('active', 'upcoming', 'completed', 'technical_class_completed')
+            WHERE b.trainer_id = ? AND b.status IN ('active', 'upcoming', 'completed', 'technical_class')
         `, [trainerId]);
         console.log('Batches found:', batches.length);
         const [tasks] = await pool.query('SELECT * FROM TrainerTasks WHERE trainer_id = ? ORDER BY due_date ASC', [trainerId]);
@@ -1095,12 +1095,12 @@ exports.markBatchTechnicalComplete = async (req, res) => {
         if (Number(batch.trainer_id) !== Number(trainerId)) {
             return res.status(403).json({ message: 'You are not the trainer for this batch' });
         }
-        if (batch.status === 'technical_class_completed' || batch.status === 'completed') {
+        if (batch.status === 'technical_class' || batch.status === 'completed') {
             return res.json({ message: 'Already marked as completed', status: batch.status });
         }
 
         await pool.query(
-            "UPDATE Batches SET status = 'technical_class_completed' WHERE id = ?",
+            "UPDATE Batches SET status = 'technical_class' WHERE id = ?",
             [batchId]
         );
 
