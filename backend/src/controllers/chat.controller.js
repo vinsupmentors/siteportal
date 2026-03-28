@@ -27,9 +27,9 @@ exports.getChatContacts = async (req, res) => {
         // Wait, for simplicity, get users who have messaged this user, or just list all Trainers
         let query = '';
         if (role == 4) {
-            query = 'SELECT id, first_name, last_name, role_id FROM Users WHERE role_id = 3 AND status = "active"';
+            query = "SELECT id, first_name, last_name, role_id FROM Users WHERE role_id = 3 AND status = 'active'";
         } else if (role == 3) {
-            query = 'SELECT id, first_name, last_name, role_id FROM Users WHERE role_id = 4 AND status = "active"';
+            query = "SELECT id, first_name, last_name, role_id FROM Users WHERE role_id = 4 AND status = 'active'";
         } else {
             return res.status(400).json({ success: false, message: 'Invalid role' });
         }

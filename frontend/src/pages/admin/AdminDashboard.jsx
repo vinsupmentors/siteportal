@@ -170,7 +170,9 @@ export const AdminDashboard = () => {
                                         <div style={{
                                             height: '100%',
                                             background: '#ae3ec9',
-                                            width: `${(stats.health.latestAnnouncement.acknowledged_count / stats.health.latestAnnouncement.total_target_audience) * 100}%`
+                                            width: stats.health.latestAnnouncement.total_target_audience > 0
+                                                ? `${(stats.health.latestAnnouncement.acknowledged_count / stats.health.latestAnnouncement.total_target_audience) * 100}%`
+                                                : '0%'
                                         }}></div>
                                     </div>
                                     <span style={{ color: 'var(--text-muted)' }}>{stats.health.latestAnnouncement.acknowledged_count} Reads</span>

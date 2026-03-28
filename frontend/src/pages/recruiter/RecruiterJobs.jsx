@@ -151,7 +151,8 @@ const RecruiterJobs = () => {
                                     <button
                                         onClick={() => {
                                             const count = prompt("How many students were hired?", "1");
-                                            if (count !== null) handleUpdateStatus(job, { status: 'Hired', hired_count: parseInt(count) });
+                                            const parsed = parseInt(count);
+                                            if (count !== null && !isNaN(parsed) && parsed > 0) handleUpdateStatus(job, { status: 'Hired', hired_count: parsed });
                                         }}
                                         className="btn btn-primary text-[10px] py-1 px-3"
                                     >

@@ -29,7 +29,7 @@ export const StudentTests = () => {
         active: tests.filter(t => t.status === 'active').length,
         pending: tests.filter(t => t.status === 'pending_review').length,
         avgScore: tests.filter(t => t.score != null).length
-            ? Math.round(tests.filter(t => t.score != null).reduce((a, t) => a + (t.score || 0), 0) / tests.filter(t => t.score != null).length)
+            ? Math.round(tests.filter(t => t.score != null).reduce((a, t) => a + (parseFloat(t.score) || 0), 0) / tests.filter(t => t.score != null).length)
             : null,
     };
 
@@ -92,7 +92,7 @@ export const StudentTests = () => {
                     {filtered.map(test => {
                         const cfg = getStatusConfig(test.status);
                         const Icon = cfg.icon;
-                        const scoreColor = test.score >= 80 ? theme.accent.green : test.score >= 50 ? theme.accent.yellow : theme.accent.red;
+                        const scoreColor = test.score == null ? theme.text.muted : parseFloat(test.score) >= 80 ? theme.accent.green : parseFloat(test.score) >= 50 ? theme.accent.yellow : theme.accent.red;
 
                         return (
                             <Card key={test.id} hoverable noPadding>

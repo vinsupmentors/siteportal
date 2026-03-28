@@ -331,6 +331,7 @@ export const adminAPI = {
 
     // Reports (Bridged from SuperAdmin endpoints but assigned to Admin role)
     getDashboardStats: () => api.get('/super-admin/dashboard-stats'),
+    getStudents: () => api.get('/super-admin/students'),
     getTrainerReport: () => api.get('/super-admin/reports/trainers'),
     getBatchReport: () => api.get('/super-admin/reports/batches'),
     getStudentReport: () => api.get('/super-admin/reports/students'),

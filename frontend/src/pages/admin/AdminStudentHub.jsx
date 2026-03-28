@@ -32,10 +32,10 @@ export const AdminStudentHub = () => {
         setLoading(true);
         try {
             const [studRes, batchRes] = await Promise.all([
-                adminAPI.getStudentReport(),
+                adminAPI.getStudents(),
                 adminAPI.getBatchHub()
             ]);
-            setStudents(studRes.data.students);
+            setStudents(studRes.data.students || []);
             setBatches(batchRes.data.batches);
         } catch (err) {
             console.error('Failed to fetch data:', err);

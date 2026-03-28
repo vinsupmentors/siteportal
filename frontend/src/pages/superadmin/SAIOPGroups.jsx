@@ -50,11 +50,14 @@ const inputStyle = {
 
 const StatusBadge = ({ status }) => {
     const map = {
-        upcoming: { color: t.accent.yellow, label: 'Upcoming' },
-        active:   { color: t.accent.green,  label: 'Active' },
-        completed:{ color: t.text.muted,    label: 'Completed' },
+        upcoming:                  { color: t.accent.yellow, label: 'Upcoming' },
+        active:                    { color: t.accent.green,  label: 'Active' },
+        technical_class:           { color: t.accent.blue,   label: 'Technical' },
+        project_phase:             { color: t.accent.purple, label: 'Project' },
+        softskill_aptitude_phase:  { color: t.accent.cyan,   label: 'Soft Skills' },
+        completed:                 { color: t.text.muted,    label: 'Completed' },
     };
-    const s = map[status] || map.upcoming;
+    const s = map[status] || { color: t.text.muted, label: status || 'Unknown' };
     return (
         <span style={{
             padding: '3px 10px', borderRadius: t.radius.full,

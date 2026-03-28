@@ -113,6 +113,59 @@ cron.schedule('0 18 * * *', async () => {
     }
 });
 
+// Batch Status Auto-Update — runs daily at midnight
+// upcoming → active (when start_date reached)
+// active → technical_class (when 40% of days passed)
+// technical_class → project_phase (when 60% of days passed)
+// project_phase → softskill_aptitude_phase (when 80% of days passed)
+// softskill_aptitude_phase → completed (when end_date passed)
+cron.schedule('0 0 * * *', async () => {
+    console.log('[System Cron]: Running batch status automation...');
+    try {
+        const pool = require('./config/db');
+        const today = new Date().toISOString().split('T')[0];
+
+        // upcoming → active
+        await pool.query(
+            `UPDATE Batches SET status = 'active' WHERE status = 'upcoming' AND start_date <= ?`,
+            [today]
+        );
+
+        // active → technical_class (after 40% of duration elapsed)
+        await pool.query(
+            `UPDATE Batches SET status = 'technical_class'
+             WHERE status = 'active' AND end_date IS NOT NULL
+             AND DATEDIFF(?, start_date) >= DATEDIFF(end_date, start_date) * 0.40`,
+            [today]
+        );
+
+        // technical_class → project_phase (after 60%)
+        await pool.query(
+            `UPDATE Batches SET status = 'project_phase'
+             WHERE status = 'technical_class' AND end_date IS NOT NULL
+             AND DATEDIFF(?, start_date) >= DATEDIFF(end_date, start_date) * 0.60`,
+            [today]
+        );
+
+        // project_phase → softskill_aptitude_phase (after 80%)
+        await pool.query(
+            `UPDATE Batches SET status = 'softskill_aptitude_phase'
+             WHERE status = 'project_phase' AND end_date IS NOT NULL
+             AND DATEDIFF(?, start_date) >= DATEDIFF(end_date, start_date) * 0.80`,
+            [today]
+        );
+
+        // softskill_aptitude_phase → completed (after end_date)
+        await pool.query(
+            `UPDATE Batches SET status = 'completed'
+             WHERE status = 'softskill_aptitude_phase' AND end_date IS NOT NULL AND end_date < ?`,
+            [today]
+        );
+
+        console.log('[System Cron]: Batch status automation complete');
+    } catch (err) { console.error('[System Cron]: Batch status automation error:', err.message); }
+});
+
 // Trainer CL (Casual Leave) auto-increment — 1st of every month at midnight
 cron.schedule('0 0 1 * *', async () => {
     console.log('[System Cron]: Monthly CL increment for non-probation trainers...');

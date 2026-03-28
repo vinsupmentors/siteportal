@@ -530,7 +530,7 @@ exports.createBatch = async (req, res) => {
     try {
         const { course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link, iop_trainer_id } = req.body;
         const [result] = await pool.query(
-            `INSERT INTO Batches (course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link, status, iop_trainer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
+            `INSERT INTO Batches (course_id, trainer_id, batch_name, schedule_type, timing, start_date, end_date, meeting_link, status, iop_trainer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'upcoming', ?)`,
             [course_id, trainer_id || null, batch_name, schedule_type, timing, start_date, end_date || null, meeting_link || null, iop_trainer_id || null]
         );
         await pool.query('INSERT INTO AuditLogs (user_id, action, table_name, record_id) VALUES (?, ?, ?, ?)', [req.user.id, 'CREATE_BATCH', 'Batches', result.insertId]);

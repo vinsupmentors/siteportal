@@ -60,7 +60,7 @@ exports.changePassword = async (req, res) => {
             return res.status(401).json({ message: 'Current password is incorrect' });
         }
 
-        await pool.query('UPDATE Users SET password = ? WHERE id = ?', [newPassword, req.user.id]);
+        await pool.query('UPDATE Users SET password = ? WHERE id = ?', [new_password, req.user.id]);
 
         res.json({ message: 'Password changed successfully' });
     } catch (error) {
@@ -103,11 +103,12 @@ exports.getUnacknowledged = async (req, res) => {
         }
 
         const [unread] = await pool.query(`
-            SELECT a.* 
+            SELECT a.*
             FROM Announcements a
             WHERE (a.target_role IN ('all', ?) ${batchCondition})
+            AND (a.expires_at IS NULL OR a.expires_at >= CURDATE())
             AND NOT EXISTS (
-                SELECT 1 FROM AnnouncementAcknowledgements ack 
+                SELECT 1 FROM AnnouncementAcknowledgements ack
                 WHERE ack.announcement_id = a.id AND ack.user_id = ?
             )
             ORDER BY a.created_at DESC
